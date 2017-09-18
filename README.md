@@ -3,6 +3,7 @@
 
 # Installation
 run this inside julia REPL:
+
     Pkg.clone("https://github.com/seung-lab/TEASAR.jl.git")
 
 # Usage
