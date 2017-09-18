@@ -1,4 +1,5 @@
-# TEASAR.jl
+TEASAR.jl
+========================
 3D chunk-wise skeletonization using TEASAR algorithm
 
 ## Installation
