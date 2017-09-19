@@ -5,6 +5,9 @@ import ..BWDists
 import ..Points 
 using Base.Cartesian
 
+const ZERO_UINT32 = convert(UInt32, 0)
+const DEFAULT_OFFSET = (ZERO_UINT32, ZERO_UINT32, ZERO_UINT32)
+
 export skeletonize 
 
 #---------------------------------------------------------------
@@ -12,21 +15,22 @@ export skeletonize
     skeletonize( seg; penalty_fn=alexs_penalty)
 Perform the teasar algorithm on the passed binary array.
 """
-function skeletonize{T}( seg::Array{T,3}; obj_id::T=convert(T,1), 
-                   penalty_fn=alexs_penalty )
-   # transform segmentation to points
-   points = Points.from_seg(seg; obj_id=obj_id)
-   skeletonize(points; penalty_fn=penalty_fn)
+function skeletonize{T}( seg::Array{T,3}; 
+                            obj_id::T = convert(T,1), 
+                            offset::NTuple{3,UInt32} = DEFAULT_OFFSET,
+                            penalty_fn = alexs_penalty )
+    # transform segmentation to points
+    points = Points.from_seg(seg; obj_id=obj_id, offset=offset) 
+    skeletonize(points; penalty_fn=penalty_fn)
 end 
 
 """
-    skeletonize( points, scale_param, const_param, source_points )
+    skeletonize( points; penalty_fn = alexs_penalty )
 
   Perform the teasar algorithm on the passed Nxd array of points
 """
-function skeletonize{T}( points::Array{T,2}; 
-                   penalty_fn=alexs_penalty )#, scale_param, const_param, source_points )
-
+function skeletonize{T}( points::Array{T,2};
+                            penalty_fn=alexs_penalty )
   points = shift_points_to_bbox( points );
   ind2node, max_dims = create_node_lookup( points );
   max_dims_arr = [max_dims...];#use this for rm_nodes, but ideally wouldn't
@@ -102,7 +106,7 @@ function skeletonize{T}( points::Array{T,2};
   path_nodes, path_edges = consolidate_paths( paths );
   node_radii = DBF[path_nodes];
 
-  path_edges, path_nodes, root_nodes, node_radii, destinations
+  points, path_edges, path_nodes, root_nodes, node_radii, destinations
 end
 #---------------------------------------------------------------
 
@@ -465,23 +469,33 @@ end
 
   Extracts the unique nodes and edges among all paths in the list
 """
-function consolidate_paths( path_list )
+function consolidate_paths( path_list::Vector )
 
-  nodes = Set{Int}();
-  edges = Set{Tuple{Int,Int}}();
+    nodes = Set{Int}();
+    edges = Set{NTuple{2,Int}}();
 
-  for path in path_list
+    # estimate the total number of nodes and edges
+    num_nodes = 0
+    num_edges = 0
+    for path in path_list
+        path_length = length(path)
+        num_nodes += path_length 
+        num_edges += path_length-1 
+    end 
+    # give some hints for memory allocation
+    sizehint!(nodes, num_nodes)
+    sizehint!(edges, num_edges)
 
-    path_length = length(path);
-    @assert path_length > 0
+    for path in path_list
+        path_length = length(path);
+        @assert path_length > 0
 
-    for i in 1:(path_length-1)
-      push!( edges, (path[i],path[i+1]) );
-      push!( nodes, path[i] );
+        for i in 1:(path_length-1)
+            push!( edges, (path[i],path[i+1]) );
+            push!( nodes, path[i] );
+        end
+        push!( nodes, path[path_length] );
     end
-
-    push!( nodes, path[path_length] );
-  end
 
   collect(nodes), collect(edges)
 end

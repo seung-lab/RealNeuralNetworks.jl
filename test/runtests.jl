@@ -27,7 +27,7 @@ seg[47:54, 47:54, 71:78] = 1
 #@time seg = get_seg_from_h5()
 
 @testset "test teasar" begin 
-    @time edges, nodes, roots, radii, dests = Skeleton.skeletonize(seg)
+    @time points, edges, nodes, roots, radii, dests = Skeleton.skeletonize(seg)
     @test !isempty(edges)
     @show nodes
     @show edges 
