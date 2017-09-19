@@ -1,5 +1,18 @@
 #!/usr/bin/julia 
 import MAT 
+using TEASAR
+
+#---------------------------------------------------------------
+#Testing/debug fn
+function create_dummy_matrix(s)
+
+  pt = hcat( findn(ones(s,s,s))... );
+  mid_row = div( size(pt,1),2 ) + 1;
+  pt = pt[[1:mid_row-1;mid_row+1:end],:];
+
+  pt
+end
+
 """
 
     read_points_file( mat_filename )
@@ -27,15 +40,15 @@ output_filename = ARGS[2];
 
 
 penalty_fns = Dict(
-  "alexs" => alexs_penalty,
+  "alexs" => TEASAR.alexs_penalty,
   # "sato"  => literal_paper_penalty,
   # "sebs"  => sebastians_penalty,
   # "LMA"   => local_max_additive_penalty,
-  "LMM"   => local_max_multiplicative_penalty
+  "LMM"   => TEASAR.local_max_multiplicative_penalty
 )
 
 if length(ARGS) < 3
-  penalty_fn = alexs_penalty
+  penalty_fn = TEASAR.alexs_penalty
 else
   penalty_fn = penalty_fns[ARGS[3]]
 end

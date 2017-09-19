@@ -1,18 +1,31 @@
-module teasar
+module Skeleton
 
 import LightGraphs
-import bwdist
+import ..BWDists 
+import ..Points 
 using Base.Cartesian
 
-export Teasar
+export skeletonize 
 
 #---------------------------------------------------------------
 """
-    Teasar( points, scale_param, const_param, source_points )
+    skeletonize( seg; penalty_fn=alexs_penalty)
+Perform the teasar algorithm on the passed binary array.
+"""
+function skeletonize{T}( seg::Array{T,3}; obj_id::T=convert(T,1), 
+                   penalty_fn=alexs_penalty )
+   # transform segmentation to points
+   points = Points.from_seg(seg; obj_id=obj_id)
+   skeletonize(points; penalty_fn=penalty_fn)
+end 
+
+"""
+    skeletonize( points, scale_param, const_param, source_points )
 
   Perform the teasar algorithm on the passed Nxd array of points
 """
-function Teasar{T}( points::Array{T,2}, penalty_fn )#, scale_param, const_param, source_points )
+function skeletonize{T}( points::Array{T,2}; 
+                   penalty_fn=alexs_penalty )#, scale_param, const_param, source_points )
 
   points = shift_points_to_bbox( points );
   ind2node, max_dims = create_node_lookup( points );
@@ -149,7 +162,7 @@ function compute_DBF( point_cloud )
 
   bin_im = create_boundary_image( point_cloud );
 
-  dbf_im = bwdist.bwd2( bin_im );
+  dbf_im = BWDists.bwd2( bin_im );
 
   dbf_vec = extract_dbf_values( dbf_im, point_cloud );
 
@@ -471,17 +484,6 @@ function consolidate_paths( path_list )
   end
 
   collect(nodes), collect(edges)
-end
-
-#---------------------------------------------------------------
-#Testing/debug fn
-function create_dummy_matrix(s)
-
-  pt = hcat( findn(ones(s,s,s))... );
-  mid_row = div( size(pt,1),2 ) + 1;
-  pt = pt[[1:mid_row-1;mid_row+1:end],:];
-
-  pt
 end
 
 end#module

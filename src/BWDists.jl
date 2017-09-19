@@ -2,7 +2,7 @@
 
 __precompile__()
 
-module bwdist
+module BWDists
 
 using Base.Cartesian
 
