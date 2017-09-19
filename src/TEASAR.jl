@@ -7,4 +7,6 @@ using .Points
 using .BWDists
 using .Skeleton
 
+export skeletonize
+
 end # end of module

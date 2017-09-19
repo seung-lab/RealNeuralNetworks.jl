@@ -10,7 +10,11 @@ run this inside julia REPL:
 ## Usage
 ```Julia
 using TEASAR
-Teasar(points)
+skeletonize(seg::Array{UInt32,3}; obj_id = convert(UInt32,77605))
+```
+or
+```
+skeletonize(points::Array{Int,2})
 ```
 
 ## Algorithm 
