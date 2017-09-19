@@ -42,7 +42,7 @@ function skeletonize{T}( points::Array{T,2};
   #init
   #nonzeros SHOULD remove duplicates, but it doesn't so
   # I have to do something a bit more complicated
-  _,_,nonzero_vals = findnz(ind2node);
+  _,nonzero_vals = findnz(ind2node);
   disconnected_nodes = IntSet( nonzero_vals );
   paths = Vector(); #holds array of skeleton paths
   root_nodes = Vector{Int}(); #holds root nodes for each path
@@ -240,7 +240,7 @@ function make_neighbor_graph{T}( points::Array{T,2}, ind2node=nothing, max_dims=
   nhood_weights = map( x-> sqrt(sum( x.^2 )), nhood );
 
   #only adding weights for non-duplicate nodes
-  _,_,non_duplicates = findnz( ind2node );
+  _,non_duplicates = findnz( ind2node );
 
   #init - descriptors of the edges for graph
   # weights later
@@ -436,13 +436,13 @@ end
 
   Identifies the node indices within the subscript
 """
-function nodes_within_radius( sub::Array{Int,2}, ind2node, r, max_dims::Vector );
+function nodes_within_radius{T}( sub::Array{T,1}, ind2node, r, max_dims::Vector );
 
-  beginning = convert(Vector{Int}, ceil(max(sub[:] .- r,1)));
-  ending    = convert(Vector{Int}, floor(min(sub[:] .+ r, max_dims)));
-  ind::Int = 0;
+  beginning = convert(Vector{T}, ceil(max(sub[:] .- r,1)));
+  ending    = convert(Vector{T}, floor(min(sub[:] .+ r, max_dims)));
+  ind::T = convert(T,0);
 
-  nodes = Set{Int}();
+  nodes = Set{T}();
   for x in beginning[1]:ending[1]
     for y in beginning[2]:ending[2]
       for z in beginning[3]:ending[3]
