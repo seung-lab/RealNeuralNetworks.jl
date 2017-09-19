@@ -1,0 +1,14 @@
+language: julia
+os: linux
+
+julia: 
+    - 0.5
+
+notifications: 
+    email: false
+
+git: 
+    depth: 99999
+
+script: 
+    - julia -e 'Pkg.clone(pwd()); Pkg.test("TEASAR")'
