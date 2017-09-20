@@ -24,7 +24,7 @@ seg[50,50,:] = UInt32(1)
 seg[49:52, 49:52, 48:52] = 1
 seg[47:54, 47:54, 71:78] = 1
 
-@time seg = get_seg_from_h5()
+# @time seg = get_seg_from_h5()
 
 @testset "test teasar" begin 
     @time swc = TEASAR.skeletonize(seg)

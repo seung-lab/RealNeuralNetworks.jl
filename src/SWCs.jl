@@ -33,7 +33,6 @@ function SWC{T}(nodes::Array{T,2}, edges::Vector,
     end
     # assign parents according to edge 
     for e in edges 
-        @show e
         points[e[2]].parent = e[1]
     end  
     SWC(points, attributes)
