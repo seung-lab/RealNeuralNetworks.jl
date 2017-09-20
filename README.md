@@ -10,11 +10,12 @@ run this inside julia REPL:
 ## Usage
 ```Julia
 using TEASAR
-skeletonize(seg::Array{UInt32,3}; obj_id = convert(UInt32,77605))
+swc = skeletonize(seg::Array{UInt32,3}; obj_id = convert(UInt32,77605))
+TEASAR.SWCs.save(swc, tempname()*".swc")
 ```
 or
 ```
-skeletonize(points::Array{Int,2})
+swc = skeletonize(points::Array{Int,2})
 ```
 
 ## Algorithm 
