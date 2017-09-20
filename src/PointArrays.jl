@@ -1,4 +1,4 @@
-module Points
+module PointArrays
 
 const ZERO_UINT32 = convert(UInt32, 0)
 const ONE_UINT32  = convert(UInt32, 1)

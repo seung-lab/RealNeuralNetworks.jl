@@ -1,8 +1,9 @@
-module Skeleton
+module Skeletons
 
 import LightGraphs
 import ..BWDists 
-import ..Points 
+import ..PointArrays
+using ..SWCs
 using Base.Cartesian
 
 const ZERO_UINT32 = convert(UInt32, 0)
@@ -20,7 +21,7 @@ function skeletonize{T}( seg::Array{T,3};
                             offset::NTuple{3,UInt32} = DEFAULT_OFFSET,
                             penalty_fn = alexs_penalty )
     # transform segmentation to points
-    points = Points.from_seg(seg; obj_id=obj_id, offset=offset) 
+    points = PointArrays.from_seg(seg; obj_id=obj_id, offset=offset) 
     skeletonize(points; penalty_fn=penalty_fn)
 end 
 
@@ -105,8 +106,11 @@ function skeletonize{T}( points::Array{T,2};
   println("Consolidating Paths")
   path_nodes, path_edges = consolidate_paths( paths );
   node_radii = DBF[path_nodes];
-
-  points, path_edges, path_nodes, root_nodes, node_radii, destinations
+  
+    # build a new graph containing only the skeleton nodes and edges
+    nodes, edges, roots, destinations = 
+                    distill!(points, path_nodes, path_edges, root_nodes, destinations)
+    return SWC(nodes, edges, roots, node_radii, destinations)
 end
 #---------------------------------------------------------------
 
@@ -500,4 +504,45 @@ function consolidate_paths( path_list::Vector )
   collect(nodes), collect(edges)
 end
 
-end#module
+"""
+Parameters:
+===========
+    point_array: a Nx3 array recording all the voxel coordinates inside the object.
+    path_nodes: the indexes of skeleton voxels in the point_array 
+    path_edges: the index pairs of skeleton in the point_array  
+
+In the path_nodes, the nodes were encoded as the index of the point_array. Since we do 
+not need point_array anymore, which could be pretty big, we'll only reserve the skeleton 
+coordinates and let the gc release the point_array. 
+the same applys to path_edges 
+"""
+function distill!{T}(point_array::Array{T,2}, 
+                    path_nodes::Vector{Int}, path_edges::Vector, 
+                    root_nodes::Vector, destinations::Vector)
+    num_nodes = length(path_nodes) 
+    num_edges = length(path_edges)
+    nodes = Array(T, (num_nodes, 3))
+    # map the old path node id to new id 
+    id_map = Dict{T, T}()
+    sizehint!(id_map, num_nodes)
+    # build new nodes and the id map
+    for i in 1:num_nodes 
+        nodes[i,:] = point_array[path_nodes[i], :]
+        id_map[path_nodes[i]] = i
+    end 
+
+    # rebuild the edges
+    for i in 1:num_edges
+        path_edges[i] = (id_map[path_edges[i][1]], id_map[path_edges[i][2]])
+    end
+    # rebuild the roots and destinations
+    for i in 1:length(root_nodes)
+        root_nodes[i] = id_map[ root_nodes[i] ]
+    end
+    for i in 1:length(destinations)
+        destinations[i] = id_map[ destinations[i] ]
+    end 
+    return nodes, path_edges, root_nodes, destinations 
+end 
+
+end # module

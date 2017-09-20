@@ -1,11 +1,13 @@
 __precompile__();
 module TEASAR
-include("Points.jl")
+include("PointArrays.jl")
 include("BWDists.jl")
-include("Skeleton.jl")
-using .Points
+include("SWCs.jl")
+include("Skeletons.jl")
+using .PointArrays
 using .BWDists
-using .Skeleton
+using .SWCs 
+using .Skeletons
 
 export skeletonize
 
