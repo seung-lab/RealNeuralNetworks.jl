@@ -1,11 +1,10 @@
 __precompile__();
 module TEASAR
+include("DBFs.jl"); using .DBFs;
 include("PointArrays.jl")
-include("BWDists.jl")
 include("SWCs.jl")
 include("Skeletons.jl")
 using .PointArrays
-using .BWDists
 using .SWCs 
 using .Skeletons
 

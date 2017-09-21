@@ -2,9 +2,31 @@
 
 __precompile__()
 
-module BWDists
+module DBFs
 
 using Base.Cartesian
+
+"""
+
+    compute_DBF( point_cloud )
+
+  Returns an array of DBF values for the point cloud. Currently creates
+  a binary image, and runs bwd2 on it, though ideally we'd get rid of the
+  need for an explicit bin_im
+
+  TO OPTIMIZE
+"""
+function compute_DBF( point_cloud )
+
+  bin_im = create_boundary_image( point_cloud );
+
+  dbf_im = bwd2( bin_im );
+
+  dbf_vec = extract_dbf_values( dbf_im, point_cloud );
+
+  dbf_vec;
+end
+
 
 #NOTE voxel_dims not currently functional
 """
@@ -158,5 +180,49 @@ function sqrt!( d::AbstractArray )
     d[i] = sqrt(d[i]);
   end
 end
+
+
+"""
+
+    create_boundary_image( point_cloud )
+
+  Creates a boolean volume where the non-segment indices
+  map to true, while the segment indices map to false.
+"""
+function create_boundary_image( point_cloud );
+
+  max_dims = maximum( point_cloud, 1 );
+
+  bin_im = ones(Bool, max_dims...);
+
+  for p in 1:size( point_cloud, 1 )
+    bin_im[ point_cloud[p,:]... ] = false;
+  end
+
+  bin_im;
+end
+
+
+"""
+
+    extract_dbf_values( dbf_image, point_cloud )
+
+  Takes an array where rows indicate subscripts, and extracts the values
+  within a volume at those subscripts (in row order)
+"""
+@generated function extract_dbf_values{N}( dbf_image::Array{Float64,N}, point_cloud )
+  quote
+
+  num_points = size( point_cloud, 1 );
+  dbf_values = zeros(num_points);
+
+  for p in 1:size(point_cloud, 1)
+    dbf_values[p] = (@nref $N dbf_image i->point_cloud[p,i]);
+  end
+
+  dbf_values
+  end#quote
+end
+
 
 end#module
