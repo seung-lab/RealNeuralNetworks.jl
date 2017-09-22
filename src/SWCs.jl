@@ -41,6 +41,19 @@ end
 function get_points_num(self::SWC)  length(self.points) end 
 function get_points(self::SWC) self.points end 
 
+"""
+note that only stretch the coordinates here, not including the radius
+since radius was already adjusted in the neighborhood weights 
+"""
+function stretch_coordinates!(self::SWC, voxel_size::Tuple)
+    @assert length(voxel_size) == 3
+    for i in 1:length( self.points )
+        self.points[i].x *= voxel_size[1]
+        self.points[i].y *= voxel_size[2]
+        self.points[i].z *= voxel_size[3]
+    end 
+end 
+
 function save(self::SWC, file_name::AbstractString)
     points = get_points(self)
     f = open(file_name, "w")

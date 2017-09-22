@@ -2,9 +2,69 @@
 
 __precompile__()
 
-module BWDists
+module DBFs
 
 using Base.Cartesian
+
+"""
+use segmentation to get binary image to save memory usage
+"""
+function compute_DBF{T}(point_cloud::Array{UInt32,2}, seg::Array{UInt32,3}, obj_id::T)
+    bin_im = create_boundary_image( seg, obj_id ) 
+    compute_DBF( point_cloud, bin_im )
+end 
+
+"""
+
+    compute_DBF( point_cloud )
+
+  Returns an array of DBF values for the point cloud. Currently creates
+  a binary image, and runs bwd2 on it, though ideally we'd get rid of the
+  need for an explicit bin_im
+"""
+function compute_DBF{T}( point_cloud::Array{T, 2} )
+    bin_im = create_boundary_image( point_cloud );
+    compute_DBF(point_cloud, bin_im)
+end
+
+"""
+    compute_DBF( bin_im )
+"""
+function compute_DBF{T}( point_cloud::Array{T,2}, bin_im::Array{Bool, 3} )
+    dbf_im = bwd2( bin_im );
+    dbf_vec = extract_dbf_values( dbf_im, point_cloud );
+    dbf_vec;
+end 
+
+"""
+compute Distance from Boundary Field (DBF) based on point cloud and the boundary points
+
+WARN: this function do not work correctly!
+"""
+function compute_DBF{T}( points::Array{T,2}, boundary_point_indexes::Vector )
+    error("this function do not work correctly, have a bug!")
+    num = size(points, 1)
+    dbf = Vector{Float32}(num)
+    fill!(dbf, Inf32)
+    for i in 1:num
+        point = points[i,:]
+        for bpi in boundary_point_indexes
+            boundary = points[bpi, :]
+            # filter out some far away boundary points 
+            if  abs(point[1]-boundary[1]) < MAX_BOUNDARY_DISTANCE && 
+                abs(point[2]-boundary[2]) < MAX_BOUNDARY_DISTANCE && 
+                abs(point[3]-boundary[3]) < MAX_BOUNDARY_DISTANCE 
+                # compute euclidean distance
+                ed = norm(point .- boundary)
+                if ed < dbf[i]
+                    dbf[i] = ed 
+                end 
+            end 
+        end 
+    end
+    return dbf
+end 
+
 
 #NOTE voxel_dims not currently functional
 """
@@ -158,5 +218,65 @@ function sqrt!( d::AbstractArray )
     d[i] = sqrt(d[i]);
   end
 end
+
+
+"""
+
+    create_boundary_image( point_cloud )
+
+  Creates a boolean volume where the non-segment indices
+  map to true, while the segment indices map to false.
+"""
+function create_boundary_image{T}( point_cloud::Array{T,2} );
+
+  max_dims = maximum( point_cloud, 1 );
+
+  bin_im = ones(Bool, max_dims...);
+
+  for p in 1:size( point_cloud, 1 )
+    bin_im[ point_cloud[p,:]... ] = false;
+  end
+
+  bin_im;
+end
+
+"""
+    create_boundary_image( seg, obj_id )
+
+Creates a boolean volume where the non-segment indices
+map to true, while the segment indices map to false 
+"""
+function create_boundary_image{T}( seg::Array{T,3}, obj_id::T )
+    bin_im = ones(Bool, size(seg))
+    for i in eachindex(seg)
+        if seg[i] == obj_id 
+            bin_im[i] = false 
+        end 
+    end 
+    bin_im
+end 
+
+
+"""
+
+    extract_dbf_values( dbf_image, point_cloud )
+
+  Takes an array where rows indicate subscripts, and extracts the values
+  within a volume at those subscripts (in row order)
+"""
+@generated function extract_dbf_values{N}( dbf_image::Array{Float64,N}, point_cloud )
+  quote
+
+  num_points = size( point_cloud, 1 );
+  dbf_values = zeros(num_points);
+
+  for p in 1:size(point_cloud, 1)
+    dbf_values[p] = (@nref $N dbf_image i->point_cloud[p,i]);
+  end
+
+  dbf_values
+  end#quote
+end
+
 
 end#module

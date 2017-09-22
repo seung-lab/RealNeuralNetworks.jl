@@ -1,17 +1,25 @@
 module Skeletons
 
+include("DBFs.jl")
+import .DBFs
+
 import LightGraphs
-import ..BWDists 
 import ..PointArrays
 using ..SWCs
 using Base.Cartesian
 
 const ZERO_UINT32 = convert(UInt32, 0)
+const ONE_UINT32  = convert(UInt32, 1)
 const DEFAULT_OFFSET = (ZERO_UINT32, ZERO_UINT32, ZERO_UINT32)
+const DEFAULT_VOXEL_SIZE = (ONE_UINT32, ONE_UINT32, ONE_UINT32)
 
 export skeletonize 
 
-#---------------------------------------------------------------
+
+function skeletonize{T}( chunk_list::Vector; obj_id::T = convert(T,1) )
+    error("not implemented!")
+end 
+
 """
     skeletonize( seg; penalty_fn=alexs_penalty)
 Perform the teasar algorithm on the passed binary array.
@@ -19,10 +27,18 @@ Perform the teasar algorithm on the passed binary array.
 function skeletonize{T}( seg::Array{T,3}; 
                             obj_id::T = convert(T,1), 
                             offset::NTuple{3,UInt32} = DEFAULT_OFFSET,
+                            voxel_size::NTuple{3, UInt32} = DEFAULT_VOXEL_SIZE,
                             penalty_fn = alexs_penalty )
     # transform segmentation to points
-    points = PointArrays.from_seg(seg; obj_id=obj_id, offset=offset) 
-    skeletonize(points; penalty_fn=penalty_fn)
+    points = PointArrays.from_seg(seg; obj_id=obj_id, offset=offset)
+    
+    println("computing DBF");
+    # boundary_point_indexes = PointArrays.get_boundary_point_indexes(points, seg; obj_id=obj_id)
+    #@time DBF = DBFs.compute_DBF( points, boundary_point_indexes );
+    #@time DBF = DBFs.compute_DBF(points)
+    @time DBF = DBFs.compute_DBF(points, seg, obj_id)
+
+    skeletonize(points; DBF=DBF, penalty_fn=penalty_fn, voxel_size = voxel_size)
 end 
 
 """
@@ -30,19 +46,18 @@ end
 
   Perform the teasar algorithm on the passed Nxd array of points
 """
-function skeletonize{T}( points::Array{T,2};
-                            penalty_fn=alexs_penalty )
+function skeletonize{T}( points::Array{T,2}; DBF=DBFs.compute_DBF(points),
+                            penalty_fn::Function = alexs_penalty,
+                            voxel_size::NTuple{3, UInt32} = DEFAULT_VOXEL_SIZE)
   points = shift_points_to_bbox( points );
   ind2node, max_dims = create_node_lookup( points );
   max_dims_arr = [max_dims...];#use this for rm_nodes, but ideally wouldn't
   sub2node = x -> ind2node[ sub2ind(max_dims, x[1],x[2],x[3]) ];#currently only used in line 48
-
-  println("computing DBF");
-  @time DBF = compute_DBF( points );
-
+    
   println("making graph (2 parts)");
-  @time G, weights = make_neighbor_graph( points, ind2node, max_dims );
-  @time dbf_weights = penalty_fn( weights, DBF, G );
+  @time G, weights = make_neighbor_graph( points, ind2node, max_dims; 
+                                            voxel_size = voxel_size )
+  @time dbf_weights = penalty_fn( weights, DBF, G )
 
   #init
   #nonzeros SHOULD remove duplicates, but it doesn't so
@@ -110,7 +125,10 @@ function skeletonize{T}( points::Array{T,2};
     # build a new graph containing only the skeleton nodes and edges
     nodes, edges, roots, destinations = 
                     distill!(points, path_nodes, path_edges, root_nodes, destinations)
-    return SWC(nodes, edges, roots, node_radii, destinations)
+    
+    swc = SWC(nodes, edges, roots, node_radii, destinations)
+    SWCs.stretch_coordinates!(swc, voxel_size)
+    return swc
 end
 #---------------------------------------------------------------
 
@@ -156,70 +174,6 @@ function create_node_lookup{T}( points::Array{T,2} )
 end
 
 
-"""
-
-    compute_DBF( point_cloud )
-
-  Returns an array of DBF values for the point cloud. Currently creates
-  a binary image, and runs bwd2 on it, though ideally we'd get rid of the
-  need for an explicit bin_im
-
-  TO OPTIMIZE
-"""
-function compute_DBF( point_cloud )
-
-  bin_im = create_boundary_image( point_cloud );
-
-  dbf_im = BWDists.bwd2( bin_im );
-
-  dbf_vec = extract_dbf_values( dbf_im, point_cloud );
-
-  dbf_vec;
-end
-
-
-"""
-
-    create_boundary_image( point_cloud )
-
-  Creates a boolean volume where the non-segment indices
-  map to true, while the segment indices map to false.
-"""
-function create_boundary_image( point_cloud );
-
-  max_dims = maximum( point_cloud, 1 );
-
-  bin_im = ones(Bool, max_dims...);
-
-  for p in 1:size( point_cloud, 1 )
-    bin_im[ point_cloud[p,:]... ] = false;
-  end
-
-  bin_im;
-end
-
-
-"""
-
-    extract_dbf_values( dbf_image, point_cloud )
-
-  Takes an array where rows indicate subscripts, and extracts the values
-  within a volume at those subscripts (in row order)
-"""
-@generated function extract_dbf_values{N}( dbf_image::Array{Float64,N}, point_cloud )
-  quote
-
-  num_points = size( point_cloud, 1 );
-  dbf_values = zeros(num_points);
-
-  for p in 1:size(point_cloud, 1)
-    dbf_values[p] = (@nref $N dbf_image i->point_cloud[p,i]);
-  end
-
-  dbf_values
-  end#quote
-end
-
 
 """
 
@@ -233,7 +187,8 @@ end
   euclidean distance between the indices of each point. These can
   be weighted or modified easily upon return.
 """
-function make_neighbor_graph{T}( points::Array{T,2}, ind2node=nothing, max_dims=nothing )
+function make_neighbor_graph{T}( points::Array{T,2}, ind2node=nothing, max_dims=nothing;
+                                voxel_size::NTuple{3, UInt32} = DEFAULT_VOXEL_SIZE )
 
   if ind2node == nothing ind2node, max_dims = create_node_lookup(points) end
 
@@ -244,8 +199,8 @@ function make_neighbor_graph{T}( points::Array{T,2}, ind2node=nothing, max_dims=
   #26-connectivity neighborhood
   # weights computed by euc_dist to center voxel
   nhood = [[i,j,k] for i=1:3,j=1:3,k=1:3];
-  map!( x-> x - [2,2,2], nhood );
-  nhood_weights = map( x-> sqrt(sum( x.^2 )), nhood );
+  map!( x-> (x .- [2,2,2]).*[voxel_size ...] , nhood );
+  nhood_weights = map( norm, nhood );
 
   #only adding weights for non-duplicate nodes
   _,non_duplicates = findnz( ind2node );
@@ -536,6 +491,8 @@ function distill!{T}(point_array::Array{T,2},
         path_edges[i] = (id_map[path_edges[i][1]], id_map[path_edges[i][2]])
     end
     # rebuild the roots and destinations
+    @show root_nodes 
+    @show id_map
     for i in 1:length(root_nodes)
         root_nodes[i] = id_map[ root_nodes[i] ]
     end
