@@ -81,30 +81,4 @@ function merge{T}(self::Array{T,2}, other::Array{T,2})
     vcat(self, other)
 end 
 
-"""
-compute Distance from Boundary Field (DBF) based on point cloud and the boundary points 
-"""
-function compute_DBF{T}( self::Array{T,2}, boundary_point_indexes::Vector )
-    num = size(self, 1)
-    dbf = Vector{Float32}(num)
-    fill!(dbf, Inf32)
-    for i in 1:num
-        point = self[i,:]
-        for bpi in boundary_point_indexes
-            boundary = self[bpi, :]
-            # filter out some far away boundary points 
-            if  abs(point[1]-boundary[1]) < MAX_BOUNDARY_DISTANCE && 
-                abs(point[2]-boundary[2]) < MAX_BOUNDARY_DISTANCE && 
-                abs(point[3]-boundary[3]) < MAX_BOUNDARY_DISTANCE 
-                # compute euclidean distance
-                ed = norm(point .- boundary)
-                if ed < dbf[i]
-                    dbf[i] = ed 
-                end 
-            end 
-        end 
-    end
-    return dbf
-end 
-
 end # module
