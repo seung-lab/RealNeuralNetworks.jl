@@ -122,7 +122,6 @@ function skeletonize{T}( points::Array{T,2}; DBF=DBFs.compute_DBF(points),
       if farthest_node == root_node break end #this can happen apparently
 
       new_path = LightGraphs.enumerate_paths( dsp_dbf,farthest_node );
-
       push!(paths, new_path)
       #can't do this in-place with arrays
       #this fn call is getting ridiculous
@@ -136,6 +135,7 @@ function skeletonize{T}( points::Array{T,2}; DBF=DBFs.compute_DBF(points),
 
   println("Consolidating Paths")
   path_nodes, path_edges = consolidate_paths( paths );
+
   node_radii = DBF[path_nodes];
   
     # build a new graph containing only the skeleton nodes and edges
@@ -215,9 +215,8 @@ function make_neighbor_graph{T}( points::Array{T,2}, ind2node=nothing, max_dims=
   #26-connectivity neighborhood
   # weights computed by euc_dist to center voxel
   nhood = [[i,j,k] for i=1:3,j=1:3,k=1:3];
-  map!( x-> (x .- [2,2,2]).*[voxel_size ...] , nhood );
-  nhood_weights = map( norm, nhood );
-
+  map!( x-> (x .- [2,2,2]), nhood );
+  nhood_weights = map( x -> norm(x.*[voxel_size...]), nhood );
   #only adding weights for non-duplicate nodes
   _,non_duplicates = findnz( ind2node );
 
@@ -392,7 +391,7 @@ end
 """
 function remove_path_from_rns( reachable_nodes::Vector, path::Vector,
   points, ind2node, dbf, max_dims, inspected_nodes,
-  scale_param::Int=6, const_param::Int=6 );
+  scale_param::Int=1000, const_param::Int=1000 );
 
   r = dbf[path]*scale_param + const_param;
 
@@ -507,8 +506,6 @@ function distill!{T}(point_array::Array{T,2},
         path_edges[i] = (id_map[path_edges[i][1]], id_map[path_edges[i][2]])
     end
     # rebuild the roots and destinations
-    @show root_nodes 
-    @show id_map
     for i in 1:length(root_nodes)
         root_nodes[i] = id_map[ root_nodes[i] ]
     end

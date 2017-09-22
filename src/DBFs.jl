@@ -6,6 +6,8 @@ module DBFs
 
 using Base.Cartesian
 
+typealias DBF Vector{Float32}
+
 """
 use segmentation to get binary image to save memory usage
 """
