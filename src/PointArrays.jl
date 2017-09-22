@@ -7,6 +7,18 @@ const DEFAULT_OFFSET = (ZERO_UINT32, ZERO_UINT32, ZERO_UINT32)
 const MAX_BOUNDARY_DISTANCE = 100000
 
 """
+parameter:
+    bin_im: binary array. object voxels are false, non-object voxels are true!
+"""
+function from_binary_image(bin_im::Array{Bool,3})
+    x,y,z = findn(!bin_im)
+    x = Vector{UInt32}(x)
+    y = Vector{UInt32}(y)
+    z = Vector{UInt32}(z)
+    return hcat(x,y,z)
+end 
+
+"""
 find points inside an object from a segmentation array. 
 """
 function from_seg{T}(seg::Array{T,3}; obj_id::T=convert(T,1),
@@ -39,10 +51,15 @@ function from_seg{T}(seg::Array{T,3}; obj_id::T=convert(T,1),
     return points
 end
 
+
+function get_boundary_point_indexes{T}(self::Array{T,2}, bin_im::Array{Bool,3})
+
+end 
+
 """
 find out the boundary voxels and represent them as indexes in the point array
 """
-function get_boundary_point_indexes{T, TSeg}(self::Array{T,2}, seg::Array{TSeg,3};
+function get_boundary_point_indexes{T, TSeg}(self::Array{T,2}, seg::Array{TSeg,3},
                                              obj_id::TSeg = TSeg(1))
     # compute the indexes of boundary voxels
     ret = Vector{T}()
@@ -67,11 +84,10 @@ end
 """
 add offset to points
 """
-function add_offset{T}(self::Array{T,2}, offset::NTuple{3,T})
-    self[:, 1] += offset[1]
-    self[:, 2] += offset[2]
-    self[:, 3] += offset[3]
-    return self 
+function add_offset!{T}(self::Array{T,2}, offset::NTuple{3,T})
+    self[:, 1] .+= offset[1]
+    self[:, 2] .+= offset[2]
+    self[:, 3] .+= offset[3]
 end 
 
 """

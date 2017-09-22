@@ -21,22 +21,38 @@ function skeletonize{T}( chunk_list::Vector; obj_id::T = convert(T,1) )
 end 
 
 """
-    skeletonize( seg; penalty_fn=alexs_penalty)
+    skeletonize( seg, obj_id; penalty_fn=alexs_penalty)
 Perform the teasar algorithm on the passed binary array.
 """
 function skeletonize{T}( seg::Array{T,3}; 
                             obj_id::T = convert(T,1), 
                             offset::NTuple{3,UInt32} = DEFAULT_OFFSET,
                             voxel_size::NTuple{3, UInt32} = DEFAULT_VOXEL_SIZE,
-                            penalty_fn = alexs_penalty )
-    # transform segmentation to points
-    points = PointArrays.from_seg(seg; obj_id=obj_id, offset=offset)
+                            penalty_fn::Function = alexs_penalty )
+    # note that the object voxels are false and non-object voxels are true!
+    bin_im = DBFs.create_boundary_image( seg, obj_id ) 
+    skeletonize(bin_im; offset=offset, voxel_size=voxel_size, penalty_fn = penalty_fn)
+end 
+
+"""
+    skeletonize(bin_im)
+Parameters:
+    bin_im: binary mask. the object voxel should be false, non-object voxel should be true
+Return:
+    swc object
+"""
+function skeletonize(bin_im::Array{Bool,3}; offset::NTuple{3, UInt32} = DEFAULT_OFFSET,
+                        voxel_size::NTuple{3, UInt32} = DEFAULT_VOXEL_SIZE,
+                        penalty_fn::Function = alexs_penalty)
+        # transform segmentation to points
+    points = PointArrays.from_binary_image(bin_im)
+    PointArrays.add_offset!(points, offset)
     
     println("computing DBF");
     # boundary_point_indexes = PointArrays.get_boundary_point_indexes(points, seg; obj_id=obj_id)
     #@time DBF = DBFs.compute_DBF( points, boundary_point_indexes );
     #@time DBF = DBFs.compute_DBF(points)
-    @time DBF = DBFs.compute_DBF(points, seg, obj_id)
+    @time DBF = DBFs.compute_DBF(points, bin_im)
 
     skeletonize(points; DBF=DBF, penalty_fn=penalty_fn, voxel_size = voxel_size)
 end 
