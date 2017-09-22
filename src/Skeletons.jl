@@ -15,7 +15,11 @@ const DEFAULT_VOXEL_SIZE = (ONE_UINT32, ONE_UINT32, ONE_UINT32)
 
 export skeletonize 
 
-#---------------------------------------------------------------
+
+function skeletonize{T}( chunk_list::Vector; obj_id::T = convert(T,1) )
+    error("not implemented!")
+end 
+
 """
     skeletonize( seg; penalty_fn=alexs_penalty)
 Perform the teasar algorithm on the passed binary array.
@@ -26,8 +30,15 @@ function skeletonize{T}( seg::Array{T,3};
                             voxel_size::NTuple{3, UInt32} = DEFAULT_VOXEL_SIZE,
                             penalty_fn = alexs_penalty )
     # transform segmentation to points
-    points, boundary_point_indexes = PointArrays.from_seg(seg; obj_id=obj_id, offset=offset) 
-    skeletonize(points, boundary_point_indexes; penalty_fn=penalty_fn, voxel_size = voxel_size)
+    points = PointArrays.from_seg(seg; obj_id=obj_id, offset=offset)
+    
+    println("computing DBF");
+    # boundary_point_indexes = PointArrays.get_boundary_point_indexes(points, seg; obj_id=obj_id)
+    #@time DBF = DBFs.compute_DBF( points, boundary_point_indexes );
+    #@time DBF = DBFs.compute_DBF(points)
+    @time DBF = DBFs.compute_DBF(points, seg, obj_id)
+
+    skeletonize(points; DBF=DBF, penalty_fn=penalty_fn, voxel_size = voxel_size)
 end 
 
 """
@@ -35,18 +46,14 @@ end
 
   Perform the teasar algorithm on the passed Nxd array of points
 """
-function skeletonize{T}( points::Array{T,2}, boundary_point_indexes::Vector;
+function skeletonize{T}( points::Array{T,2}; DBF=DBFs.compute_DBF(points),
                             penalty_fn::Function = alexs_penalty,
                             voxel_size::NTuple{3, UInt32} = DEFAULT_VOXEL_SIZE)
   points = shift_points_to_bbox( points );
   ind2node, max_dims = create_node_lookup( points );
   max_dims_arr = [max_dims...];#use this for rm_nodes, but ideally wouldn't
   sub2node = x -> ind2node[ sub2ind(max_dims, x[1],x[2],x[3]) ];#currently only used in line 48
-
-  println("computing DBF");
-  #@time DBF = PointArrays.compute_DBF( points, boundary_point_indexes );
-  @time DBF = DBFs.compute_DBF(points)
-
+    
   println("making graph (2 parts)");
   @time G, weights = make_neighbor_graph( points, ind2node, max_dims; 
                                             voxel_size = voxel_size )

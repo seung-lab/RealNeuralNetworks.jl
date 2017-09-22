@@ -31,8 +31,8 @@ seg[47:54, 47:54, 71:78] = 1
 
 
 @testset "test teasar" begin 
-    @time swc = TEASAR.skeletonize(seg; voxel_size=DEFAULT_VOXEL_SIZE)
-    #@time swc = TEASAR.skeletonize( seg )
+    # @time swc = TEASAR.skeletonize(seg; voxel_size=DEFAULT_VOXEL_SIZE)
+    @time swc = TEASAR.skeletonize( seg )
     @test TEASAR.SWCs.get_points_num(swc) > 1
     @show swc
     TEASAR.SWCs.save(swc, tempname() * ".swc")

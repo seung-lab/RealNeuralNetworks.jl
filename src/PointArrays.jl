@@ -36,16 +36,14 @@ function from_seg{T}(seg::Array{T,3}; obj_id::T=convert(T,1),
             end 
         end 
     end
-    # find out the boundary voxel indexes
-    boundary_point_indexes = get_boundary_point_indexes(points, seg; obj_id=obj_id)
-    return points, boundary_point_indexes 
+    return points
 end
 
 """
 find out the boundary voxels and represent them as indexes in the point array
 """
 function get_boundary_point_indexes{T, TSeg}(self::Array{T,2}, seg::Array{TSeg,3};
-                                             obj_id::T = T(1))
+                                             obj_id::TSeg = TSeg(1))
     # compute the indexes of boundary voxels
     ret = Vector{T}()
     for i in 1:size(self,1)
