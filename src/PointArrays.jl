@@ -52,10 +52,6 @@ function from_seg{T}(seg::Array{T,3}; obj_id::T=convert(T,1),
 end
 
 
-function get_boundary_point_indexes{T}(self::Array{T,2}, bin_im::Array{Bool,3})
-
-end 
-
 """
 find out the boundary voxels and represent them as indexes in the point array
 """

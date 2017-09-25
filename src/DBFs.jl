@@ -10,7 +10,7 @@ using Base.Cartesian
 use segmentation to get binary image to save memory usage
 """
 function compute_DBF{T}(point_cloud::Array{UInt32,2}, seg::Array{UInt32,3}, obj_id::T)
-    bin_im = create_boundary_image( seg, obj_id ) 
+    bin_im = create_binary_image( seg, obj_id ) 
     compute_DBF( point_cloud, bin_im )
 end 
 
@@ -23,7 +23,7 @@ end
   need for an explicit bin_im
 """
 function compute_DBF{T}( point_cloud::Array{T, 2} )
-    bin_im = create_boundary_image( point_cloud );
+    bin_im = create_binary_image( point_cloud );
     compute_DBF(point_cloud, bin_im)
 end
 
@@ -222,12 +222,12 @@ end
 
 """
 
-    create_boundary_image( point_cloud )
+    create_binary_image( point_cloud )
 
   Creates a boolean volume where the non-segment indices
   map to true, while the segment indices map to false.
 """
-function create_boundary_image{T}( point_cloud::Array{T,2} );
+function create_binary_image{T}( point_cloud::Array{T,2} );
 
   max_dims = maximum( point_cloud, 1 );
 
@@ -241,12 +241,12 @@ function create_boundary_image{T}( point_cloud::Array{T,2} );
 end
 
 """
-    create_boundary_image( seg, obj_id )
+    create_binary_image( seg, obj_id )
 
 Creates a boolean volume where the non-segment indices
 map to true, while the segment indices map to false 
 """
-function create_boundary_image{T}( seg::Array{T,3}, obj_id::T )
+function create_binary_image{T}( seg::Array{T,3}; obj_id::T = T(1) )
     bin_im = ones(Bool, size(seg))
     for i in eachindex(seg)
         if seg[i] == obj_id 

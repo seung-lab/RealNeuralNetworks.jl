@@ -20,8 +20,7 @@ type SWC
 end
 
 function SWC{T}(nodes::Array{T,2}, edges::Vector, 
-             roots::Vector, radii::Vector, destinations::Vector; 
-             attributes = Dict{Symbol,Any}())
+                    radii::Vector; attributes = Dict{Symbol,Any}())
     @assert size(nodes, 1) == length(radii)
     num = length(radii)
     points = Vector{PointObj}()

@@ -30,8 +30,10 @@ function skeletonize{T}( seg::Array{T,3};
                             voxel_size::NTuple{3, UInt32} = DEFAULT_VOXEL_SIZE,
                             penalty_fn::Function = alexs_penalty )
     # note that the object voxels are false and non-object voxels are true!
-    bin_im = DBFs.create_boundary_image( seg, obj_id ) 
-    skeletonize(bin_im; offset=offset, voxel_size=voxel_size, penalty_fn = penalty_fn)
+    # bin_im = DBFs.create_binary_image( seg, obj_id ) 
+    #skeletonize(bin_im; offset=offset, voxel_size=voxel_size, penalty_fn = penalty_fn)
+    points = PointArrays.from_seg(seg; obj_id=obj_id, offset=offset)
+    skeletonize(points; voxel_size=voxel_size, penalty_fn=penalty_fn) 
 end 
 
 """
@@ -42,19 +44,20 @@ Return:
     swc object
 """
 function skeletonize(bin_im::Array{Bool,3}; offset::NTuple{3, UInt32} = DEFAULT_OFFSET,
+
                         voxel_size::NTuple{3, UInt32} = DEFAULT_VOXEL_SIZE,
                         penalty_fn::Function = alexs_penalty)
         # transform segmentation to points
     points = PointArrays.from_binary_image(bin_im)
-    PointArrays.add_offset!(points, offset)
     
     println("computing DBF");
     # boundary_point_indexes = PointArrays.get_boundary_point_indexes(points, seg; obj_id=obj_id)
     #@time DBF = DBFs.compute_DBF( points, boundary_point_indexes );
-    #@time DBF = DBFs.compute_DBF(points)
-    @time DBF = DBFs.compute_DBF(points, bin_im)
+    @time DBF = DBFs.compute_DBF(points)
+    # @time dbf = DBFs.compute_DBF(points, bin_im)
 
-    skeletonize(points; DBF=DBF, penalty_fn=penalty_fn, voxel_size = voxel_size)
+    PointArrays.add_offset!(points, offset)
+    skeletonize(points; dbf=dbf, penalty_fn=penalty_fn, voxel_size = voxel_size)
 end 
 
 """
@@ -62,9 +65,10 @@ end
 
   Perform the teasar algorithm on the passed Nxd array of points
 """
-function skeletonize{T}( points::Array{T,2}; DBF=DBFs.compute_DBF(points),
+function skeletonize{T}( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
                             penalty_fn::Function = alexs_penalty,
                             voxel_size::NTuple{3, UInt32} = DEFAULT_VOXEL_SIZE)
+    println("total number of points: $(size(points,1))")
   points = shift_points_to_bbox( points );
   ind2node, max_dims = create_node_lookup( points );
   max_dims_arr = [max_dims...];#use this for rm_nodes, but ideally wouldn't
@@ -73,7 +77,8 @@ function skeletonize{T}( points::Array{T,2}; DBF=DBFs.compute_DBF(points),
   println("making graph (2 parts)");
   @time G, weights = make_neighbor_graph( points, ind2node, max_dims; 
                                             voxel_size = voxel_size )
-  @time dbf_weights = penalty_fn( weights, DBF, G )
+  println("build dbf weights from penalty function ...")
+  @time dbf_weights = penalty_fn( weights, dbf, G )
 
   #init
   #nonzeros SHOULD remove duplicates, but it doesn't so
@@ -128,7 +133,7 @@ function skeletonize{T}( points::Array{T,2}; DBF=DBFs.compute_DBF(points),
       #this fn call is getting ridiculous
       @time reachable_nodes = remove_path_from_rns( reachable_nodes, new_path,
                                               points, ind2node,
-                                              DBF, max_dims_arr,
+                                              dbf, max_dims_arr,
                                               inspected_nodes );
 
     end #while reachable nodes from root
@@ -136,13 +141,12 @@ function skeletonize{T}( points::Array{T,2}; DBF=DBFs.compute_DBF(points),
 
   println("Consolidating Paths")
   path_nodes, path_edges = consolidate_paths( paths );
-  node_radii = DBF[path_nodes];
+  node_radii = dbf[path_nodes];
   
     # build a new graph containing only the skeleton nodes and edges
-    nodes, edges, roots, destinations = 
-                    distill!(points, path_nodes, path_edges, root_nodes, destinations)
+    nodes, edges = distill!(points, path_nodes, path_edges)
     
-    swc = SWC(nodes, edges, roots, node_radii, destinations)
+    swc = SWC(nodes, edges, node_radii)
     SWCs.stretch_coordinates!(swc, voxel_size)
     return swc
 end
@@ -273,22 +277,22 @@ end
 
 """
 
-    alexs_penalty( weights, DBF )
+    alexs_penalty( weights, dbf )
 
   Returns a version of the edge weights, modified by the DBF-based
   teasar penalty:
 
-  w = w * 5000 .* (1 - DBF/maxDBF).^(16)
+  w = w * 5000 .* (1 - dbf/maxDBF).^(16)
 
   The factor of 5000 shouldn't make a difference, but I've
   left it here
 """
-function alexs_penalty( weights, DBF, G, mult=true )
+function alexs_penalty( weights, dbf, G, mult=true )
 
   # *1.01 ensures later quotient is >0
-  M = maximum(DBF,1)*1.01
+  M = maximum(dbf,1)*1.01
 
-  p_v = (1 - DBF./M ).^(16);
+  p_v = (1 - dbf./M ).^(16);
 
   #DBF penalty is defined by the destination node, only need js
   is,js = findn(weights);
@@ -306,7 +310,7 @@ end
 
 """
 
-    local_max_multiplicative_penalty( weights, DBF, G )
+    local_max_multiplicative_penalty( weights, dbf, G )
 
   Returns a version of the edge weights, modified by the DBF-based
   penalty
@@ -316,19 +320,19 @@ end
   Where DBFstar is the maximum DBF value of an outwards neighbor for
   each node
 """
-function local_max_multiplicative_penalty( weights, DBF, G )
+function local_max_multiplicative_penalty( weights, dbf, G )
 
   ns = LightGraphs.vertices(G)
-  DBF_star = Vector{Float64}( length(ns) );
+  dbf_star = Vector{Float64}( length(ns) );
 
   #this is ok since ns is always an int range 1:N
   for n in ns
     neighborhood = LightGraphs.out_neighbors(G, n);
 
     if length(neighborhood) > 0
-      DBF_star[n] = maximum(DBF[neighborhood]);
+      dbf_star[n] = maximum(dbf[neighborhood]);
     else
-      DBF_star[n] = 1
+      dbf_star[n] = 1
     end
   end
 
@@ -337,10 +341,10 @@ function local_max_multiplicative_penalty( weights, DBF, G )
   new_ws = Vector{Float64}(length(ws));
 
   for i in eachindex(is)
-    DBF_dest = DBF[js[i]];
-    DBF_s = DBF_star[is[i]];
+    dbf_dest = dbf[js[i]];
+    dbf_s = dbf_star[is[i]];
 
-    new_ws[i] = ws[i] * (1 - DBF_dest/DBF_s);
+    new_ws[i] = ws[i] * (1 - dbf_dest/dbf_s);
   end
 
   sparse( is, js, new_ws, size(weights)... );
@@ -488,8 +492,7 @@ coordinates and let the gc release the point_array.
 the same applys to path_edges 
 """
 function distill!{T}(point_array::Array{T,2}, 
-                    path_nodes::Vector{Int}, path_edges::Vector, 
-                    root_nodes::Vector, destinations::Vector)
+                     path_nodes::Vector{Int}, path_edges::Vector) 
     num_nodes = length(path_nodes) 
     num_edges = length(path_edges)
     nodes = Array(T, (num_nodes, 3))
@@ -506,16 +509,7 @@ function distill!{T}(point_array::Array{T,2},
     for i in 1:num_edges
         path_edges[i] = (id_map[path_edges[i][1]], id_map[path_edges[i][2]])
     end
-    # rebuild the roots and destinations
-    @show root_nodes 
-    @show id_map
-    for i in 1:length(root_nodes)
-        root_nodes[i] = id_map[ root_nodes[i] ]
-    end
-    for i in 1:length(destinations)
-        destinations[i] = id_map[ destinations[i] ]
-    end 
-    return nodes, path_edges, root_nodes, destinations 
+    return nodes, path_edges  
 end 
 
 end # module

@@ -1,12 +1,10 @@
 __precompile__();
 module TEASAR
 include("DBFs.jl"); using .DBFs;
-include("PointArrays.jl")
-include("SWCs.jl")
-include("Skeletons.jl")
-using .PointArrays
-using .SWCs 
-using .Skeletons
+include("PointArrays.jl"); using .PointArrays;
+include("SWCs.jl"); using .SWCs; 
+include("Skeletons.jl"); using .Skeletons;
+include("Manifests.jl"); using .Manifests;
 
 export skeletonize
 
