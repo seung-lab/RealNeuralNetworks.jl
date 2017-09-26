@@ -28,7 +28,7 @@ function parse_commandline()
         "--neuronid", "-i"
             help = "the segment id to skeletonize"
             arg_type = Int
-            default = 76869
+            default = 77497
         "--swcdir", "-d"
             help = "the directory to store swc file"
             arg_type = String

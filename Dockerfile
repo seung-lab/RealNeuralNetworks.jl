@@ -20,4 +20,5 @@ ADD . TEASAR/
 
 RUN julia -e 'using TEASAR'
 WORKDIR /root/.julia/v0.5/TEASAR/scripts
-ENTRYPOINT ["julia", "skeletonize.jl", "-h"]
+ENTRYPOINT /bin/bash 
+CMD ["julia", "skeletonize.jl", "-h"]

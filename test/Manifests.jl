@@ -7,7 +7,7 @@ using TEASAR.Skeletons
 using TEASAR.SWCs
 using JLD
 
-const cellId = 76869
+const cellId = 77497
 const VOXEL_SIZE = (80,80,45)
 
 @testset "test basic data structure" begin 

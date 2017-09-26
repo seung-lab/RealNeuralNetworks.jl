@@ -8,14 +8,33 @@ run this inside julia REPL:
     Pkg.clone("https://github.com/seung-lab/TEASAR.jl.git")
 
 ## Usage
+you must have google secret json file in `/secrets/google-secret.json`, same with configuration of [GSDicts.jl](https://github.com/seung-lab/GSDicts.jl) or [cloudvolume](https://github.com/seung-lab/cloud-volume)
+
+### commandline
+`julia ~/julia/v0.5/TEASAR/scripts/skeletonize.jl -h`
+
+### Docker (recommanded)
+#### build docker image
+    cd ~/julia/v0.5/TEASAR
+    sudo docker build . -t teasar
+
+```
+docker run -v /tmp:/tmp -v /secrets:/secrets --net=host teasar julia skeletonize.jl -h
+```
+
+### REPL in Julia
+
 ```Julia
-using TEASAR
-swc = skeletonize(seg::Array{UInt32,3}; obj_id = convert(UInt32,77605))
+using TEASAR.Skeletons
+using TEASAR.SWCs
+
+skeleton = Skeleton(seg::Array{UInt32,3}; obj_id = convert(UInt32,77605))
+swc = SWC(skeleton)
 TEASAR.SWCs.save(swc, tempname()*".swc")
 ```
 or
 ```
-swc = skeletonize(points::Array{Int,2})
+skeleton = Skeleton(points::Array{Int,2})
 ```
 
 ## Algorithm 
