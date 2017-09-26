@@ -3,7 +3,12 @@ using GSDicts
 using Base.Test
 using TEASAR 
 using TEASAR.Manifests
+using TEASAR.Skeletons
+using TEASAR.SWCs
 using JLD
+
+const cellId = 76869
+const VOXEL_SIZE = (80,80,45)
 
 @testset "test basic data structure" begin 
     h = GSDict("gs://neuroglancer/zfish_v1/consensus-20170829/mesh_mip_4"; valueType=Dict{Symbol, Any})
@@ -15,14 +20,9 @@ end
 
 @testset "test manifest iteration" begin
     manifest = Manifest("gs://neuroglancer/zfish_v1/consensus-20170829/mesh_mip_4", 
-                        "76880:0", "gs://neuroglancer/zfish_v1/consensus-20170829/80_80_45")
-    pointCloudDBFList = pmap( identity, manifest )
-    pointClouds = map( x->x[1], pointCloudDBFList )
-    pointCloud = vcat(pointClouds ...)
-    dbfs = map(x->x[2], pointCloudDBFList)
-    dbf = vcat(dbfs ...)
-    save("/tmp/point_clouds.jld", "point_clouds", pointClouds, 
-            "point_cloud", pointCloud, "dbf", dbf)
-    swc = skeletonize(pointCloud; dbf=dbf) 
-    TEASAR.SWCs.save(swc, "/tmp/76880.swc")
+                        "$(cellId):0", "gs://neuroglancer/zfish_v1/consensus-20170829/80_80_45")
+    skeleton = Manifests.trace(manifest, cellId)
+    swc = SWC( skeleton )
+    SWCs.stretch_coordinates!(swc, VOXEL_SIZE)
+    SWCs.save(swc, "/tmp/$(cellId).swc")
 end 

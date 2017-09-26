@@ -5,48 +5,51 @@ import .DBFs
 
 import LightGraphs
 import ..PointArrays
-using ..SWCs
 using Base.Cartesian
 
 const ZERO_UINT32 = convert(UInt32, 0)
 const ONE_UINT32  = convert(UInt32, 1)
-const DEFAULT_OFFSET = (ZERO_UINT32, ZERO_UINT32, ZERO_UINT32)
-const DEFAULT_VOXEL_SIZE = (ONE_UINT32, ONE_UINT32, ONE_UINT32)
+const OFFSET = (ZERO_UINT32, ZERO_UINT32, ZERO_UINT32)
+const VOXEL_SIZE = (ONE_UINT32, ONE_UINT32, ONE_UINT32)
 
-export skeletonize 
+export Skeleton 
 
+type Skeleton 
+    nodes   :: Array{UInt32, 2}
+    edges   :: Vector
+    radii   :: Vector{Float32}
+end 
 
-function skeletonize{T}( chunk_list::Vector; obj_id::T = convert(T,1) )
-    error("not implemented!")
+function Skeleton(nodes::Array{UInt32, 2}, edges::Vector)
+    radii = zeros(Float32, size(nodes,1))
+    Skeleton(nodes, edges, radii) 
 end 
 
 """
-    skeletonize( seg, obj_id; penalty_fn=alexs_penalty)
+    Skeleton( seg, obj_id; penalty_fn=alexs_penalty)
 Perform the teasar algorithm on the passed binary array.
 """
-function skeletonize{T}( seg::Array{T,3}; 
-                            obj_id::T = convert(T,1), 
-                            offset::NTuple{3,UInt32} = DEFAULT_OFFSET,
-                            voxel_size::NTuple{3, UInt32} = DEFAULT_VOXEL_SIZE,
-                            penalty_fn::Function = alexs_penalty )
+function Skeleton{T}( seg::Array{T,3}; 
+                        obj_id::T = convert(T,1), 
+                        offset::NTuple{3,UInt32} = OFFSET,
+                        voxel_size::NTuple{3, UInt32} = VOXEL_SIZE,
+                        penalty_fn::Function = alexs_penalty )
     # note that the object voxels are false and non-object voxels are true!
     # bin_im = DBFs.create_binary_image( seg, obj_id ) 
-    #skeletonize(bin_im; offset=offset, voxel_size=voxel_size, penalty_fn = penalty_fn)
     points = PointArrays.from_seg(seg; obj_id=obj_id, offset=offset)
-    skeletonize(points; voxel_size=voxel_size, penalty_fn=penalty_fn) 
+    Skeleton(points; voxel_size=voxel_size, penalty_fn=penalty_fn) 
 end 
 
 """
-    skeletonize(bin_im)
+    Skeleton(bin_im)
 Parameters:
     bin_im: binary mask. the object voxel should be false, non-object voxel should be true
 Return:
-    swc object
+    skeleton object
 """
-function skeletonize(bin_im::Array{Bool,3}; offset::NTuple{3, UInt32} = DEFAULT_OFFSET,
-
-                        voxel_size::NTuple{3, UInt32} = DEFAULT_VOXEL_SIZE,
-                        penalty_fn::Function = alexs_penalty)
+function Skeleton(bin_im::Array{Bool,3}; offset::NTuple{3, UInt32} = OFFSET,
+                    voxel_size::NTuple{3, UInt32} = VOXEL_SIZE,
+                    penalty_fn::Function = alexs_penalty)
         # transform segmentation to points
     points = PointArrays.from_binary_image(bin_im)
     
@@ -57,17 +60,17 @@ function skeletonize(bin_im::Array{Bool,3}; offset::NTuple{3, UInt32} = DEFAULT_
     # @time dbf = DBFs.compute_DBF(points, bin_im)
 
     PointArrays.add_offset!(points, offset)
-    skeletonize(points; dbf=dbf, penalty_fn=penalty_fn, voxel_size = voxel_size)
+    Skeleton(points; dbf=dbf, penalty_fn=penalty_fn, voxel_size = voxel_size)
 end 
 
 """
-    skeletonize( points; penalty_fn = alexs_penalty )
+    Skeleton( points; penalty_fn = alexs_penalty )
 
   Perform the teasar algorithm on the passed Nxd array of points
 """
-function skeletonize{T}( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
+function Skeleton{T}( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
                             penalty_fn::Function = alexs_penalty,
-                            voxel_size::NTuple{3, UInt32} = DEFAULT_VOXEL_SIZE)
+                            voxel_size::NTuple{3, UInt32} = VOXEL_SIZE)
     println("total number of points: $(size(points,1))")
   points = shift_points_to_bbox( points );
   ind2node, max_dims = create_node_lookup( points );
@@ -145,11 +148,41 @@ function skeletonize{T}( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
   
     # build a new graph containing only the skeleton nodes and edges
     nodes, edges = distill!(points, path_nodes, path_edges)
-    
-    swc = SWC(nodes, edges, node_radii)
-    SWCs.stretch_coordinates!(swc, voxel_size)
-    return swc
+    Skeleton(nodes, edges, node_radii)
 end
+
+##################### properties ###############################
+function get_nodes(self::Skeleton) self.nodes end 
+function get_edges(self::Skeleton) self.edges end
+function get_radii(self::Skeleton) self.radii end 
+function get_node_num(self::Skeleton) size(self.nodes, 1) end 
+function get_edge_num(self::Skeleton) length(self.edges) end 
+
+##################### transformation ##########################
+"""
+get binary buffer formatted as neuroglancer skeleton.
+UInt32: the number of vertex (N)
+Array{Float32, 2}, size=(N,3): the vertexes including x,y,z coordinates 
+Array{UInt32,2}, size= (M,2): the edges, pair of node indeces 
+"""
+function get_neuroglancer_precomputed(self::Skeleton) 
+    # total number of bytes
+    num_bytes = 4 + 4*3*get_node_num(self) + 4*2*length(get_edge_num(self))
+    buffer = IOBuffer( num_bytes )
+    # write the number of vertex
+    write(buffer, UInt32(get_node_num(self)))
+    # write the node coordinates
+    write(buffer, Array{UInt32,2}( get_nodes(self) ))
+    for edge in get_edges( self )
+        write(buffer, UInt32( edge[1] ))
+        write(buffer, UInt32( edge[2] ))
+    end
+    #bin = Vector{UInt8}(takebuf_array(buffer))
+    bin = Vector{UInt8}(take!(buffer))
+    close(buffer)
+    return bin 
+end 
+
 #---------------------------------------------------------------
 
 
@@ -208,7 +241,7 @@ end
   be weighted or modified easily upon return.
 """
 function make_neighbor_graph{T}( points::Array{T,2}, ind2node=nothing, max_dims=nothing;
-                                voxel_size::NTuple{3, UInt32} = DEFAULT_VOXEL_SIZE )
+                                voxel_size::NTuple{3, UInt32} = VOXEL_SIZE )
 
   if ind2node == nothing ind2node, max_dims = create_node_lookup(points) end
 
@@ -509,7 +542,7 @@ function distill!{T}(point_array::Array{T,2},
     for i in 1:num_edges
         path_edges[i] = (id_map[path_edges[i][1]], id_map[path_edges[i][2]])
     end
-    return nodes, path_edges  
+    return nodes, path_edges
 end 
 
 end # module

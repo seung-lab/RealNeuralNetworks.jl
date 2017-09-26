@@ -1,7 +1,9 @@
 module Manifests
 using GSDicts, BigArrays
 import ..TEASAR.DBFs
-import ..TEASAR.PointArrays 
+import ..TEASAR.PointArrays
+using ..TEASAR.Skeletons
+
 export Manifest
 
 immutable Manifest
@@ -38,6 +40,25 @@ function Manifest{D,T,N,C}( ranges::Vector, ba::BigArray{D,T,N,C} )
     rangeList = map( BigArrays.Indexes.string2unit_range, ranges )
     Manifest( ba, obj_id, rangeList )
 end
+
+"""
+iterate the chunks containing the neuron with specified cellId
+build point cloud and dbf when iterating the chunks 
+"""
+function trace(self::Manifest, cellId)
+    println("extract point clouds and distance from boundary fields ...")
+    @time pointCloudDBFList = pmap( identity, self )
+    pointClouds = map( x->x[1], pointCloudDBFList )
+    pointCloud = vcat(pointClouds ...)
+    dbfs = map(x->x[2], pointCloudDBFList)
+    dbf = vcat(dbfs ...)
+    # save temporal variables for debug
+    # save("/tmp/$(cellId).jld", "point_clouds", pointClouds, 
+    #         "point_cloud", pointCloud, "dbf", dbf)
+    println("skeletonization from global point cloud and dbf ...")
+    @time skeleton = Skeleton(pointCloud; dbf=dbf) 
+    return skeleton
+end 
 
 function Base.start(self::Manifest)
     1
