@@ -5,8 +5,13 @@ using BigArrays
 using GSDicts
 using TEASAR.Skeletons
 using TEASAR.SWCs
+using JLD
 
-const DEFAULT_VOXEL_SIZE = (UInt32(80), UInt32(80), UInt32(40))
+const CELL_ID = UInt32(76880)
+const OFFSET = (UInt32(2456), UInt32(1776), UInt32(16400))
+const VOXEL_SIZE = (UInt32(80), UInt32(80), UInt32(40))
+const GS_SEG_PATH = "gs://neuroglancer/zfish_v1/consensus-20170829/80_80_45"
+const GS_SKELETON_PATH = "gs://neuroglancer/zfish_v1/consensus-20170829/skeleton_mip_4"
 
 function get_seg_from_h5()
     # read seg data
@@ -26,7 +31,7 @@ function get_seg_from_h5()
 end
 
 function get_seg_from_gs()
-    ba = BigArray(GSDict("gs://neuroglancer/zfish_v1/consensus-20170829/80_80_45"))
+    ba = BigArray(GSDict( GS_SEG_PATH ))
     seg = ba[2457:2968, 1777:2288, 16401:16912]
 end 
 
@@ -41,18 +46,23 @@ end
 @testset "test skeletonization" begin
     seg = create_fake_seg()
     # @time seg = get_seg_from_h5()
-    # @time seg = get_seg_from_gs()
-    # @time swc = TEASAR.skeletonize(seg; voxel_size=DEFAULT_VOXEL_SIZE)
+    @time seg = get_seg_from_gs()
+    # @time swc = TEASAR.skeletonize(seg; voxel_size=VOXEL_SIZE)
     println("building skeleton ...")
-    # @time skeleton = Skeleton( seg; obj_id = UInt32(76880) )
-    @time skeleton = Skeleton( seg; obj_id = UInt32(1) )
+    @time skeleton = Skeleton( seg; obj_id = CELL_ID )
+    Skeletons.add_offset!(skeleton, OFFSET)
+    #@time skeleton = Skeleton( seg; obj_id = UInt32(1) )
     bin = Skeletons.get_neuroglancer_precomputed(skeleton)
-    open("/tmp/fake.bin", "w") do f
-        write(f, bin)
-    end 
+    # open("/tmp/fake.bin", "w") do f write(f, bin)  end 
     @time swc = SWC( skeleton )
     @test length(swc) > 1
-    SWCs.save(swc, tempname() * ".swc")
+    save("/tmp/$(CELL_ID).jld", "skeleton", skeleton, "swc", swc)
+    #SWCs.save(swc, "/tmp/$(CELL_ID).swc")
+
+    # test saving to google cloud for neuroglancer visualization
+    d_json = GSDict( GS_SKELETON_PATH; valueType = String )
+    d_bin  = GSDict( GS_SKELETON_PATH )
+    Skeletons.save(skeleton, CELL_ID, d_json, d_bin)
 end 
 
 

@@ -6,6 +6,8 @@ import .DBFs
 import LightGraphs
 import ..PointArrays
 using Base.Cartesian
+using GSDicts
+import BigArrays
 
 const ZERO_UINT32 = convert(UInt32, 0)
 const ONE_UINT32  = convert(UInt32, 1)
@@ -31,12 +33,11 @@ Perform the teasar algorithm on the passed binary array.
 """
 function Skeleton{T}( seg::Array{T,3}; 
                         obj_id::T = convert(T,1), 
-                        offset::NTuple{3,UInt32} = OFFSET,
                         voxel_size::NTuple{3, UInt32} = VOXEL_SIZE,
                         penalty_fn::Function = alexs_penalty )
     # note that the object voxels are false and non-object voxels are true!
     # bin_im = DBFs.create_binary_image( seg, obj_id ) 
-    points = PointArrays.from_seg(seg; obj_id=obj_id, offset=offset)
+    points = PointArrays.from_seg(seg; obj_id=obj_id)
     Skeleton(points; voxel_size=voxel_size, penalty_fn=penalty_fn) 
 end 
 
@@ -157,7 +158,12 @@ function get_edges(self::Skeleton) self.edges end
 function get_radii(self::Skeleton) self.radii end 
 function get_node_num(self::Skeleton) size(self.nodes, 1) end 
 function get_edge_num(self::Skeleton) length(self.edges) end 
-
+function Base.UnitRange(self::Skeleton) 
+    minCoordinates = minimum( get_nodes(self), 2 )
+    maxCoordinates = maximum( get_nodes(self), 2 )
+    @assert length(minCoordinates) == 3
+    return map( (x,y)->x:y, minCoordinates, maxCoordinates)
+end 
 ##################### transformation ##########################
 """
 get binary buffer formatted as neuroglancer skeleton.
@@ -181,6 +187,32 @@ function get_neuroglancer_precomputed(self::Skeleton)
     bin = Vector{UInt8}(take!(buffer))
     close(buffer)
     return bin 
+end 
+
+###################### IO #################################
+"""
+    save(self::Skeleton, cellId::UInt32, d_json::GSDict, d_bin::GSDict)
+
+save skeleton in google cloud storage for neuroglancer visualization
+the format is the same with meshes
+"""
+function save(self::Skeleton, cellId::UInt32, d_json::GSDict, d_bin::GSDict)
+    # get the bounding box of skeleton and transfer to string representation
+    # example string: 1432-1944_1264-1776_16400-16912
+    rangeString = BigArrays.Indexes.unit_range2string( UnitRange(self) )
+    # construct manifest file
+    d_json["$(cellId):0"] = """
+    {"fragments": ["$(cellId):0:$(rangeString)"]}
+""" 
+    # write the binary representation of skeleton
+    d_bin["$(cellId):0:$(rangeString)"] = get_neuroglancer_precomputed(self)
+end
+
+##################### manipulate ############################
+function add_offset!(self::Skeleton, offset::NTuple{3,UInt32})
+    for i in 1:get_node_num(self)
+        self.nodes[i,:] += [offset ...]
+    end
 end 
 
 #---------------------------------------------------------------

@@ -5,12 +5,16 @@ using TEASAR
 using TEASAR.Skeletons
 using TEASAR.Manifests
 using TEASAR.SWCs
+using JLD
 
-function skeletonize(cellId; swcDir="/tmp/", voxel_size=(80,80,45))
+const VOXEL_SIZE = (80,80,45)
+
+function skeletonize(cellId; swcDir="/tmp/", voxel_size=VOXEL_SIZE)
     manifest = Manifest("gs://neuroglancer/zfish_v1/consensus-20170829/mesh_mip_4", 
                             "$(cellId):0", "gs://neuroglancer/zfish_v1/consensus-20170829/80_80_45")
     skeleton = Manifests.trace(manifest, cellId)
     swc = SWC( skeleton )
+    save("/tmp/$(cellId).jld", "skeleton", skeleton, "swc", swc)
     SWCs.stretch_coordinates!(swc, voxel_size)
     SWCs.save(swc, joinpath(swcDir, "$(cellId).swc"))
 end 
@@ -36,7 +40,7 @@ function parse_commandline()
         "--voxelsize", "-v"
             help = "voxel size of dataset" 
             arg_type = NTuple{3, Int}
-            default = (80,80,45)
+            default = VOXEL_SIZE 
     end 
     return parse_args(s)
 end 
