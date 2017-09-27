@@ -38,13 +38,18 @@ function create_fake_seg()
     return seg 
 end 
 
-@testset "test skeletonization" begin 
+@testset "test skeletonization" begin
+    seg = create_fake_seg()
     # @time seg = get_seg_from_h5()
-    @time seg = get_seg_from_gs()
+    # @time seg = get_seg_from_gs()
     # @time swc = TEASAR.skeletonize(seg; voxel_size=DEFAULT_VOXEL_SIZE)
     println("building skeleton ...")
-    @time skeleton = Skeleton( seg; obj_id = UInt32(76880) )
+    # @time skeleton = Skeleton( seg; obj_id = UInt32(76880) )
+    @time skeleton = Skeleton( seg; obj_id = UInt32(1) )
     bin = Skeletons.get_neuroglancer_precomputed(skeleton)
+    open("/tmp/fake.bin", "w") do f
+        write(f, bin)
+    end 
     @time swc = SWC( skeleton )
     @test length(swc) > 1
     SWCs.save(swc, tempname() * ".swc")
