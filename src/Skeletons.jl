@@ -159,10 +159,13 @@ function get_radii(self::Skeleton) self.radii end
 function get_node_num(self::Skeleton) size(self.nodes, 1) end 
 function get_edge_num(self::Skeleton) length(self.edges) end 
 function Base.UnitRange(self::Skeleton) 
-    minCoordinates = minimum( get_nodes(self), 2 )
-    maxCoordinates = maximum( get_nodes(self), 2 )
+    minCoordinates = minimum( get_nodes(self), 1 )
+    maxCoordinates = maximum( get_nodes(self), 1 )
+    @show length(minCoordinates)
     @assert length(minCoordinates) == 3
-    return map( (x,y)->x:y, minCoordinates, maxCoordinates)
+    return [minCoordinates[1]:maxCoordinates[1], 
+            minCoordinates[2]:maxCoordinates[2], 
+            minCoordinates[3]:maxCoordinates[3]]
 end 
 ##################### transformation ##########################
 """
