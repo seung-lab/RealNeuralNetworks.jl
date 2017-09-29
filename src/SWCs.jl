@@ -55,37 +55,6 @@ end
 function Base.length(self::SWC)  length(self.points) end 
 function get_points(self::SWC) self.points end 
 
-#################### manipulate ######################
-"""
-add more point object 
-"""
-function Base.push!(self::SWC, p::PointObj )
-    push!(self.points, p)
-end 
-
-"""
-note that only stretch the coordinates here, not including the radius
-since radius was already adjusted in the neighborhood weights 
-"""
-function stretch_coordinates!(self::SWC, voxel_size::Tuple)
-    @assert length(voxel_size) == 3
-    for i in 1:length( self.points )
-        self.points[i].x *= voxel_size[1]
-        self.points[i].y *= voxel_size[2]
-        self.points[i].z *= voxel_size[3]
-        self.points[i].radius *= (prod(voxel_size))^(1/3)
-    end 
-end 
-
-function add_offset!(self::SWC, offset::Tuple)
-    @assert length(voxel_size) == 3
-    for in in length( self.points )
-        self.points[i].x += offset[1]
-        self.points[i].y += offset[2]
-        self.points[i].z += offset[3]
-    end 
-end 
-
 ################## IO ###############################
 function save(self::SWC, file_name::AbstractString)
     points = get_points(self)
@@ -115,6 +84,52 @@ function load(file_name::AbstractString)
         end 
     end 
     return swc
+end 
+
+#################### manipulate ######################
+"""
+add more point object 
+"""
+function Base.push!(self::SWC, p::PointObj )
+    push!(self.points, p)
+end 
+
+"""
+note that only stretch the coordinates here, not including the radius
+since radius was already adjusted in the neighborhood weights 
+"""
+function stretch_coordinates!(self::SWC, expansion::Tuple)
+    @assert length(expansion) == 3
+    for i in 1:length( self.points )
+        self.points[i].x *= expansion[1]
+        self.points[i].y *= expansion[2]
+        self.points[i].z *= expansion[3]
+        self.points[i].radius *= (prod(expansion))^(1/3)
+    end 
+end 
+
+"""
+stretch the coordinate according to the mip level
+normally, we only build mip level at XY plane, not Z
+"""
+function stretch_coordinates!(self::SWC, mip::Integer)
+    stretch_coordinates!(self, (2^mip, 2^mip, 1))
+end 
+
+function add_offset!(self::SWC, offset::Tuple)
+    @assert length(offset) == 3
+    for in in length( self.points )
+        self.points[i].x += offset[1]
+        self.points[i].y += offset[2]
+        self.points[i].z += offset[3]
+    end 
+end 
+
+"""
+connect all the broken pieces 
+"""
+function repair!(self::SWC)
+
 end 
 
 end # module of SWCs

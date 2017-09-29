@@ -9,7 +9,7 @@ using JLD
 
 const CELL_ID = UInt32(76880)
 const OFFSET = (UInt32(2456), UInt32(1776), UInt32(16400))
-const VOXEL_SIZE = (UInt32(80), UInt32(80), UInt32(40))
+const EXPANSION= (UInt32(80), UInt32(80), UInt32(40))
 const GS_SEG_PATH = "gs://neuroglancer/zfish_v1/consensus-20170829/80_80_45"
 const GS_SKELETON_PATH = "gs://neuroglancer/zfish_v1/consensus-20170829/skeleton_mip_4"
 
@@ -47,7 +47,7 @@ end
     seg = create_fake_seg()
     # @time seg = get_seg_from_h5()
     @time seg = get_seg_from_gs()
-    # @time swc = TEASAR.skeletonize(seg; voxel_size=VOXEL_SIZE)
+    # @time swc = TEASAR.skeletonize(seg; expansion=EXPANSION)
     println("building skeleton ...")
     @time skeleton = Skeleton( seg; obj_id = CELL_ID )
     Skeletons.add_offset!(skeleton, OFFSET)

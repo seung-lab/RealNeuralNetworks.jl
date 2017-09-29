@@ -12,7 +12,7 @@ import BigArrays
 const ZERO_UINT32 = convert(UInt32, 0)
 const ONE_UINT32  = convert(UInt32, 1)
 const OFFSET = (ZERO_UINT32, ZERO_UINT32, ZERO_UINT32)
-const VOXEL_SIZE = (ONE_UINT32, ONE_UINT32, ONE_UINT32)
+const EXPANSION = (ONE_UINT32, ONE_UINT32, ONE_UINT32)
 
 export Skeleton 
 
@@ -33,12 +33,12 @@ Perform the teasar algorithm on the passed binary array.
 """
 function Skeleton{T}( seg::Array{T,3}; 
                         obj_id::T = convert(T,1), 
-                        voxel_size::NTuple{3, UInt32} = VOXEL_SIZE,
+                        expansion::NTuple{3, UInt32} = EXPANSION,
                         penalty_fn::Function = alexs_penalty )
     # note that the object voxels are false and non-object voxels are true!
     # bin_im = DBFs.create_binary_image( seg, obj_id ) 
     points = PointArrays.from_seg(seg; obj_id=obj_id)
-    Skeleton(points; voxel_size=voxel_size, penalty_fn=penalty_fn) 
+    Skeleton(points; expansion=expansion, penalty_fn=penalty_fn) 
 end 
 
 """
@@ -49,7 +49,7 @@ Return:
     skeleton object
 """
 function Skeleton(bin_im::Array{Bool,3}; offset::NTuple{3, UInt32} = OFFSET,
-                    voxel_size::NTuple{3, UInt32} = VOXEL_SIZE,
+                    expansion::NTuple{3, UInt32} = EXPANSION,
                     penalty_fn::Function = alexs_penalty)
         # transform segmentation to points
     points = PointArrays.from_binary_image(bin_im)
@@ -61,7 +61,7 @@ function Skeleton(bin_im::Array{Bool,3}; offset::NTuple{3, UInt32} = OFFSET,
     # @time dbf = DBFs.compute_DBF(points, bin_im)
 
     PointArrays.add_offset!(points, offset)
-    Skeleton(points; dbf=dbf, penalty_fn=penalty_fn, voxel_size = voxel_size)
+    Skeleton(points; dbf=dbf, penalty_fn=penalty_fn, expansion = expansion)
 end 
 
 """
@@ -71,7 +71,7 @@ end
 """
 function Skeleton{T}( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
                             penalty_fn::Function = alexs_penalty,
-                            voxel_size::NTuple{3, UInt32} = VOXEL_SIZE)
+                            expansion::NTuple{3, UInt32} = EXPANSION)
     println("total number of points: $(size(points,1))")
   points = shift_points_to_bbox( points );
   ind2node, max_dims = create_node_lookup( points );
@@ -80,7 +80,7 @@ function Skeleton{T}( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
     
   println("making graph (2 parts)");
   @time G, weights = make_neighbor_graph( points, ind2node, max_dims; 
-                                            voxel_size = voxel_size )
+                                            expansion = expansion )
   println("build dbf weights from penalty function ...")
   @time dbf_weights = penalty_fn( weights, dbf, G )
 
@@ -211,6 +211,21 @@ function save(self::Skeleton, cellId::UInt32, d_json::GSDict, d_bin::GSDict)
     d_bin["$(cellId):0:$(rangeString)"] = get_neuroglancer_precomputed(self)
 end
 
+"""
+save binary file of point pairs
+used in neuroglancer python interface to visualize the skeleton 
+"""
+function save_edges(self::Skeleton, fileName::String)
+    open(fileName, "w") do f
+        nodes = get_nodes(self)
+        edges = get_edges(self)
+        for edge in edges
+            write(f, nodes[ edge[1] ])
+            write(f, nodes[ edge[2] ])
+        end 
+    end
+end 
+
 ##################### manipulate ############################
 function add_offset!(self::Skeleton, offset::NTuple{3,UInt32})
     for i in 1:get_node_num(self)
@@ -276,7 +291,7 @@ end
   be weighted or modified easily upon return.
 """
 function make_neighbor_graph{T}( points::Array{T,2}, ind2node=nothing, max_dims=nothing;
-                                voxel_size::NTuple{3, UInt32} = VOXEL_SIZE )
+                                expansion::NTuple{3, UInt32} = EXPANSION )
 
   if ind2node == nothing ind2node, max_dims = create_node_lookup(points) end
 
@@ -287,7 +302,7 @@ function make_neighbor_graph{T}( points::Array{T,2}, ind2node=nothing, max_dims=
   #26-connectivity neighborhood
   # weights computed by euc_dist to center voxel
   nhood = [[i,j,k] for i=1:3,j=1:3,k=1:3];
-  map!( x-> (x .- [2,2,2]).*[voxel_size ...] , nhood );
+  map!( x-> (x .- [2,2,2]).*[expansion ...] , nhood );
   nhood_weights = map( norm, nhood );
 
   #only adding weights for non-duplicate nodes

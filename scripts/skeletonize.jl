@@ -8,15 +8,17 @@ using TEASAR.SWCs
 using JLD
 using ProgressMeter
 
-const VOXEL_SIZE = (80,80,45)
+# this is the mip level 4
+const EXPANSION = (16,16,1)
+const MIP = 4
 
-function skeletonize(cellId; swcDir="/tmp/", jldDir="/tmp/", voxel_size=VOXEL_SIZE)
+function skeletonize(cellId; swcDir="/tmp/", jldDir="/tmp/", mip=MIP)
     manifest = Manifest("gs://neuroglancer/zfish_v1/consensus-20170829/mesh_mip_4", 
                             "$(cellId):0", "gs://neuroglancer/zfish_v1/consensus-20170829/80_80_45")
     skeleton = Manifests.trace(manifest, cellId)
     swc = SWC( skeleton )
+    SWCs.stretch_coordinates!(swc, mip)
     save(joinpath(jldDir, "$(cellId).jld"), "skeleton", skeleton, "swc", swc)
-    SWCs.stretch_coordinates!(swc, voxel_size)
     SWCs.save(swc, joinpath(swcDir, "$(cellId).swc"))
 end 
 
@@ -45,6 +47,9 @@ customized argument parse for tuple
 """
 function ArgParse.parse_item(::Type{NTuple{3,Int}}, x::AbstractString)
     return map(parse, split(x,","))
+end
+function ArgParse.parse_item(::Type{UInt32}, x::AbstractString)
+    return UInt32(parse(x))
 end 
 
 function parse_commandline()
@@ -62,10 +67,10 @@ function parse_commandline()
             help = "the directory to store jld file"
             arg_type = String
             default = "/tmp"
-        "--voxelsize", "-v"
-            help = "voxel size of dataset" 
-            arg_type = NTuple{3, Int}
-            default = VOXEL_SIZE
+        "--mip", "-m"
+            help = "mip level of the dataset" 
+            arg_type = UInt32
+            default = UInt32(4)
         "--idlistfile", "-f"
             help = "the id list in text from google spreasheet"
             arg_type = String
@@ -80,11 +85,11 @@ function main()
         idList = read_cell_id_list(args["idlistfile"])
         @showprogress 1 "skeletonize ..." for id in idList 
             skeletonize(id; swcDir=args["swcdir"], jldDir=args["jlddir"], 
-                        voxel_size=args["voxelsize"])
+                        mip=args["mip"])
         end 
     else 
         skeletonize(args["neuronid"]; swcDir = args["swcdir"], jldDir=args["jlddir"], 
-                    voxel_size=args["voxelsize"])
+                    mip=args["mip"])
     end 
 end
 

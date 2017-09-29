@@ -4,6 +4,8 @@ import ..TEASAR.DBFs
 import ..TEASAR.PointArrays
 using ..TEASAR.Skeletons
 
+const MIP_LEVEL = 4
+
 export Manifest
 
 immutable Manifest
@@ -41,6 +43,16 @@ function Manifest{D,T,N,C}( ranges::Vector, ba::BigArray{D,T,N,C} )
     Manifest( ba, obj_id, rangeList )
 end
 
+function get_voxel_offset(self::Manifest)
+    voxel_offset =  self.ba.kvStore.configDict[:offset]
+    #real voxel offset should based on the highest resolution 5x5x45
+    # we are using mip level 4 with (80x80x45 nm) now 
+    # voxel_offset = map((x,y)->UInt32(x*y), voxel_offset, (2^MIP_LEVEL, 2^MIP_LEVEL,1))
+    voxel_offset = Vector{UInt32}(voxel_offset)
+    @show voxel_offset
+    return (voxel_offset...)
+end 
+
 """
 iterate the chunks containing the neuron with specified cellId
 build point cloud and dbf when iterating the chunks 
@@ -56,7 +68,9 @@ function trace(self::Manifest, cellId)
     # save("/tmp/$(cellId).jld", "point_clouds", pointClouds, 
     #         "point_cloud", pointCloud, "dbf", dbf)
     println("skeletonization from global point cloud and dbf ...")
+    @show pointCloud
     @time skeleton = Skeleton(pointCloud; dbf=dbf) 
+    @show skeleton 
     return skeleton
 end 
 
@@ -78,6 +92,7 @@ function Base.next(self::Manifest, i )
     # distance from boundary field
     dbf = DBFs.compute_DBF(point_cloud, bin_im)
     PointArrays.add_offset!(point_cloud, offset)
+    PointArrays.add_offset!(point_cloud, get_voxel_offset(self)) 
     return (point_cloud, dbf), i+1
 end 
 function Base.done(self::Manifest, i)

@@ -1,5 +1,9 @@
 module PointArrays
 
+export PointArray
+
+typealias PointArray Array{UInt32, 2}
+
 const ZERO_UINT32 = convert(UInt32, 0)
 const ONE_UINT32  = convert(UInt32, 1)
 const DEFAULT_OFFSET = (ZERO_UINT32, ZERO_UINT32, ZERO_UINT32)
