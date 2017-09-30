@@ -1,7 +1,6 @@
 module Skeletons
 
-include("DBFs.jl")
-import .DBFs
+import ..DBFs
 
 import LightGraphs
 import ..PointArrays
@@ -73,7 +72,7 @@ function Skeleton{T}( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
                             penalty_fn::Function = alexs_penalty,
                             expansion::NTuple{3, UInt32} = EXPANSION)
     println("total number of points: $(size(points,1))")
-  points = shift_points_to_bbox( points );
+  #points = shift_points_to_bbox( points );
   ind2node, max_dims = create_node_lookup( points );
   max_dims_arr = [max_dims...];#use this for rm_nodes, but ideally wouldn't
   sub2node = x -> ind2node[ sub2ind(max_dims, x[1],x[2],x[3]) ];#currently only used in line 48

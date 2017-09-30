@@ -46,18 +46,17 @@ end
 @testset "test skeletonization" begin
     seg = create_fake_seg()
     # @time seg = get_seg_from_h5()
-    @time seg = get_seg_from_gs()
-    # @time swc = TEASAR.skeletonize(seg; expansion=EXPANSION)
+    # @time seg = get_seg_from_gs()
     println("building skeleton ...")
-    @time skeleton = Skeleton( seg; obj_id = CELL_ID )
-    Skeletons.add_offset!(skeleton, OFFSET)
-    #@time skeleton = Skeleton( seg; obj_id = UInt32(1) )
+    #@time skeleton = Skeleton( seg; obj_id = CELL_ID )
+    # Skeletons.add_offset!(skeleton, OFFSET)
+    @time skeleton = Skeleton( seg; obj_id = UInt32(1) )
     bin = Skeletons.get_neuroglancer_precomputed(skeleton)
     # open("/tmp/fake.bin", "w") do f write(f, bin)  end 
     @time swc = SWC( skeleton )
     @test length(swc) > 1
     save("/tmp/$(CELL_ID).jld", "skeleton", skeleton, "swc", swc)
-    #SWCs.save(swc, "/tmp/$(CELL_ID).swc")
+    SWCs.save(swc, "/tmp/$(CELL_ID).swc")
 
     # test saving to google cloud for neuroglancer visualization
     d_json = GSDict( GS_SKELETON_PATH; valueType = String )
