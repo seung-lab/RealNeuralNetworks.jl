@@ -71,15 +71,15 @@ end
 function Skeleton{T}( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
                             penalty_fn::Function = alexs_penalty,
                             expansion::NTuple{3, UInt32} = EXPANSION)
+
     println("total number of points: $(size(points,1))")
-  #points = shift_points_to_bbox( points );
+  points, bbox_offset = shift_points_to_bbox( points );
   ind2node, max_dims = create_node_lookup( points );
   max_dims_arr = [max_dims...];#use this for rm_nodes, but ideally wouldn't
   sub2node = x -> ind2node[ sub2ind(max_dims, x[1],x[2],x[3]) ];#currently only used in line 48
     
   println("making graph (2 parts)");
-  @time G, weights = make_neighbor_graph( points, ind2node, max_dims; 
-                                            expansion = expansion )
+  @time G, weights = make_neighbor_graph( points, ind2node, max_dims;)
   println("build dbf weights from penalty function ...")
   @time dbf_weights = penalty_fn( weights, dbf, G )
 
@@ -148,7 +148,12 @@ function Skeleton{T}( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
   
     # build a new graph containing only the skeleton nodes and edges
     nodes, edges = distill!(points, path_nodes, path_edges)
-    Skeleton(nodes, edges, node_radii)
+    skeleton = Skeleton(nodes, edges, node_radii)
+    # add the offset from shift bounding box function
+    @show nodes
+    @show bbox_offset
+    add_offset!(skeleton, bbox_offset)
+    return skeleton
 end
 
 ##################### properties ###############################
@@ -230,6 +235,12 @@ function add_offset!(self::Skeleton, offset::NTuple{3,UInt32})
     for i in 1:get_node_num(self)
         self.nodes[i,:] += [offset ...]
     end
+end
+function add_offset!(self::Skeleton, offset::Vector{UInt32})
+    @assert length(offset) == 3
+    for i in 1:get_node_num(self)
+        self.nodes[i, :] .+= offset 
+    end 
 end 
 
 #---------------------------------------------------------------
@@ -242,14 +253,21 @@ end
   Normalize the point dimensions by subtracting the min
   across each dimension. This step isn't extremely necessary,
   but might be useful for compatibility with the MATLAB code.
+  record the offset and add it back after building the skeleton
 """
 function shift_points_to_bbox( points )
-  min_dims = minimum( points, 1 );
-  points .-= (min_dims - 1);
-
-  points
-end
-
+  offset = minimum( points, 1 ) -1 ;
+  # transform to 1d vector
+  offset = vec( offset )
+  @assert ndims(offset) == 1
+  @assert length(offset) == 3
+  @assert offset[3] < 20000
+  points[:,1] .-= offset[1]
+  points[:,2] .-= offset[2]
+  points[:,3] .-= offset[3]
+  
+  points, offset
+end 
 
 """
 
@@ -263,8 +281,8 @@ function create_node_lookup{T}( points::Array{T,2} )
   #need the max in order to define the bounds of that volume
   # tuple allows the point to be passed to fns as dimensions
   max_dims = ( maximum( points, 1 )... );
+  #max_dims = map(Int, max_dims)
   num_points = size(points,1);
-
   #creating the sparse vector mapping indices -> node ids
   ind2node = sparsevec( Int[sub2ind(max_dims, points[i,:]... ) for i=1:num_points ],
   	                    1:num_points,

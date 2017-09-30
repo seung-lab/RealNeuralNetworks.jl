@@ -43,6 +43,10 @@ function Manifest{D,T,N,C}( ranges::Vector, ba::BigArray{D,T,N,C} )
     Manifest( ba, obj_id, rangeList )
 end
 
+
+"""
+the voxel offset in the neuroglancer precomputed info file 
+"""
 function get_voxel_offset(self::Manifest)
     voxel_offset =  self.ba.kvStore.configDict[:offset]
     #real voxel offset should based on the highest resolution 5x5x45
@@ -68,9 +72,7 @@ function trace(self::Manifest, cellId)
     # save("/tmp/$(cellId).jld", "point_clouds", pointClouds, 
     #         "point_cloud", pointCloud, "dbf", dbf)
     println("skeletonization from global point cloud and dbf ...")
-    @show pointCloud
     @time skeleton = Skeleton(pointCloud; dbf=dbf) 
-    @show skeleton 
     return skeleton
 end 
 
@@ -92,7 +94,8 @@ function Base.next(self::Manifest, i )
     # distance from boundary field
     dbf = DBFs.compute_DBF(point_cloud, bin_im)
     PointArrays.add_offset!(point_cloud, offset)
-    PointArrays.add_offset!(point_cloud, get_voxel_offset(self)) 
+    # no need to use voxel_offset since the file name encoded the global coordinate
+    #PointArrays.add_offset!(point_cloud, get_voxel_offset(self)) 
     return (point_cloud, dbf), i+1
 end 
 function Base.done(self::Manifest, i)
