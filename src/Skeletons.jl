@@ -150,7 +150,6 @@ function Skeleton{T}( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
     nodes, edges = distill!(points, path_nodes, path_edges)
     skeleton = Skeleton(nodes, edges, node_radii)
     # add the offset from shift bounding box function
-    @show nodes
     @show bbox_offset
     add_offset!(skeleton, bbox_offset)
     return skeleton
