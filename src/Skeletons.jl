@@ -169,7 +169,29 @@ function Base.UnitRange(self::Skeleton)
     return [minCoordinates[1]:maxCoordinates[1], 
             minCoordinates[2]:maxCoordinates[2], 
             minCoordinates[3]:maxCoordinates[3]]
+end
+
+"""
+get a dict, the keys are all the nodes, the values are the connected nodes 
+"""
+function get_connection_dict( self::Skeleton )
+    conn = Dict{UInt32, Set{UInt32}}()
+    edges = get_edges(self)
+    for edge in edges 
+        if haskey(conn, edge[1])
+            push!( conn[edge[1]], edge[2] )
+        else 
+            conn[edge[1]] = Set{UInt32}( edge[2] )
+        end 
+        if haskey(conn, edge[2])
+            push!( conn[edge[2]], edge[1] )
+        else 
+            conn[edge[2]] = Set{UInt32}( edge[1] )
+        end 
+    end 
+    return conn
 end 
+
 ##################### transformation ##########################
 """
 get binary buffer formatted as neuroglancer skeleton.
@@ -606,7 +628,7 @@ function distill!{T}(point_array::Array{T,2},
 
     # rebuild the edges
     for i in 1:num_edges
-        path_edges[i] = (id_map[path_edges[i][1]], id_map[path_edges[i][2]])
+        path_edges[i] = minmax(id_map[path_edges[i][1]], id_map[path_edges[i][2]])
     end
     return nodes, path_edges
 end 

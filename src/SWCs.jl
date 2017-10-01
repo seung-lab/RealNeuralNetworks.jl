@@ -3,6 +3,8 @@ using ..TEASAR.Skeletons
 
 export SWC
 
+const POINT_TYPE = UInt8(0)
+
 type PointObj
     point_type  :: UInt8 
     x           :: Float32 
@@ -31,6 +33,17 @@ function SWC()
     SWC( Vector{PointObj}(), Dict{Symbol, Any}() )
 end 
 
+"""
+transfer tree to swc 
+"""
+function SWC(tree::Tree; attributes = Dict{Symbol,Any}())
+    rootBranch = Trees.get_root_branch( tree )
+
+end 
+
+"""
+transfer skeleton to swc
+"""
 function SWC(skeleton::Skeleton; attributes = Dict{Symbol,Any}())
     nodes = Skeletons.get_nodes(skeleton)
     edges = Skeletons.get_edges(skeleton)
