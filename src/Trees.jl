@@ -25,7 +25,17 @@ function Tree( skeleton::Skeleton )
     _, start = findmax( radii )
     start = convert(UInt32, start)
     
-   return Tree( start, nodes, conn )
+    mainTree = Tree( start, nodes, conn )
+    # the remaining edges are disconnected with this tree 
+    while !isempty( conn )
+
+        for nodeIndex in keys(conn) 
+            # find out the closest remaining point to grow a new tree
+
+        end
+        merge!(mainTree, newTree)
+    end 
+    return mainTree
 end 
 
 function Tree{T}( start::Integer, nodes::Array{T,2}, conn::Dict{T,Set{T}} )
@@ -39,6 +49,7 @@ function Tree{T}( start::Integer, nodes::Array{T,2}, conn::Dict{T,Set{T}} )
             push!(rootBranch, nodes[start, :])
             push!(rootBranchRadii, radii[start])
             start = pop!(conn[start])
+            delete!(conn, start)
         else 
             # multiple branches
             # push the branching point and start new tree from the branches
@@ -46,10 +57,11 @@ function Tree{T}( start::Integer, nodes::Array{T,2}, conn::Dict{T,Set{T}} )
             push!(rootBranchRadii, radii[start])
             for branchStartIndex in conn[start]
                 push!(children, Tree( branchStartIndex, nodes, conn ))
+                delete!(conn, branchStartIndex)
             end
             break
         end 
-    end 
+    end
     return Tree( rootBranch, rootBranchRadii, children, KIND ) 
 end 
 
@@ -60,7 +72,9 @@ function get_kind(self::Tree) self.kind end
 function get_children(self::Tree) self.children end 
 
 ############## Base functions ###################
-function Base.start( self::Tree )   self.rootBranch[1,:] end 
+# return the index of mainBranch and index of child
+# it is a problem of how to iterate all the points in a tree!
+# function Base.start( self::Tree )   1,0 end 
 
 function Base.length( self::Tree )
     l = Float32(0)
@@ -76,5 +90,22 @@ function Base.length( self::Tree )
     l
 end
 
+"""
+merge two trees using the closest point pair
+"""
+function Base.merge!(self::Tree,  point1::Union{Vector, Tuple}, 
+                     other::Tree, point2::Union{Vector, Tuple})
+    @assert length(point1) == length(point2) == 3
+    error("unimplemented")
+end 
+
+############## measurements ####################
+"""
+compute the euclidean distance between a point and a tree 
+"""
+function euclidean(self::Tree, point::Union{Vector, Tuple})
+    @assert length(point) == 3
+    error("unimplemented")
+end 
 
 end # module
