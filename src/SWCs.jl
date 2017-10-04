@@ -34,14 +34,6 @@ function SWC()
 end 
 
 """
-transfer tree to swc 
-"""
-function SWC(tree::Tree; attributes = Dict{Symbol,Any}())
-    rootBranch = Trees.get_root_branch( tree )
-
-end 
-
-"""
 transfer skeleton to swc
 """
 function SWC(skeleton::Skeleton; attributes = Dict{Symbol,Any}())
