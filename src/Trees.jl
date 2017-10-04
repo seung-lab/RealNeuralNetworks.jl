@@ -61,14 +61,19 @@ function Tree{T}( start::Integer, nodes::Array{T,2}, conn::Dict{T,Set{T}} )
     while true
         if length(conn[start]) == 1
             # no branching point
-            push!(rootBranch, nodes[start, :])
+            rootBranch = vcat(rootBranch, reshape(nodes[start, :], (1,3)) )
             push!(rootBranchRadii, radii[start])
             start = pop!(conn[start])
             delete!(conn, start)
         else 
             # multiple branches
             # push the branching point and start new tree from the branches
-            push!(rootBranch, nodes[start, :])
+            @show size(nodes)
+            @show size(rootBranch)
+            @show start
+            @show nodes[start, :]
+            @show reshape(nodes[start, :], (1,3))
+            rootBranch = vcat(rootBranch, reshape(nodes[start, :], (1,3)) )
             push!(rootBranchRadii, radii[start])
             for branchStartIndex in conn[start]
                 push!(children, Tree( branchStartIndex, nodes, conn ))

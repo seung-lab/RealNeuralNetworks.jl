@@ -2,7 +2,7 @@ using Base.Test
 using TEASAR.Skeletons 
 using TEASAR.Trees
 
-function create_cylinder_seg(sz::Tuple=(51,51,101), radius::Float32=Float32(30))
+function create_cylinder_seg(sz::Tuple=(21,21,31), radius::Float32=Float32(7))
     center = map(x->div(x,2), sz)
     seg = zeros(UInt32, sz)
     for y in 1:sz[2]
