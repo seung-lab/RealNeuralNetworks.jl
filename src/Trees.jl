@@ -9,7 +9,7 @@ export Tree
 const KIND = UInt8(0)
 
 type Tree <: AbstractTree
-    rootBranch          ::Array{UInt32, 2}
+    rootBranch          ::Vector{Vector}
     rootBranchRadii     ::Vector{Float32} 
     children            ::Vector
     kind                ::UInt8
@@ -26,7 +26,7 @@ function Tree( skeleton::Skeleton )
     _, start = findmax( radii )
     root = convert(UInt32, start)
     
-    mainTree = Tree( root, nodes, conn )
+    mainTree = Tree( root, nodes, radii, conn )
     # the remaining edges are disconnected with this tree 
     while !isempty( conn )
         # the minimum distance from a remaining node to the main tree
@@ -44,7 +44,7 @@ function Tree( skeleton::Skeleton )
                 minDistanceNodeIndex = nodeIndex 
             end 
         end
-        newTree = Tree( minDistanceNodeIndex, nodes, conn )
+        newTree = Tree( minDistanceNodeIndex, nodes, radii, conn )
         mainTreeNodes = get_nodes(mainTree)
         closestMainTreeNode = mainTreeNodes[ closestMainTreeNodeIndex, : ]
         # connect the closestMainTreeNode in main tree and the root node in the new tree.
@@ -53,15 +53,16 @@ function Tree( skeleton::Skeleton )
     return mainTree
 end 
 
-function Tree{T}( start::Integer, nodes::Array{T,2}, conn::Dict{T,Set{T}} )
+function Tree{T}( start::Integer, nodes::Array{T,2}, radii::Vector{Float32}, 
+                    conn::Dict{T,Set{T}} )
     # construct the main branch until there is a branching node 
-    rootBranch = Array{UInt32, 2}()
-    rootBranchRadii = Vector{Float32}
+    rootBranch = Vector{Vector}()
+    rootBranchRadii = Vector{Float32}()
     children = Vector{Tree}()
     while true
         if length(conn[start]) == 1
             # no branching point
-            rootBranch = vcat(rootBranch, reshape(nodes[start, :], (1,3)) )
+            push!(rootBranch, nodes[start,:])
             push!(rootBranchRadii, radii[start])
             start = pop!(conn[start])
             delete!(conn, start)
@@ -73,10 +74,10 @@ function Tree{T}( start::Integer, nodes::Array{T,2}, conn::Dict{T,Set{T}} )
             @show start
             @show nodes[start, :]
             @show reshape(nodes[start, :], (1,3))
-            rootBranch = vcat(rootBranch, reshape(nodes[start, :], (1,3)) )
+            push!(rootBranch, nodes[start, :])
             push!(rootBranchRadii, radii[start])
             for branchStartIndex in conn[start]
-                push!(children, Tree( branchStartIndex, nodes, conn ))
+                push!(children, Tree( branchStartIndex, nodes, radii, conn ))
                 delete!(conn, branchStartIndex)
             end
             break
@@ -107,7 +108,7 @@ get all the nodes in the tree
 function get_nodes(self::Tree) 
     nodes = get_root_branch(self)
     for child in get_children(self)
-        nodes = vcat(nodes, get_nodes(child))
+        push!(nodes, get_nodes(child))
     end 
     return nodes 
 end 
@@ -121,12 +122,12 @@ function get_total_length( self::Tree )
     l = Float32(0)
     # compute the root branch length
     for i in 1:length(self.rootBranch)-1
-        l += norm(Vector{Float32}(self.rootBranch[i,  :]) .- 
-                  Vector{Float32}(self.rootBranch[i+1,:]))
+        l += norm(Vector{Float32}(self.rootBranch[i]) .- 
+                  Vector{Float32}(self.rootBranch[i+1]))
     end 
     # add the children tree length
     for child in self.children
-        l += length( child )
+        l += get_total_length( child )
     end 
     l
 end
@@ -146,10 +147,10 @@ function Base.merge!(self::Tree,  closestNode::Vector, other::Tree )
     for i in 1:size(rootBranch, 1)
         if all(rootBranch[i,:].== closestNode)
             # merge here
-            newRootBranch = rootBranch[1:i, :]
+            newRootBranch = rootBranch[1:i]
             newRootBranchRadii = rootBranchRadii[1:i]
             if i < size(rootBranch, 1)
-                newSubTree = Tree(rootBranch[i+1:end, :], rootBranchRadii[i+1:end], kind, children)
+                newSubTree = Tree(rootBranch[i+1:end], rootBranchRadii[i+1:end], kind, children)
                 newChildren = [newSubTree, other]
                 self = Tree(newRootBranch, newRootBranchRadii, kind, newChildren)
                 return true  
@@ -182,12 +183,11 @@ end
 function euclidean{T}(nodes::Array{T,2}, point::Union{Vector, Tuple})
     @assert length(point) == 3
     @assert size(nodes, 2) == 3
-    ns = Array{Float32, 2}(nodes)
     minDistance = typemax(Float32)
     closestNodeIndex = 0
     p = Vector{Float32}(point)
     for i in 1:size(ns, 1)
-        d = norm( ns[i,:] .- p )
+        d = norm( Vector{Float32}(nodes[i,:]) .- p )
         if d < minDistance 
             minDistance = d
             closestNodeIndex = i
