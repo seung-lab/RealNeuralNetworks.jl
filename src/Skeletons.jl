@@ -160,7 +160,7 @@ function get_nodes(self::Skeleton) self.nodes end
 function get_edges(self::Skeleton) self.edges end
 function get_radii(self::Skeleton) self.radii end 
 function get_node_num(self::Skeleton) size(self.nodes, 1) end 
-function get_edge_num(self::Skeleton) length(self.edges) end 
+function get_edge_num(self::Skeleton) length(self.edges) end
 function Base.UnitRange(self::Skeleton) 
     minCoordinates = minimum( get_nodes(self), 1 )
     maxCoordinates = maximum( get_nodes(self), 1 )
@@ -193,6 +193,20 @@ function get_neuroglancer_precomputed(self::Skeleton)
     bin = Vector{UInt8}(take!(buffer))
     close(buffer)
     return bin 
+end 
+
+"""
+    get_connectivity_matrix(self::Skeleton)
+
+construct sparse connectivity matrix accordint to the edges 
+"""
+function get_connectivity_matrix(self::Skeleton)
+    edges = get_edges(self)
+    # number of nodes
+    num_node = get_node_num(self)
+    I = [e[1] for e in edges]
+    J = [e[2] for e in edges]
+    return sparse([I...,J...],[J...,I...],ones(Bool, 2*length(edges)))
 end 
 
 ###################### IO #################################
