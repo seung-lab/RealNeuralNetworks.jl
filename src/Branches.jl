@@ -44,19 +44,24 @@ end
 distance from a point 
 """
 function distance_from(self::Branch, point::Tuple)
-    distance_from(self, [point...])
+    distance_from(self, [point[1:3]...])
 end 
 function distance_from(self::Branch, point::Vector)
-    @assert length(point) == 3
+    ret = (0,0)
+    @assert length(point) == 3 || length(point) == 4
     distance = typemax(Float32)
-    for node in nodeList
-        d = norm([node[1:3]...], point)
-        distance = min(distance, d)
+    for (index, node) in enumerate(nodeList)
+        d = norm([node[1:3]...], point[1:3])
+        if d < distance
+            distance = d
+            ret = (d, index)
+        end 
     end 
+    ret 
 end 
 
 function get_bounding_box_distance(self::Branch, point::Union{Tuple, Vector})
-    @assert length(point) == 3
+    @assert length(point) >= 3
     BoundingBoxes.distance_from(self.boundingBox, point)
 end 
 

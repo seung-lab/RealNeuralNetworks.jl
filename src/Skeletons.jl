@@ -24,11 +24,6 @@ type Skeleton
     connectivityMatrix  :: SparseMatrixCSC{Bool,UInt32}
 end 
 
-function Skeleton(nodes::Array{UInt32, 2}, edges::Vector)
-    radii = zeros(Float32, size(nodes,1))
-    Skeleton(nodes, edges, radii) 
-end 
-
 """
     Skeleton( seg, obj_id; penalty_fn=alexs_penalty)
 Perform the teasar algorithm on the passed binary array.
@@ -168,6 +163,23 @@ function get_radii(self::Skeleton) [x[4] for x in self.nodes] end
 function get_node_num(self::Skeleton) length(self.nodes) end
 # the connectivity matrix is symmetric, so the connection is undirected
 function get_edge_num(self::Skeleton) div(nnz(self.conn),2) end
+
+"""
+    get_branch_point_num(self::Skeleton)
+
+get number of branching points 
+"""
+function get_num_branch_point(self::Skeleton)
+    conn = get_connectivity_matrix(self)
+    num_branch_point = 0
+    for col in size(conn, 2)
+        if nnz(conn[:,col]) > 2
+            num_branch_point += 1
+        end
+    end 
+    return num_branch_point 
+end 
+
 function Base.UnitRange(self::Skeleton) 
     minCoordinates = minimum( get_nodes(self), 1 )
     maxCoordinates = maximum( get_nodes(self), 1 )
@@ -177,6 +189,7 @@ function Base.UnitRange(self::Skeleton)
             minCoordinates[2]:maxCoordinates[2], 
             minCoordinates[3]:maxCoordinates[3]]
 end 
+
 ##################### transformation ##########################
 """
 get binary buffer formatted as neuroglancer skeleton.
