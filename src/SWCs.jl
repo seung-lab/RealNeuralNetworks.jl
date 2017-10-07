@@ -24,14 +24,13 @@ end
 type SWC
     # note that the first integer label was implicitly encoded as index
     points      :: Vector{PointObj}
-    attributes  :: Dict{Symbol, Any}
 end
 
 function SWC()
-    SWC( Vector{PointObj}(), Dict{Symbol, Any}() )
+    SWC( Vector{PointObj}() )
 end 
 
-function SWC(skeleton::Skeleton; attributes = Dict{Symbol,Any}())
+function SWC(skeleton::Skeleton)
     nodes = Skeletons.get_nodes(skeleton)
     edges = Skeletons.get_edges(skeleton)
     radii = Skeletons.get_radii(skeleton)
@@ -48,7 +47,7 @@ function SWC(skeleton::Skeleton; attributes = Dict{Symbol,Any}())
     for e in edges 
         points[e[2]].parent = e[1]
     end  
-    SWC(points, attributes)
+    SWC(points)
 end 
 
 ################### get properties ###################
@@ -123,13 +122,6 @@ function add_offset!(self::SWC, offset::Tuple)
         self.points[i].y += offset[2]
         self.points[i].z += offset[3]
     end 
-end 
-
-"""
-connect all the broken pieces 
-"""
-function repair!(self::SWC)
-
 end 
 
 end # module of SWCs

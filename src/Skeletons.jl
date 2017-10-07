@@ -16,9 +16,12 @@ const EXPANSION = (ONE_UINT32, ONE_UINT32, ONE_UINT32)
 export Skeleton 
 
 type Skeleton 
-    nodes   :: Array{UInt32, 2}
-    edges   :: Vector
-    radii   :: Vector{Float32}
+    # x,y,z,r
+    nodes               :: Vector{NTuple{4,Float32}}
+    # connectivity matrix to represent edges
+    # conn[2,3]=true means node 2 and 3 connected with each other
+    # conn[3,2] should also be true since this is undirected graph
+    connectivityMatrix  :: SparseMatrixCSC{Bool,UInt32}
 end 
 
 function Skeleton(nodes::Array{UInt32, 2}, edges::Vector)
@@ -148,7 +151,10 @@ function Skeleton{T}( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
   
     # build a new graph containing only the skeleton nodes and edges
     nodes, edges = distill!(points, path_nodes, path_edges)
-    skeleton = Skeleton(nodes, edges, node_radii)
+
+    conn = get_connectivity_matrix(edges)
+    nodeList = map((x,y)-> NTuple{4,Float32}([x...,y]), nodes, node_radii)
+    skeleton = Skeleton(nodeList, conn)
     # add the offset from shift bounding box function
     @show bbox_offset
     add_offset!(skeleton, bbox_offset)
@@ -157,10 +163,11 @@ end
 
 ##################### properties ###############################
 function get_nodes(self::Skeleton) self.nodes end 
-function get_edges(self::Skeleton) self.edges end
-function get_radii(self::Skeleton) self.radii end 
-function get_node_num(self::Skeleton) size(self.nodes, 1) end 
-function get_edge_num(self::Skeleton) length(self.edges) end
+function get_connectivity_matrix(self::Skeleton) self.conn end
+function get_radii(self::Skeleton) [x[4] for x in self.nodes] end 
+function get_node_num(self::Skeleton) length(self.nodes) end
+# the connectivity matrix is symmetric, so the connection is undirected
+function get_edge_num(self::Skeleton) div(nnz(self.conn),2) end
 function Base.UnitRange(self::Skeleton) 
     minCoordinates = minimum( get_nodes(self), 1 )
     maxCoordinates = maximum( get_nodes(self), 1 )
@@ -196,14 +203,11 @@ function get_neuroglancer_precomputed(self::Skeleton)
 end 
 
 """
-    get_connectivity_matrix(self::Skeleton)
+    get_connectivity_matrix(edges::Vector)
 
 construct sparse connectivity matrix accordint to the edges 
 """
-function get_connectivity_matrix(self::Skeleton)
-    edges = get_edges(self)
-    # number of nodes
-    num_node = get_node_num(self)
+function get_connectivity_matrix(edges::Vector)
     I = [e[1] for e in edges]
     J = [e[2] for e in edges]
     return sparse([I...,J...],[J...,I...],ones(Bool, 2*length(edges)))
@@ -246,13 +250,13 @@ end
 ##################### manipulate ############################
 function add_offset!(self::Skeleton, offset::NTuple{3,UInt32})
     for i in 1:get_node_num(self)
-        self.nodes[i,:] += [offset ...]
+        self.nodes[i,1:3] += [offset ...]
     end
 end
 function add_offset!(self::Skeleton, offset::Vector{UInt32})
     @assert length(offset) == 3
     for i in 1:get_node_num(self)
-        self.nodes[i, :] .+= offset 
+        self.nodes[i, 1:3] .+= offset 
     end 
 end 
 
