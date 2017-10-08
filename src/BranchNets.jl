@@ -1,31 +1,36 @@
-module Nets
+module BranchNets
 include("Branches.jl")
 using .Branches 
-using ..TEASAR.Skeletons
+using ..TEASAR.NodeNets
 
-export Net 
-type Net 
+export BranchNet
+
+type BranchNet 
     # x,y,z,r
     branchList ::Vector{Branch}
     connectivityMatrix ::SparseMatrixCSC{Bool, Int}
 end 
 
-function Net(skeleton::Skeleton)
-    numBranchPoint = Skeletons.get_num_branch_point(skeleton)
+"""
+    BranchNet
+a neuron modeled by interconnected branches 
+"""
+function BranchNet(nodeNet::NodeNet)
+    numBranchPoint = NodeNets.get_num_branch_point(nodeNet)
     # number of branches, assumes that this is acyclic graph
     numBranches = numBranchPoint + 2
     # initializae the net
     branchList = Vector{Branch}()
     connectivityMatrix = spzeros(Bool, numBranches, numBranches)
-    net = Net(branchList, connectivityMatrix)
+    net = BranchNet(branchList, connectivityMatrix)
 
-    # the properties from skeleton
-    nodes = Skeletons.get_nodes(skeleton)
-    radii = Skeletons.get_radii(skeleton)
+    # the properties from nodeNet
+    nodes = NodeNets.get_nodes(nodeNet)
+    radii = NodeNets.get_radii(nodeNet)
     # flags labeling whether this node was collected to the net
     collectedFlagVec = zeros(Bool, length(nodes))
-    # connectivity matrix of nodes in skeleton 
-    nodesConnectivityMatrix  = Skeletons.get_connectivity_matrix(skeleton)
+    # connectivity matrix of nodes in nodeNet 
+    nodesConnectivityMatrix  = NodeNets.get_connectivity_matrix(nodeNet)
     # locate the root node with largest radius
     # theoritically this should be the center of soma 
     _, rootNodeIndex = findmax(radii)
@@ -43,7 +48,7 @@ function Net(skeleton::Skeleton)
                 # grow the net from seed until there is branching point
                 seedNodeIndex = pop!(seedIndexes)
                 # grow a subnet
-                subnet = Net(seedNodeIndex, nodes, nodesConnectivityMatrix, collectedFlagVec)
+                subnet = BranchNet(seedNodeIndex, nodes, nodesConnectivityMatrix, collectedFlagVec)
                 # merge the subnet to main net
                 merge!(net, subnet, nearestBranchIndex, nearestNodeIndexInBranch)
             end 
@@ -52,7 +57,7 @@ function Net(skeleton::Skeleton)
     net     
 end 
 
-function Net(seedNodeIndex::Integer, nodes::Vector{NTuple{4, Float32}}, 
+function BranchNet(seedNodeIndex::Integer, nodes::Vector{NTuple{4, Float32}}, 
              nodesConnectivityMatrix::SparseMatrixCSC, collectedFlagVec::Vector{Bool})
     branchList = Vector{Branch}()
     # the seed of branch should record both seed node index and the the parent branch index
@@ -96,20 +101,20 @@ function Net(seedNodeIndex::Integer, nodes::Vector{NTuple{4, Float32}},
             end 
         end 
     end
-    Net(branchList, connectivityMatrix)
+    BranchNet(branchList, connectivityMatrix)
 end 
 
 """
-    get_num_branches(self::Net)
+    get_num_branches(self::BranchNet)
 
 get the number of branches  
 """
-function get_num_branches(self::Net) length(self.branchList) end 
+function get_num_branches(self::BranchNet) length(self.branchList) end 
 
 """
 merge two nets at a specific branch location
 """
-function Base.merge!(self::Net, other::Net, nearestBranchIndex::Integer, 
+function Base.merge!(self::BranchNet, other::BranchNet, nearestBranchIndex::Integer, 
                      nearestNodeIndexInBranch::Integer)
     if isempty(self)
         self = other 
@@ -152,12 +157,17 @@ function Base.merge!(self::Net, other::Net, nearestBranchIndex::Integer,
                                                                 other.connectivityMatrix 
         
         # create new merged net
-        self = Net(self.branchList, mergedConnectivityMatrix)
+        self = BranchNet(self.branchList, mergedConnectivityMatrix)
         return
     end
 end 
 
-function Base.isempty(self::Net)    isempty(self.branchList) end 
+function Base.isempty(self::BranchNet)    isempty(self.branchList) end 
+
+
+function NodeNets.NodeNet(net::BranchNet)
+    
+end 
 
 """
     find_nearest_node_index(branchList::Vector{Branch}, nodes::Vector{NTuple{4,Float32}})

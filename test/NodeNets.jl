@@ -3,14 +3,14 @@ using Base.Test
 using HDF5
 using BigArrays
 using GSDicts
-using TEASAR.Skeletons
+using TEASAR.NodeNets
 using TEASAR.SWCs
 using JLD
 
 const CELL_ID = UInt32(76880)
 const EXPANSION= (UInt32(80), UInt32(80), UInt32(40))
 const GS_SEG_PATH = "gs://neuroglancer/zfish_v1/consensus-20170829/80_80_45"
-const GS_SKELETON_PATH = "gs://neuroglancer/zfish_v1/consensus-20170829/skeleton_mip_4"
+const GS_SKELETON_PATH = "gs://neuroglancer/zfish_v1/consensus-20170829/nodeNet_mip_4"
 const MIP = 4
 
 function get_seg_from_h5()
@@ -43,25 +43,25 @@ function create_fake_seg()
     return seg 
 end 
 
-@testset "test skeletonization" begin
+@testset "test NodeNets module" begin
     seg = create_fake_seg()
     # @time seg = get_seg_from_h5()
     # @time seg = get_seg_from_gs()
-    println("building skeleton ...")
-    #@time skeleton = Skeleton( seg; obj_id = CELL_ID )
-    @time skeleton = Skeleton( seg; obj_id = UInt32(1) )
-    bin = Skeletons.get_neuroglancer_precomputed(skeleton)
+    println("building nodeNet ...")
+    #@time nodeNet = NodeNet( seg; obj_id = CELL_ID )
+    @time nodeNet = NodeNet( seg; obj_id = UInt32(1) )
+    bin = NodeNets.get_neuroglancer_precomputed(nodeNet)
     # open("/tmp/fake.bin", "w") do f write(f, bin)  end 
-    @time swc = SWC( skeleton )
+    @time swc = SWC( nodeNet )
     SWCs.stretch_coordinates!(swc, MIP)
     @test length(swc) > 1
-    save("/tmp/$(CELL_ID).jld", "skeleton", skeleton, "swc", swc)
+    save("/tmp/$(CELL_ID).jld", "nodeNet", nodeNet, "swc", swc)
     SWCs.save(swc, "/tmp/$(CELL_ID).swc")
 
     # test saving to google cloud for neuroglancer visualization
     d_json = GSDict( GS_SKELETON_PATH; valueType = String )
     d_bin  = GSDict( GS_SKELETON_PATH )
-    Skeletons.save(skeleton, CELL_ID, d_json, d_bin)
+    NodeNets.save(nodeNet, CELL_ID, d_json, d_bin)
 end 
 
 

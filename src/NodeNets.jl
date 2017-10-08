@@ -1,4 +1,4 @@
-module Skeletons
+module NodeNets
 
 import ..DBFs
 
@@ -13,9 +13,9 @@ const ONE_UINT32  = convert(UInt32, 1)
 const OFFSET = (ZERO_UINT32, ZERO_UINT32, ZERO_UINT32)
 const EXPANSION = (ONE_UINT32, ONE_UINT32, ONE_UINT32)
 
-export Skeleton 
+export NodeNet 
 
-type Skeleton 
+type NodeNet 
     # x,y,z,r
     nodes               :: Vector{NTuple{4,Float32}}
     # connectivity matrix to represent edges
@@ -25,27 +25,27 @@ type Skeleton
 end 
 
 """
-    Skeleton( seg, obj_id; penalty_fn=alexs_penalty)
+    NodeNet( seg, obj_id; penalty_fn=alexs_penalty)
 Perform the teasar algorithm on the passed binary array.
 """
-function Skeleton{T}( seg::Array{T,3}; 
+function NodeNet{T}( seg::Array{T,3}; 
                         obj_id::T = convert(T,1), 
                         expansion::NTuple{3, UInt32} = EXPANSION,
                         penalty_fn::Function = alexs_penalty )
     # note that the object voxels are false and non-object voxels are true!
     # bin_im = DBFs.create_binary_image( seg, obj_id ) 
     points = PointArrays.from_seg(seg; obj_id=obj_id)
-    Skeleton(points; expansion=expansion, penalty_fn=penalty_fn) 
+    NodeNet(points; expansion=expansion, penalty_fn=penalty_fn) 
 end 
 
 """
-    Skeleton(bin_im)
+    NodeNet(bin_im)
 Parameters:
     bin_im: binary mask. the object voxel should be false, non-object voxel should be true
 Return:
-    skeleton object
+    nodeNet object
 """
-function Skeleton(bin_im::Array{Bool,3}; offset::NTuple{3, UInt32} = OFFSET,
+function NodeNet(bin_im::Array{Bool,3}; offset::NTuple{3, UInt32} = OFFSET,
                     expansion::NTuple{3, UInt32} = EXPANSION,
                     penalty_fn::Function = alexs_penalty)
         # transform segmentation to points
@@ -58,15 +58,15 @@ function Skeleton(bin_im::Array{Bool,3}; offset::NTuple{3, UInt32} = OFFSET,
     # @time dbf = DBFs.compute_DBF(points, bin_im)
 
     PointArrays.add_offset!(points, offset)
-    Skeleton(points; dbf=dbf, penalty_fn=penalty_fn, expansion = expansion)
+    NodeNet(points; dbf=dbf, penalty_fn=penalty_fn, expansion = expansion)
 end 
 
 """
-    Skeleton( points; penalty_fn = alexs_penalty )
+    NodeNet( points; penalty_fn = alexs_penalty )
 
   Perform the teasar algorithm on the passed Nxd array of points
 """
-function Skeleton{T}( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
+function NodeNet{T}( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
                             penalty_fn::Function = alexs_penalty,
                             expansion::NTuple{3, UInt32} = EXPANSION)
 
@@ -86,7 +86,7 @@ function Skeleton{T}( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
   # I have to do something a bit more complicated
   _,nonzero_vals = findnz(ind2node);
   disconnected_nodes = IntSet( nonzero_vals );
-  paths = Vector(); #holds array of skeleton paths
+  paths = Vector(); #holds array of nodeNet paths
   root_nodes = Vector{Int}(); #holds root nodes for each path
   destinations = Vector{Int}(); #host dest node for each path
   #set of nodes for which we've "inspected" already
@@ -144,7 +144,7 @@ function Skeleton{T}( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
   path_nodes, path_edges = consolidate_paths( paths );
   node_radii = dbf[path_nodes];
   
-    # build a new graph containing only the skeleton nodes and edges
+    # build a new graph containing only the nodeNet nodes and edges
     nodes, edges = distill!(points, path_nodes, path_edges)
 
     conn = get_connectivity_matrix(edges)
@@ -152,23 +152,23 @@ function Skeleton{T}( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
     for i in 1:length(node_radii)
         push!(nodeList, (map(Float32,nodes[i,:])..., node_radii[i]))
     end 
-    skeleton = Skeleton(nodeList, conn)
+    nodeNet = NodeNet(nodeList, conn)
     # add the offset from shift bounding box function
     @show bbox_offset
-    add_offset!(skeleton, bbox_offset)
-    return skeleton
+    add_offset!(nodeNet, bbox_offset)
+    return nodeNet
 end
 
 ##################### properties ###############################
-function get_nodes(self::Skeleton) self.nodes end 
-function get_connectivity_matrix(self::Skeleton) self.connectivityMatrix end
-function get_xyz(self::Skeleton) map(x->x[1:3], self.nodes) end
-function get_radii(self::Skeleton) map(x->x[4],  self.nodes) end 
-function get_node_num(self::Skeleton) length(self.nodes) end
+function get_nodes(self::NodeNet) self.nodes end 
+function get_connectivity_matrix(self::NodeNet) self.connectivityMatrix end
+function get_xyz(self::NodeNet) map(x->x[1:3], self.nodes) end
+function get_radii(self::NodeNet) map(x->x[4],  self.nodes) end 
+function get_node_num(self::NodeNet) length(self.nodes) end
 # the connectivity matrix is symmetric, so the connection is undirected
-function get_edge_num(self::Skeleton) div(nnz(self.connectivityMatrix), 2) end
+function get_edge_num(self::NodeNet) div(nnz(self.connectivityMatrix), 2) end
 
-function get_edges(self::Skeleton) 
+function get_edges(self::NodeNet) 
     edges = Vector{Tuple{UInt32,UInt32}}()
     conn = get_connectivity_matrix(self)
     I,J,V = findnz(conn)
@@ -182,11 +182,11 @@ function get_edges(self::Skeleton)
 end 
 
 """
-    get_branch_point_num(self::Skeleton)
+    get_branch_point_num(self::NodeNet)
 
 get number of branching points 
 """
-function get_num_branch_point(self::Skeleton)
+function get_num_branch_point(self::NodeNet)
     conn = get_connectivity_matrix(self)
     num_branch_point = 0
     for col in size(conn, 2)
@@ -197,7 +197,7 @@ function get_num_branch_point(self::Skeleton)
     return num_branch_point 
 end 
 
-function Base.UnitRange(self::Skeleton)
+function Base.UnitRange(self::NodeNet)
     minCoordinates = [typemax(UInt32), typemax(UInt32), typemax(UInt32)]
     maxCoordinates = [ZERO_UINT32, ZERO_UINT32, ZERO_UINT32]
     for node in get_nodes(self)
@@ -211,12 +211,12 @@ end
 
 ##################### transformation ##########################
 """
-get binary buffer formatted as neuroglancer skeleton.
+get binary buffer formatted as neuroglancer nodeNet.
 UInt32: the number of vertex (N)
 Array{Float32, 2}, size=(N,3): the vertexes including x,y,z coordinates 
 Array{UInt32,2}, size= (M,2): the edges, pair of node indeces 
 """
-function get_neuroglancer_precomputed(self::Skeleton) 
+function get_neuroglancer_precomputed(self::NodeNet) 
     # total number of bytes
     num_bytes = 4 + 4*3*get_node_num(self) + 4*2*length(get_edge_num(self))
     buffer = IOBuffer( num_bytes )
@@ -249,28 +249,28 @@ end
 
 ###################### IO #################################
 """
-    save(self::Skeleton, cellId::UInt32, d_json::GSDict, d_bin::GSDict)
+    save(self::NodeNet, cellId::UInt32, d_json::GSDict, d_bin::GSDict)
 
-save skeleton in google cloud storage for neuroglancer visualization
+save nodeNet in google cloud storage for neuroglancer visualization
 the format is the same with meshes
 """
-function save(self::Skeleton, cellId::UInt32, d_json::GSDict, d_bin::GSDict)
-    # get the bounding box of skeleton and transfer to string representation
+function save(self::NodeNet, cellId::UInt32, d_json::GSDict, d_bin::GSDict)
+    # get the bounding box of nodeNet and transfer to string representation
     # example string: 1432-1944_1264-1776_16400-16912
     rangeString = BigArrays.Indexes.unit_range2string( UnitRange(self) )
     # construct manifest file
     d_json["$(cellId):0"] = """
     {"fragments": ["$(cellId):0:$(rangeString)"]}
 """ 
-    # write the binary representation of skeleton
+    # write the binary representation of nodeNet
     d_bin["$(cellId):0:$(rangeString)"] = get_neuroglancer_precomputed(self)
 end
 
 """
 save binary file of point pairs
-used in neuroglancer python interface to visualize the skeleton 
+used in neuroglancer python interface to visualize the nodeNet 
 """
-function save_edges(self::Skeleton, fileName::String)
+function save_edges(self::NodeNet, fileName::String)
     open(fileName, "w") do f
         nodes = get_nodes(self)
         edges = get_edges(self)
@@ -282,7 +282,7 @@ function save_edges(self::Skeleton, fileName::String)
 end 
 
 ##################### manipulate ############################
-function add_offset!(self::Skeleton, offset::Union{Vector,Tuple} )
+function add_offset!(self::NodeNet, offset::Union{Vector,Tuple} )
     @assert length(offset) == 3
     for i in 1:get_node_num(self)
         xyz = map((x,y)->x+y, self.nodes[i][1:3],offset)
@@ -300,7 +300,7 @@ end
   Normalize the point dimensions by subtracting the min
   across each dimension. This step isn't extremely necessary,
   but might be useful for compatibility with the MATLAB code.
-  record the offset and add it back after building the skeleton
+  record the offset and add it back after building the nodeNet
 """
 function shift_points_to_bbox( points )
   offset = minimum( points, 1 ) -1 ;
@@ -630,11 +630,11 @@ end
 Parameters:
 ===========
     point_array: a Nx3 array recording all the voxel coordinates inside the object.
-    path_nodes: the indexes of skeleton voxels in the point_array 
-    path_edges: the index pairs of skeleton in the point_array  
+    path_nodes: the indexes of nodeNet voxels in the point_array 
+    path_edges: the index pairs of nodeNet in the point_array  
 
 In the path_nodes, the nodes were encoded as the index of the point_array. Since we do 
-not need point_array anymore, which could be pretty big, we'll only reserve the skeleton 
+not need point_array anymore, which could be pretty big, we'll only reserve the nodeNet 
 coordinates and let the gc release the point_array. 
 the same applys to path_edges 
 """

@@ -1,5 +1,5 @@
 module SWCs
-using ..TEASAR.Skeletons
+using ..TEASAR.NodeNets
 
 export SWC
 
@@ -30,12 +30,12 @@ function SWC()
     SWC( Vector{PointObj}() )
 end 
 
-function SWC(skeleton::Skeleton)
-    edges = Skeletons.get_edges(skeleton)
+function SWC(nodeNet::NodeNet)
+    edges = NodeNets.get_edges(nodeNet)
     points = Vector{PointObj}()
-    sizehint!(points, Skeletons.get_node_num(skeleton))
+    sizehint!(points, NodeNets.get_node_num(nodeNet))
 
-    for node in Skeletons.get_nodes(skeleton)
+    for node in NodeNets.get_nodes(nodeNet)
         point = PointObj(0, node[1], node[2], node[3], node[4], -1)
         push!(points, point)
     end

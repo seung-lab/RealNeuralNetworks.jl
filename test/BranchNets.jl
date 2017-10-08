@@ -1,6 +1,6 @@
 using Base.Test
-using TEASAR.Nets
-using TEASAR.Skeletons
+using TEASAR.BranchNets
+using TEASAR.NodeNets
 
 const ONE_UINT32 = UInt32(1)
 
@@ -18,10 +18,10 @@ function create_cylinder_segmentation(radius::Float32=Float32(20), height::Integ
     seg
 end
 
-@testset "test Nets" begin 
+@testset "test BranchNets" begin 
     seg = create_cylinder_segmentation()
-    println("skeletonization ...")
-    @time skeleton = Skeleton(seg)
+    println("nodeNetization ...")
+    @time nodeNet = NodeNet(seg)
     println("transform to Net structure")
-    @time net = Net(skeleton)
+    @time net = BranchNet(nodeNet)
 end 
