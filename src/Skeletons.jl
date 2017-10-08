@@ -148,7 +148,10 @@ function Skeleton{T}( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
     nodes, edges = distill!(points, path_nodes, path_edges)
 
     conn = get_connectivity_matrix(edges)
-    nodeList = map((x,y)-> NTuple{4,Float32}([x...,y]), nodes, node_radii)
+    nodeList = Vector{NTuple{4,Float32}}()
+    for i in 1:length(node_radii)
+        push!(nodeList, (map(Float32,nodes[i,:])..., node_radii[i]))
+    end 
     skeleton = Skeleton(nodeList, conn)
     # add the offset from shift bounding box function
     @show bbox_offset
@@ -158,11 +161,25 @@ end
 
 ##################### properties ###############################
 function get_nodes(self::Skeleton) self.nodes end 
-function get_connectivity_matrix(self::Skeleton) self.conn end
-function get_radii(self::Skeleton) [x[4] for x in self.nodes] end 
+function get_connectivity_matrix(self::Skeleton) self.connectivityMatrix end
+function get_xyz(self::Skeleton) map(x->x[1:3], self.nodes) end
+function get_radii(self::Skeleton) map(x->x[4],  self.nodes) end 
 function get_node_num(self::Skeleton) length(self.nodes) end
 # the connectivity matrix is symmetric, so the connection is undirected
-function get_edge_num(self::Skeleton) div(nnz(self.conn),2) end
+function get_edge_num(self::Skeleton) div(nnz(self.connectivityMatrix), 2) end
+
+function get_edges(self::Skeleton) 
+    edges = Vector{Tuple{UInt32,UInt32}}()
+    conn = get_connectivity_matrix(self)
+    I,J,V = findnz(conn)
+    # only record the triangular part of the connectivity matrix
+    for index in 1:length(I)
+        if I[index] > J[index]
+            push!(edges, (I[index], J[index]) )
+        end 
+    end 
+    edges
+end 
 
 """
     get_branch_point_num(self::Skeleton)
@@ -180,11 +197,13 @@ function get_num_branch_point(self::Skeleton)
     return num_branch_point 
 end 
 
-function Base.UnitRange(self::Skeleton) 
-    minCoordinates = minimum( get_nodes(self), 1 )
-    maxCoordinates = maximum( get_nodes(self), 1 )
-    @show length(minCoordinates)
-    @assert length(minCoordinates) == 3
+function Base.UnitRange(self::Skeleton)
+    minCoordinates = [typemax(UInt32), typemax(UInt32), typemax(UInt32)]
+    maxCoordinates = [ZERO_UINT32, ZERO_UINT32, ZERO_UINT32]
+    for node in get_nodes(self)
+        minCoordinates = map(min, minCoordinates, node[1:3])
+        maxCoordinates = map(max, maxCoordinates, node[1:3])
+    end 
     return [minCoordinates[1]:maxCoordinates[1], 
             minCoordinates[2]:maxCoordinates[2], 
             minCoordinates[3]:maxCoordinates[3]]
@@ -204,7 +223,9 @@ function get_neuroglancer_precomputed(self::Skeleton)
     # write the number of vertex
     write(buffer, UInt32(get_node_num(self)))
     # write the node coordinates
-    write(buffer, Array{UInt32,2}( get_nodes(self) ))
+    for node in get_nodes(self)
+        write(buffer, [node[1:3]...])
+    end 
     for edge in get_edges( self )
         write(buffer, UInt32( edge[1] ))
         write(buffer, UInt32( edge[2] ))
@@ -261,15 +282,11 @@ function save_edges(self::Skeleton, fileName::String)
 end 
 
 ##################### manipulate ############################
-function add_offset!(self::Skeleton, offset::NTuple{3,UInt32})
-    for i in 1:get_node_num(self)
-        self.nodes[i,1:3] += [offset ...]
-    end
-end
-function add_offset!(self::Skeleton, offset::Vector{UInt32})
+function add_offset!(self::Skeleton, offset::Union{Vector,Tuple} )
     @assert length(offset) == 3
     for i in 1:get_node_num(self)
-        self.nodes[i, 1:3] .+= offset 
+        xyz = map((x,y)->x+y, self.nodes[i][1:3],offset)
+        self.nodes[i] = (xyz..., self.nodes[i][4])
     end 
 end 
 

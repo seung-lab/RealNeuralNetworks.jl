@@ -37,15 +37,16 @@ function Net(skeleton::Skeleton)
             nearestNodeIndex, nearestBranchIndex, nearestNodeIndexInBranch = 
                         find_nearest_node_index(branchList, nodes, collectedFlagVec)
             seedNodeIndexes = [nearestNodeIndex]
-        end 
-        # if there still exist unvisitied edges
-        while !isempty(seedIndexes)
-            # grow the net from seed until there is branching point
-            seedNodeIndex = pop!(seedIndexes)
-            # grow a subnet
-            subnet = Net(seedNodeIndex, nodes, nodesConnectivityMatrix, collectedFlagVec)
-            # merge the subnet to main net
-            merge!(net, subnet, nearestBranchIndex, nearestNodeIndexInBranch)
+        else 
+            # if there still exist unvisitied edges
+            while !isempty(seedIndexes)
+                # grow the net from seed until there is branching point
+                seedNodeIndex = pop!(seedIndexes)
+                # grow a subnet
+                subnet = Net(seedNodeIndex, nodes, nodesConnectivityMatrix, collectedFlagVec)
+                # merge the subnet to main net
+                merge!(net, subnet, nearestBranchIndex, nearestNodeIndexInBranch)
+            end 
         end 
     end 
     net     
@@ -54,32 +55,48 @@ end
 function Net(seedNodeIndex::Integer, nodes::Vector{NTuple{4, Float32}}, 
              nodesConnectivityMatrix::SparseMatrixCSC, collectedFlagVec::Vector{Bool})
     branchList = Vector{Branch}()
-    seedIndexList = [seedNodeIndex]
-    while !isempty(seedIndexList)
-        seedIndex = pop!(seedIndexList)
+    # the seed of branch should record both seed node index and the the parent branch index
+    # the parent branch index of root branch is -1 
+    branchSeedList = Vector{NTuple{Int, Int}}( [(seedNodeIndex, -1)] )
+    # depth first search
+    while !isempty(branchSeedList)
+        seedNodeIndex, branchParentIndex = pop!(branchSeedList)
         # grow a branch from seed
         branch = Vector{NTuple{4, Float32}}()
-        while true 
+        while true
+            # construct this branch
             # push the seed node
-            push!(branch, nodes[seedIndex])
+            push!(branch, nodes[seedNodeIndex])
+            # label this node index as collected
+            collectedFlagVec[ seedNodeIndex ] = true 
 
             # find the connected nodes
-            seedNodeIndexList,_ = findnz(nodesConnectivityMatrix[:, seedNodeIndex])
+            connectedNodeIndexList,_ = findnz(nodesConnectivityMatrix[:, seedNodeIndex])
             # exclude the collected nodes
-            seedNodeIndexList = 
-            # 
-            connectedNodes = 
-            if length(seedNodeIndexes) == 0
+            connectedNodeIndexList = connectedNodeIndexList[ !collectedFlagVec[connectedNodeIndexList] ] 
+
+            if length(connectedNodeIndexList) == 0
                 error("impossible, all node should connect to something!")
-            elseif length(seedNodeIndexes) == 1
-                # belong to the same 
-                seedNodeIndex = seedIndexes[1]
-                push!(branch, nodes[ seedNodeIndex ])
-            elseif length(seedNodeIndexes) > 1
-                # multiple 
-
-
-
+            elseif length(connectedNodeIndexList) == 1
+                # belong to the same branch
+                push!(branch, nodes[ connectedNodeIndexList[1] ])
+                push!(seedNodeIndexList, connectedNodeIndexList[1])
+            elseif length( connectedNodeIndexList ) > 1
+                # multiple branching points, finish constructing this branch
+                push!(branchList, branch)
+                if branchParentIndex != -1
+                    # this is not the root branch
+                    connectivityMatrix[branchParentIndex, length(branchList)]
+                end 
+                # seed new branches
+                for index in connectedNodeIndexList 
+                    push!(branchSeedList, (index, length(branchList)))
+                end 
+                break
+            end 
+        end 
+    end
+    Net(branchList, connectivityMatrix)
 end 
 
 """
@@ -172,4 +189,5 @@ function find_nearest_node_index(branchList::Vector{Branch},
     end 
     ret 
 end 
+
 end # module

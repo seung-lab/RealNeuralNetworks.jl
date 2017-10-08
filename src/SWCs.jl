@@ -31,16 +31,12 @@ function SWC()
 end 
 
 function SWC(skeleton::Skeleton)
-    nodes = Skeletons.get_nodes(skeleton)
     edges = Skeletons.get_edges(skeleton)
-    radii = Skeletons.get_radii(skeleton)
-    @assert size(nodes, 1) == length(radii)
-    num = length(radii)
     points = Vector{PointObj}()
-    sizehint!(points, num)
+    sizehint!(points, Skeletons.get_node_num(skeleton))
 
-    for i in 1:num 
-        point = PointObj(0, nodes[i,1], nodes[i,2], nodes[i,3], radii[i], -1)
+    for node in Skeletons.get_nodes(skeleton)
+        point = PointObj(0, node[1], node[2], node[3], node[4], -1)
         push!(points, point)
     end
     # assign parents according to edge 
