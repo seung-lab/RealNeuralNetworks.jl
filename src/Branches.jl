@@ -5,6 +5,7 @@ include("BoundingBoxes.jl")
 using .BoundingBoxes 
 
 const CLASS = UInt8(0)
+const ZERO_FLOAT32 = Float32(0)
 
 export Branch 
 type Branch 
@@ -18,6 +19,13 @@ function Branch(nodeList::Vector; class=CLASS)
     Branch(nodeList, class, BoundingBox(nodeList))
 end 
 
+###################### properties ###################
+function get_node_list(self::Branch) self.nodeList end 
+function get_connectivity_matrix( self::Branch ) self.connectivityMatrix end 
+function get_bounding_box( self::Branch ) self.boundingBox end 
+function get_class( self::Branch ) self.class end 
+
+###################### Base functions ################
 """
     Base.length(self::Branch)
 
@@ -63,6 +71,16 @@ end
 function get_bounding_box_distance(self::Branch, point::Union{Tuple, Vector})
     @assert length(point) >= 3
     BoundingBoxes.distance_from(self.boundingBox, point)
+end 
+
+function add_offset(self::Branch, offset::Union{Tuple, Vector})
+    @assert length(offset) == 3
+    nodeList = Vector{NTuple{4,Float32}}()
+    for node in self.nodeList
+        newNode = map(+, node, [offset..., ZERO_FLOAT32])
+        push!(nodeList, newNode)
+    end
+    Branch(nodeList, self.class, self.boundingBox)    
 end 
 
 end # module

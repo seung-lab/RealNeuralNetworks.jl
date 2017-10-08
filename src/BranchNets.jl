@@ -2,6 +2,7 @@ module BranchNets
 include("Branches.jl")
 using .Branches 
 using ..TEASAR.NodeNets
+using ..TEASAR.SWCs
 
 export BranchNet
 
@@ -110,6 +111,31 @@ end
 get the number of branches  
 """
 function get_num_branches(self::BranchNet) length(self.branchList) end 
+function get_branch_list(self::BranchNet) self.branchList end 
+function get_connectivity_matrix(self::BranchNet) self.connectivityMatrix end 
+"""
+    get_branch_length_list( self::BranchNet )
+
+get a vector of Integer, which represent the length of each branch 
+"""
+function get_branch_length_list( self::BranchNet ) map(length, get_branch_list(self)) end
+
+"""
+    get_branch_end_node_index_list( self::BranchNet )
+
+get a vector of integer, which represent the node index of branch end 
+"""
+function get_branch_end_node_index_list( self::BranchNet ) cumsum( get_branch_length_list(self) ) end 
+
+"""
+    get_num_nodes(self::BranchNet)
+
+get number of nodes 
+"""
+function get_num_nodes( self::BranchNet )
+    branchList = get_branch_list(self)
+    sum(map(length, branchList))
+end 
 
 """
 merge two nets at a specific branch location
@@ -164,9 +190,40 @@ end
 
 function Base.isempty(self::BranchNet)    isempty(self.branchList) end 
 
+########################## type convertion ####################
+function SWCs.SWC(self::BranchNet)
+    # initialize swc, which is a list of point objects
+    swc = SWC()
+    # the node index of each branch, will be used for connecting the child branch
+    branchEndNodeIndexList = get_branch_end_node_index_list(self)
+    # connectivity matrix of branches
+    branchConnectivityMatrix = get_connectivity_matrix(self)
 
-function NodeNets.NodeNet(net::BranchNet)
-    
+    for (branchIndex, branch) in enumerate( get_branch_list(self) )
+        for (nodeInde, node) in enumerate(get_node_list( branch ))
+            # type, x, y, z, r, parent
+            # in default, this was assumed that the connection is inside a branch, 
+            # the parent is simply the previous node 
+            pointObj = SWCs.PointObj( get_class(branch), node[1], node[2], node[3], node[4], length(swc) )
+            
+            if nodeIndex == 1
+                # the first node should connect to other branch or be root node
+                if length(swc) == 0
+                    pointObj.parent = -1
+                else
+                    # find the connected parent branch index 
+                    parentBranchIndexList,_ = findnz(branchConnectivityMatrix[:, branchIndex])
+                    # always have and only have one parent branch
+                    @assert length(parentBranchIndexList) == 1
+                    parentBranchIndex = parentBranchIndexList[1]
+                    # the node index of parent branch end
+                    pointObj.parent= branchEndNodeIndexList[ parentBranchIndex ]
+                end 
+            end 
+            push!(swc, pointObj)
+        end 
+    end
+    swc
 end 
 
 """
@@ -199,5 +256,16 @@ function find_nearest_node_index(branchList::Vector{Branch},
     end 
     ret 
 end 
+
+function add_offset(self::BranchNet, offset::Union{Vector, Tuple})
+    branchList = Vector{Branch}()
+    for branch in self.branchList 
+        newBranch = Branches.add_offset(branch, offset)
+        push!(branchList, newBranch)
+    end 
+    BranchNet(branchList, self.connectivityMatrix)
+end 
+
+
 
 end # module

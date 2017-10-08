@@ -71,7 +71,7 @@ function trace(self::Manifest, cellId)
     # save temporal variables for debug
     # save("/tmp/$(cellId).jld", "point_clouds", pointClouds, 
     #         "point_cloud", pointCloud, "dbf", dbf)
-    println("nodeNetization from global point cloud and dbf ...")
+    println("skeletonization from global point cloud and dbf using TEASAR algorithm...")
     @time nodeNet = NodeNet(pointCloud; dbf=dbf) 
     return nodeNet
 end 

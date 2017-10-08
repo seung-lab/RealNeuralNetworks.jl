@@ -1,6 +1,7 @@
 using Base.Test
 using TEASAR.BranchNets
 using TEASAR.NodeNets
+using TEASAR.SWCs
 
 const ONE_UINT32 = UInt32(1)
 
@@ -20,8 +21,14 @@ end
 
 @testset "test BranchNets" begin 
     seg = create_cylinder_segmentation()
-    println("nodeNetization ...")
+    println("skeletonization to build a NodeNet ...")
     @time nodeNet = NodeNet(seg)
-    println("transform to Net structure")
-    @time net = BranchNet(nodeNet)
+    @show nodeNet
+    println("transform to BranchNet structure ...")
+    @time branchNet = BranchNet(nodeNet)
+    @show branchNet 
+    println("transform to SWC structure ...")
+    @time swc = SWCs.SWC( branchNet )
+    @show swc
+    SWCs.save(swc, "/tmp/cylinder.swc")
 end 
