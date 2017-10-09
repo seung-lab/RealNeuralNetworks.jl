@@ -2,7 +2,7 @@ module Manifests
 using GSDicts, BigArrays
 import ..TEASAR.DBFs
 import ..TEASAR.PointArrays
-using ..TEASAR.Skeletons
+using ..TEASAR.NodeNets
 
 const MIP_LEVEL = 4
 
@@ -71,9 +71,9 @@ function trace(self::Manifest, cellId)
     # save temporal variables for debug
     # save("/tmp/$(cellId).jld", "point_clouds", pointClouds, 
     #         "point_cloud", pointCloud, "dbf", dbf)
-    println("skeletonization from global point cloud and dbf ...")
-    @time skeleton = Skeleton(pointCloud; dbf=dbf) 
-    return skeleton
+    println("skeletonization from global point cloud and dbf using TEASAR algorithm...")
+    @time nodeNet = NodeNet(pointCloud; dbf=dbf) 
+    return nodeNet
 end 
 
 function Base.start(self::Manifest)

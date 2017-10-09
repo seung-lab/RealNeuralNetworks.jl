@@ -3,7 +3,7 @@ using GSDicts
 using Base.Test
 using TEASAR 
 using TEASAR.Manifests
-using TEASAR.Skeletons
+using TEASAR.NodeNets
 using TEASAR.SWCs
 using JLD
 
@@ -21,8 +21,8 @@ end
 @testset "test manifest iteration" begin
     manifest = Manifest("gs://neuroglancer/zfish_v1/consensus-20170829/mesh_mip_4", 
                         "$(cellId):0", "gs://neuroglancer/zfish_v1/consensus-20170829/80_80_45")
-    skeleton = Manifests.trace(manifest, cellId)
-    swc = SWC( skeleton )
+    nodeNet = Manifests.trace(manifest, cellId)
+    swc = SWC( nodeNet )
     SWCs.stretch_coordinates!(swc, VOXEL_SIZE)
     SWCs.save(swc, "/tmp/$(cellId).swc")
 end 

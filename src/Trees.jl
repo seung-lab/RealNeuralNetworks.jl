@@ -1,6 +1,6 @@
 module Trees
 
-using ..Skeletons
+using ..NodeNets
 
 abstract AbstractTree 
 export Tree 
@@ -11,7 +11,7 @@ type Tree{T} <: AbstractTree
     subTrees    ::Vector 
 end 
 
-function Tree{T}( skeleton::Skeleton )
+function Tree{T}( nodeNet::NodeNet )
     
 end 
 
