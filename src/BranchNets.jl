@@ -86,7 +86,6 @@ function BranchNet!(seedNodeIndex::Integer, nodeNet::NodeNet, collectedFlagVec::
             # find the connected nodes
             connectedNodeIndexList,_ = findnz(nodesConnectivityMatrix[:, seedNodeIndex])
             # exclude the collected nodes
-            @show countnz(collectedFlagVec)
             connectedNodeIndexList = connectedNodeIndexList[ !collectedFlagVec[connectedNodeIndexList] ] 
 
             if length(connectedNodeIndexList) == 1
@@ -249,6 +248,7 @@ function find_nearest_node_index(branchList::Vector{Branch},
     ret = (0,0,0)
     distance = typemax(Float32)
     @assert length(nodes) == length(collectedFlagVec)
+    @assert !all(collectedFlagVec)
     for (nodeIndex, node) in enumerate(nodes)
         if !collectedFlagVec[nodeIndex]
             for (branchIndex, branch) in enumerate(branchList)
@@ -265,7 +265,8 @@ function find_nearest_node_index(branchList::Vector{Branch},
                 end 
             end
         end 
-    end 
+    end
+    @assert ret!=(0,0,0) 
     ret 
 end 
 
