@@ -17,7 +17,7 @@ export NodeNet
 
 type NodeNet 
     # x,y,z,r
-    nodes               :: Vector{NTuple{4,Float32}}
+    nodeList               :: Vector{NTuple{4,Float32}}
     # connectivity matrix to represent edges
     # conn[2,3]=true means node 2 and 3 connected with each other
     # conn[3,2] should also be true since this is undirected graph
@@ -160,11 +160,11 @@ function NodeNet{T}( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
 end
 
 ##################### properties ###############################
-function get_nodes(self::NodeNet) self.nodes end 
+function get_node_list(self::NodeNet) self.nodeList end 
 function get_connectivity_matrix(self::NodeNet) self.connectivityMatrix end
-function get_xyz(self::NodeNet) map(x->x[1:3], self.nodes) end
-function get_radii(self::NodeNet) map(x->x[4],  self.nodes) end 
-function get_node_num(self::NodeNet) length(self.nodes) end
+function get_xyz(self::NodeNet) map(x->x[1:3], self.nodeList) end
+function get_radii(self::NodeNet) map(x->x[4],  self.nodeList) end 
+function get_node_num(self::NodeNet) length(self.nodeList) end
 # the connectivity matrix is symmetric, so the connection is undirected
 function get_edge_num(self::NodeNet) div(nnz(self.connectivityMatrix), 2) end
 
@@ -195,12 +195,19 @@ function get_num_branch_point(self::NodeNet)
         end
     end 
     return num_branch_point 
+end
+
+"""
+assume that the graph is acyclic, no loop.
+"""
+function get_num_branches(self::NodeNet)
+    get_num_branch_point(self) + 2
 end 
 
 function Base.UnitRange(self::NodeNet)
     minCoordinates = [typemax(UInt32), typemax(UInt32), typemax(UInt32)]
     maxCoordinates = [ZERO_UINT32, ZERO_UINT32, ZERO_UINT32]
-    for node in get_nodes(self)
+    for node in get_node_list(self)
         minCoordinates = map(min, minCoordinates, node[1:3])
         maxCoordinates = map(max, maxCoordinates, node[1:3])
     end 
@@ -223,7 +230,7 @@ function get_neuroglancer_precomputed(self::NodeNet)
     # write the number of vertex
     write(buffer, UInt32(get_node_num(self)))
     # write the node coordinates
-    for node in get_nodes(self)
+    for node in get_node_list(self)
         write(buffer, [node[1:3]...])
     end 
     for edge in get_edges( self )
@@ -272,11 +279,11 @@ used in neuroglancer python interface to visualize the nodeNet
 """
 function save_edges(self::NodeNet, fileName::String)
     open(fileName, "w") do f
-        nodes = get_nodes(self)
+        nodeList = get_node_list(self)
         edges = get_edges(self)
         for edge in edges
-            write(f, nodes[ edge[1] ])
-            write(f, nodes[ edge[2] ])
+            write(f, nodeList[ edge[1] ])
+            write(f, nodeList[ edge[2] ])
         end 
     end
 end 
@@ -285,8 +292,8 @@ end
 function add_offset!(self::NodeNet, offset::Union{Vector,Tuple} )
     @assert length(offset) == 3
     for i in 1:get_node_num(self)
-        xyz = map((x,y)->x+y, self.nodes[i][1:3],offset)
-        self.nodes[i] = (xyz..., self.nodes[i][4])
+        xyz = map((x,y)->x+y, self.nodeList[i][1:3],offset)
+        self.nodeList[i] = (xyz..., self.nodeList[i][4])
     end 
 end 
 

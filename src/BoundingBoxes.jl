@@ -22,8 +22,8 @@ function BoundingBox(nodeList::Vector{NTuple{4,Float32}})
     minCorner = [Inf32, Inf32, Inf32]
     maxCorner = [ZERO_FLOAT32, ZERO_FLOAT32, ZERO_FLOAT32]
     for node in nodeList 
-        minCorner = min(minCorner, node[1:3])
-        maxCorner = max(maxCorner, node[1:3])
+        minCorner = map(min, minCorner, node[1:3])
+        maxCorner = map(max, maxCorner, node[1:3])
     end 
     BoundingBox(minCorner, maxCorner)
 end 

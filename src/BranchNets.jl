@@ -26,7 +26,7 @@ function BranchNet(nodeNet::NodeNet)
     net = BranchNet(branchList, connectivityMatrix)
 
     # the properties from nodeNet
-    nodes = NodeNets.get_nodes(nodeNet)
+    nodes = NodeNets.get_node_list(nodeNet)
     radii = NodeNets.get_radii(nodeNet)
     # flags labeling whether this node was collected to the net
     collectedFlagVec = zeros(Bool, length(nodes))
@@ -35,44 +35,51 @@ function BranchNet(nodeNet::NodeNet)
     # locate the root node with largest radius
     # theoritically this should be the center of soma 
     _, rootNodeIndex = findmax(radii)
-    seedNodeIndexes::Vector = [rootNodeIndex]
-    while any(collectedFlagVec)
-        if isempty(seedNodeIndexes)
+    seedNodeIndexList::Vector = [rootNodeIndex]
+    while !all(collectedFlagVec)
+        # there exist some uncollected nodes 
+        # find the uncollected node that is nearest to the branch list as seed 
+        nearestNodeIndex, nearestBranchIndex, nearestNodeIndexInBranch = 
+                            find_nearest_node_index(branchList, nodes, collectedFlagVec)
+        if isempty(seedNodeIndexList)
             # this is not the first time, the main net is already built
-            # find the uncollected node that is nearest to the branch list as seed 
-            nearestNodeIndex, nearestBranchIndex, nearestNodeIndexInBranch = 
-                        find_nearest_node_index(branchList, nodes, collectedFlagVec)
-            seedNodeIndexes = [nearestNodeIndex]
-        else 
-            # if there still exist unvisitied edges
-            while !isempty(seedIndexes)
-                # grow the net from seed until there is branching point
-                seedNodeIndex = pop!(seedIndexes)
-                # grow a subnet
-                subnet = BranchNet(seedNodeIndex, nodes, nodesConnectivityMatrix, collectedFlagVec)
-                # merge the subnet to main net
-                merge!(net, subnet, nearestBranchIndex, nearestNodeIndexInBranch)
-            end 
+            seedNodeIndexList = [nearestNodeIndex]
+        end  
+        while !isempty(seedNodeIndexList)
+            # grow the net from seed until there is branching point
+            seedNodeIndex = pop!(seedNodeIndexList)
+            # grow a subnet
+            subnet = BranchNet!(seedNodeIndex, nodeNet, collectedFlagVec)
+            # merge the subnet to main net
+            net = merge!(net, subnet, nearestBranchIndex, nearestNodeIndexInBranch)
         end 
     end 
     net     
 end 
 
-function BranchNet(seedNodeIndex::Integer, nodes::Vector{NTuple{4, Float32}}, 
-             nodesConnectivityMatrix::SparseMatrixCSC, collectedFlagVec::Vector{Bool})
+function BranchNet!(seedNodeIndex::Integer, nodeNet::NodeNet, collectedFlagVec::Vector{Bool})
+    # initialization
     branchList = Vector{Branch}()
+    num_branches = NodeNets.get_num_branches( nodeNet )
+    connectivityMatrix = spzeros(Bool, num_branches, num_branches)
+
+    nodes = NodeNets.get_node_list(nodeNet)
+    nodesConnectivityMatrix = NodeNets.get_connectivity_matrix( nodeNet )
+    
     # the seed of branch should record both seed node index and the the parent branch index
     # the parent branch index of root branch is -1 
-    branchSeedList = Vector{NTuple{Int, Int}}( [(seedNodeIndex, -1)] )
+    branchSeedList = [(seedNodeIndex, -1)]
     # depth first search
     while !isempty(branchSeedList)
         seedNodeIndex, branchParentIndex = pop!(branchSeedList)
         # grow a branch from seed
-        branch = Vector{NTuple{4, Float32}}()
+        nodeListInBranch = Vector{NTuple{4, Float32}}()
+        seedNodeIndexList = [seedNodeIndex]
         while true
             # construct this branch
+            seedNodeIndex = pop!(seedNodeIndexList)
             # push the seed node
-            push!(branch, nodes[seedNodeIndex])
+            push!(nodeListInBranch, nodes[seedNodeIndex])
             # label this node index as collected
             collectedFlagVec[ seedNodeIndex ] = true 
 
@@ -82,17 +89,19 @@ function BranchNet(seedNodeIndex::Integer, nodes::Vector{NTuple{4, Float32}},
             connectedNodeIndexList = connectedNodeIndexList[ !collectedFlagVec[connectedNodeIndexList] ] 
 
             if length(connectedNodeIndexList) == 0
-                error("impossible, all node should connect to something!")
+                info("this is a terminal node: $(seedNodeIndex)")
+                break
             elseif length(connectedNodeIndexList) == 1
                 # belong to the same branch
-                push!(branch, nodes[ connectedNodeIndexList[1] ])
+                push!(nodeListInBranch, nodes[ connectedNodeIndexList[1] ])
                 push!(seedNodeIndexList, connectedNodeIndexList[1])
             elseif length( connectedNodeIndexList ) > 1
                 # multiple branching points, finish constructing this branch
+                branch = Branch(nodeListInBranch)
                 push!(branchList, branch)
                 if branchParentIndex != -1
-                    # this is not the root branch
-                    connectivityMatrix[branchParentIndex, length(branchList)]
+                    # this is not the root branch, establish the branch connection 
+                    connectivityMatrix[branchParentIndex, length(branchList)] = true 
                 end 
                 # seed new branches
                 for index in connectedNodeIndexList 
@@ -142,9 +151,8 @@ merge two nets at a specific branch location
 """
 function Base.merge!(self::BranchNet, other::BranchNet, nearestBranchIndex::Integer, 
                      nearestNodeIndexInBranch::Integer)
-    if isempty(self)
-        self = other 
-        return 
+    if isempty(self) 
+        return other  
     elseif nearestNodeIndexInBranch == length(self.branchList[nearestBranchIndex])
         # the connection point is a branching point, no need to break branch
         # just stitch the new branches and rebuild the connection matrix
@@ -159,7 +167,8 @@ function Base.merge!(self::BranchNet, other::BranchNet, nearestBranchIndex::Inte
         mergedConnectivityMatrix[num_branches1+1:end, num_branches1+1:end] = 
                                                         other.connectivityMatrix
         # connect the two nets, the row index is the parent and the column is the child
-        mergedConnectivityMatrix[nearestBranchIndex, num_branches1+1] = true 
+        mergedConnectivityMatrix[nearestBranchIndex, num_branches1+1] = true
+        return BranchNet(mergedBranchList, mergedConnectivityMatrix)
     else 
         # need to break the nearest branch and rebuild connectivity matrix
         num_branches1 = get_num_branches(self)
@@ -183,8 +192,7 @@ function Base.merge!(self::BranchNet, other::BranchNet, nearestBranchIndex::Inte
                                                                 other.connectivityMatrix 
         
         # create new merged net
-        self = BranchNet(self.branchList, mergedConnectivityMatrix)
-        return
+        return BranchNet(self.branchList, mergedConnectivityMatrix)
     end
 end 
 
@@ -200,11 +208,11 @@ function SWCs.SWC(self::BranchNet)
     branchConnectivityMatrix = get_connectivity_matrix(self)
 
     for (branchIndex, branch) in enumerate( get_branch_list(self) )
-        for (nodeInde, node) in enumerate(get_node_list( branch ))
+        for (nodeIndex, node) in enumerate( Branches.get_node_list( branch ))
             # type, x, y, z, r, parent
             # in default, this was assumed that the connection is inside a branch, 
             # the parent is simply the previous node 
-            pointObj = SWCs.PointObj( get_class(branch), node[1], node[2], node[3], node[4], length(swc) )
+            pointObj = SWCs.PointObj( Branches.get_class(branch), node[1], node[2], node[3], node[4], length(swc) )
             
             if nodeIndex == 1
                 # the first node should connect to other branch or be root node

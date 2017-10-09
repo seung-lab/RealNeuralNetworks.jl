@@ -28,7 +28,7 @@ function SWC(nodeNet::NodeNet)
     swc = SWC()
     sizehint!(swc, NodeNets.get_node_num(nodeNet))
 
-    for node in NodeNets.get_nodes(nodeNet)
+    for node in NodeNets.get_node_list(nodeNet)
         point = PointObj(0, node[1], node[2], node[3], node[4], -1)
         push!(swc, point)
     end
@@ -43,7 +43,7 @@ end
 function save(self::SWC, file_name::AbstractString)
     f = open(file_name, "w")
     for i in 1:length(self)
-        write(f, "$i $(String(swc[i])) \n")
+        write(f, "$i $(String(self[i])) \n")
     end
     close(f)
 end 
