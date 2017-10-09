@@ -219,16 +219,22 @@ end
 ##################### transformation ##########################
 """
 get binary buffer formatted as neuroglancer nodeNet.
-UInt32: the number of vertex (N)
-Array{Float32, 2}, size=(N,3): the vertexes including x,y,z coordinates 
-Array{UInt32,2}, size= (M,2): the edges, pair of node indeces 
+
+# Binary format
+    UInt32: number of vertex
+    UInt32: number of edges
+    Array{Float32,2}: Nx3 array, xyz coordinates of vertex
+    Array{UInt32,2}: Mx2 arrray, node index pair of edges
+reference: 
+https://github.com/seung-lab/neuroglancer/wiki/Skeletons
 """
-function get_neuroglancer_precomputed(self::NodeNet) 
+function get_neuroglancer_precomputed(self::NodeNet)
     # total number of bytes
-    num_bytes = 4 + 4*3*get_node_num(self) + 4*2*length(get_edge_num(self))
+    num_bytes = 4 + 4 + 4*3*get_node_num(self) + 4*2*length(get_edge_num(self))
     buffer = IOBuffer( num_bytes )
     # write the number of vertex
     write(buffer, UInt32(get_node_num(self)))
+    write(buffer, UInt32(get_edge_num(self)))
     # write the node coordinates
     for node in get_node_list(self)
         write(buffer, [node[1:3]...])

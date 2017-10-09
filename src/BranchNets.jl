@@ -30,28 +30,34 @@ function BranchNet(nodeNet::NodeNet)
     seedNodeIndexList::Vector = [rootNodeIndex]
     # grow the main net
     branchNet = BranchNet!(rootNodeIndex, nodeNet, collectedFlagVec)
+    #return branchNet # only use the main branch for evaluation
+
     while !all(collectedFlagVec)
         # there exist some uncollected nodes 
         # find the uncollected node that is nearest to the branch list as seed
         branchList = get_branch_list( branchNet )
-        nearestNodeIndex, nearestBranchIndex, nearestNodeIndexInBranch = 
-                        find_nearest_node_index(branchList, nodes, collectedFlagVec)
-        seedNodeIndexList = [nearestNodeIndex]
-
-        while !isempty(seedNodeIndexList)
-            # grow the net from seed until there is branching point
-            seedNodeIndex = pop!(seedNodeIndexList)
-            # grow a subnet
-            subnet = BranchNet!(seedNodeIndex, nodeNet, collectedFlagVec) 
-            # merge the subnet to main net, and find the nearest uncollected node as a new seed 
-            branchNet, newSeedNodeIndex = merge(branchNet, subnet, nearestNodeIndex, nearestNodeIndexInBranch)
-            push!(seedNodeIndexList, newSeedNodeIndex)
-        end 
+        
+        # there still exist uncollected nodes
+        seedNodeIndex, nearestBranchIndex, nearestNodeIndexInBranch = 
+                    find_nearest_node_index(branchList, nodes, collectedFlagVec)
+        @assert nearestBranchIndex <= length(branchList) 
+        # grow a new net from seed, and mark the collected nodes 
+        subnet = BranchNet!(seedNodeIndex, nodeNet, collectedFlagVec) 
+        # merge the subnet to main net 
+        branchNet = merge_nets( branchNet, subnet, 
+                                nearestBranchIndex, nearestNodeIndexInBranch)
     end 
-    net     
+    branchNet     
 end 
 
-function BranchNet!(seedNodeIndex::Integer, nodeNet::NodeNet, collectedFlagVec::Vector{Bool})
+"""
+    BranchNet!(seedNodeIndex::Integer, nodeNet::NodeNet, collectedFlagVec::Vector{Bool})
+
+build a net from a seed node using connected component
+mark the nodes in this new net as collected, so the collectedFlagVec was changed.
+"""
+function BranchNet!(seedNodeIndex::Integer, nodeNet::NodeNet, 
+                                            collectedFlagVec::Vector{Bool})
     # initialization
     branchList = Vector{Branch}()
     parentBranchIndexList = Vector{Int}()
@@ -60,7 +66,8 @@ function BranchNet!(seedNodeIndex::Integer, nodeNet::NodeNet, collectedFlagVec::
     nodes = NodeNets.get_node_list(nodeNet)
     nodesConnectivityMatrix = NodeNets.get_connectivity_matrix( nodeNet )
     
-    # the seed of branch should record both seed node index and the the parent branch index
+    # the seed of branch should record both seed node index 
+    # and the the parent branch index
     # the parent branch index of root branch is -1 
     branchSeedList = [(seedNodeIndex, -1)]
     # depth first search
@@ -120,6 +127,8 @@ get the number of branches
 function get_num_branches(self::BranchNet) length(self.branchList) end 
 function get_branch_list(self::BranchNet) self.branchList end 
 function get_connectivity_matrix(self::BranchNet) self.connectivityMatrix end 
+function get_num_node_edges(self::BranchNet) error("unimplemented") end 
+
 """
     get_branch_length_list( self::BranchNet )
 
@@ -147,62 +156,72 @@ end
 """
 merge two nets at a specific branch location
 """
-function Base.merge(self::BranchNet, other::BranchNet, 
+function merge_nets(self::BranchNet, other::BranchNet, 
                     nearestBranchIndex::Integer, nearestNodeIndexInBranch::Integer)
     @assert !isempty(self)
     @assert !isempty(other)
-
-    if nearestNodeIndexInBranch == length(self.branchList[nearestBranchIndex])
+    branchList1 = get_branch_list( self  )
+    branchList2 = get_branch_list( other )
+    num_branches1 = get_num_branches(self)
+    num_branches2 = get_num_branches(other)
+ 
+    if nearestNodeIndexInBranch == length(branchList1[nearestBranchIndex])
         # the connection point is a branching point, no need to break branch
         # just stitch the new branches and rebuild the connection matrix
-        mergedBranchList = vcat( self.branchList, other.branchList )
+        mergedBranchList = vcat( branchList1, branchList2 )
         # total number of branches
-        num_branches1 = get_num_branches(self)
-        num_branches2 = get_num_branches(other)
-        total_num_branches = get_num_branches(self) + get_num_branches(other)
+        total_num_branches = num_branches1 + num_branches2 
         mergedConnectivityMatrix = spzeros(Bool, total_num_branches, total_num_branches)
         mergedConnectivityMatrix[1:size(self.connectivityMatrix,1), 
-                                 1:size(self.connectivityMatrix,2)] = self.connectivityMatrix 
-        mergedConnectivityMatrix[num_branches1+1:size(other.connectivityMatrix,1), 
-                                 num_branches1+1:size(other.connectivityMatrix,2)] = other.connectivityMatrix
+                                 1:size(self.connectivityMatrix,2)] = 
+                                                                self.connectivityMatrix 
+
+        mergedConnectivityMatrix[
+                num_branches1+1 : num_branches1+1+size(other.connectivityMatrix,1)-1, 
+                num_branches1+1 : num_branches1+1+size(other.connectivityMatrix,2)-1] = 
+                                                                other.connectivityMatrix
+
         # connect the two nets, the row index is the parent and the column is the child
         mergedConnectivityMatrix[nearestBranchIndex, num_branches1+1] = true
         return BranchNet(mergedBranchList, mergedConnectivityMatrix)
     else 
         # need to break the nearest branch and rebuild connectivity matrix
-        num_branches1 = get_num_branches(self)
-        num_branches2 = get_num_branches(other)
         total_num_branches = num_branches1 + num_branches2 + 1
+        mergedBranchList = branchList1 
         mergedConnectivityMatrix = spzeros(Bool, total_num_branches, total_num_branches)
         
         # need to break the branch and then stitch the new branches
-        branch1, branch2 = split(self.branchList[nearestBranchIndex], 
+        branchPart1, branchPart2 = split(self.branchList[nearestBranchIndex], 
                                                 nearestNodeIndexInBranch)
-        self.branchList[nearestBranchIndex] = branch1 
-        @show num_branches1 
-        @show size(self.connectivityMatrix)
+        mergedBranchList[nearestBranchIndex] = branchPart1 
         mergedConnectivityMatrix[1:size(self.connectivityMatrix,1), 
-                                 1:size(self.connectivityMatrix,2)] = self.connectivityMatrix
+                                 1:size(self.connectivityMatrix,2)] = 
+                                                        self.connectivityMatrix
         # reconnect the breaked two branches
-        push!(self.branchList, branch2)
+        push!(mergedBranchList, branchPart2)
         mergedConnectivityMatrix[nearestBranchIndex, num_branches1+1] = true 
 
         # merge the other net
-        self.branchList = vcat(self.branchList, other.branchList)
-        mergedConnectivityMatrix[num_branches1+2:size(other.connectivityMatrix,1), 
-                                 num_branches1+2:size(other.connectivityMatrix,2)] = other.connectivityMatrix 
-        
+        mergedBranchList = vcat(mergedBranchList, branchList2)
+        mergedConnectivityMatrix[
+                num_branches1+2 : num_branches1+2+size(other.connectivityMatrix,1)-1, 
+                num_branches1+2 : num_branches1+2+size(other.connectivityMatrix,2)-1] = 
+                                                                other.connectivityMatrix
+
+        # establish the connection between two nets
+        mergedConnectivityMatrix[nearestBranchIndex, num_branches1+2] = true
+
         # create new merged net
-        return BranchNet(self.branchList, mergedConnectivityMatrix)
+        return BranchNet(mergedBranchList, mergedConnectivityMatrix)
     end
 end 
 
 function Base.isempty(self::BranchNet)    isempty(self.branchList) end 
 
 ########################## type convertion ####################
-function SWCs.SWC(self::BranchNet)
+function SWC(self::BranchNet)
     # initialize swc, which is a list of point objects
-    swc = SWC()
+    swc = SWCs.SWC()
     # the node index of each branch, will be used for connecting the child branch
     branchEndNodeIndexList = get_branch_end_node_index_list(self)
     # connectivity matrix of branches
@@ -236,9 +255,42 @@ function SWCs.SWC(self::BranchNet)
 end 
 
 """
+get binary buffer formatted as neuroglancer nodeNet.
+
+# Binary format
+    UInt32: number of vertex
+    UInt32: number of edges
+    Array{Float32,2}: Nx3 array, xyz coordinates of vertex
+    Array{UInt32,2}: Mx2 arrray, node index pair of edges
+reference: 
+https://github.com/seung-lab/neuroglancer/wiki/Skeletons
+"""
+function get_neuroglancer_precomputed(self::BranchNet)
+    # total number of bytes
+    num_bytes = 4 + 4 + 4*3*get_node_num(self) + 4*2*length(get_edge_num(self))
+    buffer = IOBuffer( num_bytes )
+    # write the number of vertex
+    write(buffer, UInt32(get_node_num(self)))
+    write(buffer, UInt32(get_edge_num(self)))
+    # write the node coordinates
+    for node in get_node_list(self)
+        write(buffer, [node[1:3]...])
+    end 
+    for edge in get_edges( self )
+        write(buffer, UInt32( edge[1] ))
+        write(buffer, UInt32( edge[2] ))
+    end
+    #bin = Vector{UInt8}(takebuf_array(buffer))
+    bin = Vector{UInt8}(take!(buffer))
+    close(buffer)
+    return bin 
+end 
+
+
+"""
     find_nearest_node_index(branchList::Vector{Branch}, nodes::Vector{NTuple{4,Float32}})
 
-find the node which is nearest to the branch list 
+find the uncollected node which is nearest to the branch list 
 """
 function find_nearest_node_index(branchList::Vector{Branch}, 
                                  nodes::Vector{NTuple{4,Float32}},
@@ -255,10 +307,8 @@ function find_nearest_node_index(branchList::Vector{Branch},
                 # this was used to filter out far away branches quickly
                 # no need to compute all the distances between nodes
                 bbox_distance = Branches.get_bounding_box_distance(branch, node)
-                @show bbox_distance 
                 if bbox_distance < distance 
                     d, nodeIndexInBranch = Branches.distance_from(branch, node)
-                    @show d
                     if d < distance 
                         distance = d
                         ret = (nodeIndex, branchIndex, nodeIndexInBranch)
@@ -267,6 +317,8 @@ function find_nearest_node_index(branchList::Vector{Branch},
             end
         end 
     end
+    # the branchIndex should be inside the branchList
+    @assert ret[2] <= length(branchList)
     @assert ret!=(0,0,0) 
     ret 
 end 

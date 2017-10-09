@@ -33,7 +33,7 @@ end
     @time branchNet = BranchNet(nodeNet)
     @show branchNet 
     println("transform to SWC structure ...")
-    @time swc = SWCs.SWC( branchNet )
+    @time swc = BranchNets.SWC( branchNet )
     @show swc
     SWCs.save(swc, "/tmp/cylinder.swc")
 end 

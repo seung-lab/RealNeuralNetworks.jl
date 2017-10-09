@@ -26,6 +26,8 @@ function get_bounding_box( self::Branch ) self.boundingBox end
 function get_class( self::Branch ) self.class end 
 
 ###################### Base functions ################
+function Base.isempty(self::Branch) isempty(self.nodeList) end 
+
 """
     Base.length(self::Branch)
 
@@ -55,6 +57,7 @@ function distance_from(self::Branch, point::Tuple)
     distance_from(self, [point[1:3]...])
 end 
 function distance_from(self::Branch, point::Vector)
+    @assert !isempty(self)
     ret = (0,0)
     nodeList = get_node_list(self)
     @assert length(point) == 3 || length(point) == 4
@@ -65,7 +68,10 @@ function distance_from(self::Branch, point::Vector)
             distance = d
             ret = (d, index)
         end 
-    end 
+    end
+    @assert ret[1] > 0
+    @assert ret[2] <= length(self)
+    @assert ret!=(0,0)
     ret 
 end 
 
