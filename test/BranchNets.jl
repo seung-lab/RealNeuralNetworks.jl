@@ -4,8 +4,9 @@ using TEASAR.NodeNets
 using TEASAR.SWCs
 
 const ONE_UINT32 = UInt32(1)
+const ZERO_UINT32 = UInt32(0)
 
-function create_cylinder_segmentation(radius::Float32=Float32(20), height::Integer=50)
+function create_cylinder_segmentation(radius::Float32=Float32(10), height::Integer=50)
     width = Int( radius*2 + 1 )
     center = Int(radius + 1)
     seg = zeros(UInt32, (width,width,height))
@@ -16,6 +17,8 @@ function create_cylinder_segmentation(radius::Float32=Float32(20), height::Integ
             end 
         end 
     end 
+    # create a breaking part
+    seg[:,:,div(height,2):div(height,2)+10] = ZERO_UINT32
     seg
 end
 

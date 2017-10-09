@@ -56,10 +56,11 @@ function distance_from(self::Branch, point::Tuple)
 end 
 function distance_from(self::Branch, point::Vector)
     ret = (0,0)
+    nodeList = get_node_list(self)
     @assert length(point) == 3 || length(point) == 4
     distance = typemax(Float32)
     for (index, node) in enumerate(nodeList)
-        d = norm([node[1:3]...], point[1:3])
+        d = norm( [node[1:3]...] .- [point[1:3]...] )
         if d < distance
             distance = d
             ret = (d, index)

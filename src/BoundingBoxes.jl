@@ -29,9 +29,9 @@ function BoundingBox(nodeList::Vector{NTuple{4,Float32}})
 end 
 
 function distance_from(self::BoundingBox, point::Union{Tuple, Vector})
-    @assert length(point) == 3
-    min(norm([self.minCorner...] .- [point...]), 
-        norm([self.maxCorner...] .- [point...]))
+    @assert length(point) == 3 || length(point)==4
+    min(norm([self.minCorner...] .- [point[1:3]...]), 
+        norm([self.maxCorner...] .- [point[1:3]...]))
 end
 
 function Base.isequal(self::BoundingBox, other::BoundingBox)
