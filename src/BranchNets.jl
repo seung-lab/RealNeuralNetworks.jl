@@ -60,8 +60,8 @@ end
 function BranchNet!(seedNodeIndex::Integer, nodeNet::NodeNet, collectedFlagVec::Vector{Bool})
     # initialization
     branchList = Vector{Branch}()
-    num_branches = NodeNets.get_num_branches( nodeNet )
-    connectivityMatrix = spzeros(Bool, num_branches, num_branches)
+    parentBranchIndexList = Vector{Int}()
+    childBranchIndexList  = Vector{Int}()
 
     nodes = NodeNets.get_node_list(nodeNet)
     nodesConnectivityMatrix = NodeNets.get_connectivity_matrix( nodeNet )
@@ -86,24 +86,25 @@ function BranchNet!(seedNodeIndex::Integer, nodeNet::NodeNet, collectedFlagVec::
             # find the connected nodes
             connectedNodeIndexList,_ = findnz(nodesConnectivityMatrix[:, seedNodeIndex])
             # exclude the collected nodes
+            @show countnz(collectedFlagVec)
             connectedNodeIndexList = connectedNodeIndexList[ !collectedFlagVec[connectedNodeIndexList] ] 
 
-            if length(connectedNodeIndexList) == 0
-                info("this is a terminal node: $(seedNodeIndex)")
-                break
-            elseif length(connectedNodeIndexList) == 1
+            if length(connectedNodeIndexList) == 1
                 # belong to the same branch
                 push!(nodeListInBranch, nodes[ connectedNodeIndexList[1] ])
                 push!(seedNodeIndexList, connectedNodeIndexList[1])
-            elseif length( connectedNodeIndexList ) > 1
-                # multiple branching points, finish constructing this branch
+            else
+                # terminal branching point or multiple branching points
+                # finish constructing this branch
                 branch = Branch(nodeListInBranch)
                 push!(branchList, branch)
                 if branchParentIndex != -1
-                    # this is not the root branch, establish the branch connection 
-                    connectivityMatrix[branchParentIndex, length(branchList)] = true 
+                    # this is not the root branch, establish the branch connection
+                    push!(parentBranchIndexList, branchParentIndex)
+                    push!(childBranchIndexList,  length(branchList))
                 end 
                 # seed new branches
+                # if this is terminal branch, no seed will be pushed
                 for index in connectedNodeIndexList 
                     push!(branchSeedList, (index, length(branchList)))
                 end 
@@ -111,6 +112,9 @@ function BranchNet!(seedNodeIndex::Integer, nodeNet::NodeNet, collectedFlagVec::
             end 
         end 
     end
+    @assert length(parentBranchIndexList) == length(childBranchIndexList)
+    connectivityMatrix = sparse(parentBranchIndexList, childBranchIndexList, 
+                                ones(Bool,length(childBranchIndexList)))
     BranchNet(branchList, connectivityMatrix)
 end 
 

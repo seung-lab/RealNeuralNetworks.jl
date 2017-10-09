@@ -2,9 +2,11 @@
 using ArgParse
 
 using TEASAR
-using TEASAR.Skeletons
+using TEASAR.NodeNets
 using TEASAR.Manifests
 using TEASAR.SWCs
+using TEASAR.BranchNets
+
 using JLD
 using ProgressMeter
 
@@ -12,13 +14,14 @@ using ProgressMeter
 const EXPANSION = (16,16,1)
 const MIP = 4
 
-function skeletonize(cellId; swcDir="/tmp/", jldDir="/tmp/", mip=MIP)
+function trace(cellId; swcDir="/tmp/", jldDir="/tmp/", mip=MIP)
     manifest = Manifest("gs://neuroglancer/zfish_v1/consensus-20170829/mesh_mip_4", 
                             "$(cellId):0", "gs://neuroglancer/zfish_v1/consensus-20170829/80_80_45")
-    skeleton = Manifests.trace(manifest, cellId)
-    swc = SWC( skeleton )
+    nodeNet = Manifests.trace(manifest, cellId)
+    branchNet = BranchNet( nodeNet )
+    swc = SWC( BranchNet )
     SWCs.stretch_coordinates!(swc, mip)
-    save(joinpath(jldDir, "$(cellId).jld"), "skeleton", skeleton, "swc", swc)
+    save(joinpath(jldDir, "$(cellId).jld"), "nodeNet", nodeNet, "branchNet", branchNet, "swc", swc)
     SWCs.save(swc, joinpath(swcDir, "$(cellId).swc"))
 end 
 
@@ -83,12 +86,12 @@ function main()
     @show args
     if args["idlistfile"] != nothing
         idList = read_cell_id_list(args["idlistfile"])
-        @showprogress 1 "skeletonize ..." for id in idList 
-            skeletonize(id; swcDir=args["swcdir"], jldDir=args["jlddir"], 
+        @showprogress 1 "tracing ..." for id in idList 
+            trace(id; swcDir=args["swcdir"], jldDir=args["jlddir"], 
                         mip=args["mip"])
         end 
     else 
-        skeletonize(args["neuronid"]; swcDir = args["swcdir"], jldDir=args["jlddir"], 
+        trace(args["neuronid"]; swcDir = args["swcdir"], jldDir=args["jlddir"], 
                     mip=args["mip"])
     end 
 end

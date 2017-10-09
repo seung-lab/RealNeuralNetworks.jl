@@ -24,6 +24,8 @@ end
     println("skeletonization to build a NodeNet ...")
     @time nodeNet = NodeNet(seg)
     @show nodeNet
+    swc = SWCs.SWC( nodeNet )
+    SWCs.save(swc, "/tmp/cylinder.nodenet.swc")
     println("transform to BranchNet structure ...")
     @time branchNet = BranchNet(nodeNet)
     @show branchNet 
