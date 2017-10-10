@@ -1,8 +1,7 @@
 __precompile__();
 module RealNeuralNetworks
 
-include("DBFs.jl"); using .DBFs;
-include("PointArrays.jl"); using .PointArrays;
+include("FakeSegmentations.jl")
 include("NodeNets.jl"); 
 include("SWCs.jl");  
 include("Manifests.jl"); 

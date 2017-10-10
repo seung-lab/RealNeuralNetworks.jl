@@ -62,7 +62,7 @@ function distance(rect, p) {
 """
 function distance_from(self::BoundingBox, point::Union{Tuple, Vector})
     @assert length(point) == 3 || length(point)==4
-    d = map((cmin, p, cmax)-> max(cmin-p, 0, p-cmax), 
+    d = map((cmin, p, cmax)-> max(cmin-p, Float32(0), p-cmax), 
                             self.minCorner, point[1:3], self.maxCorner )
     norm([d...])
 end

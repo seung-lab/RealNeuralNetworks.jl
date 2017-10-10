@@ -1,8 +1,11 @@
 module Manifests
+include("DBFs.jl"); using .DBFs;
+include("PointArrays.jl"); using .PointArrays;
+
 using GSDicts, BigArrays
-import ..RealNeuralNetworks.DBFs
-import ..RealNeuralNetworks.PointArrays
 using ..RealNeuralNetworks.NodeNets
+#import ..RealNeuralNetworks.NodeNets.DBFs
+#import ..RealNeuralNetworks.NodeNets.PointArrays
 
 const MIP_LEVEL = 4
 

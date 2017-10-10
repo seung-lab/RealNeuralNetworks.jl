@@ -4,6 +4,9 @@ using .Branches
 using ..RealNeuralNetworks.NodeNets
 using ..RealNeuralNetworks.SWCs
 
+const ONE_UINT32 = UInt32(1)
+const EXPANSION = (ONE_UINT32, ONE_UINT32, ONE_UINT32)
+
 export BranchNet
 
 type BranchNet 
@@ -44,7 +47,7 @@ function BranchNet(nodeNet::NodeNet)
         # grow a new net from seed, and mark the collected nodes 
         subnet = BranchNet!(seedNodeIndex, nodeNet, collectedFlagVec) 
         # merge the subnet to main net 
-        branchNet = merge_nets( branchNet, subnet, 
+        branchNet = merge( branchNet, subnet, 
                                 nearestBranchIndex, nearestNodeIndexInBranch)
     end 
     branchNet     
@@ -119,6 +122,12 @@ function BranchNet!(seedNodeIndex::Integer, nodeNet::NodeNet,
     BranchNet(branchList, connectivityMatrix)
 end 
 
+function BranchNet{T}( seg::Array{T,3}; obj_id::T = convert(T,1), 
+                        expansion::NTuple{3,UInt32}=EXPANSION )
+    nodeNet = NodeNet( seg; obj_id = obj_id, expansion = expansion )
+    BranchNet( nodeNet )
+end 
+
 """
     get_num_branches(self::BranchNet)
 
@@ -156,7 +165,7 @@ end
 """
 merge two nets at a specific branch location
 """
-function merge_nets(self::BranchNet, other::BranchNet, 
+function Base.merge(self::BranchNet, other::BranchNet, 
                     nearestBranchIndex::Integer, nearestNodeIndexInBranch::Integer)
     @assert !isempty(self)
     @assert !isempty(other)
@@ -166,7 +175,7 @@ function merge_nets(self::BranchNet, other::BranchNet,
     num_branches2 = get_num_branches(other)
  
     if nearestNodeIndexInBranch == length(branchList1[nearestBranchIndex])
-        # the connection point is a branching point, no need to break branch
+        # the connection point is the end of a branch, no need to break branch
         # just stitch the new branches and rebuild the connection matrix
         mergedBranchList = vcat( branchList1, branchList2 )
         # total number of branches
@@ -219,7 +228,7 @@ end
 function Base.isempty(self::BranchNet)    isempty(self.branchList) end 
 
 ########################## type convertion ####################
-function SWC(self::BranchNet)
+function SWCs.SWC(self::BranchNet)
     # initialize swc, which is a list of point objects
     swc = SWCs.SWC()
     # the node index of each branch, will be used for connecting the child branch

@@ -1,9 +1,8 @@
 module NodeNets
-
-import ..DBFs
+include("DBFs.jl"); using .DBFs;
+include("PointArrays.jl"); using .PointArrays;
 
 import LightGraphs
-import ..PointArrays
 using Base.Cartesian
 using GSDicts
 import BigArrays
@@ -268,6 +267,7 @@ save nodeNet in google cloud storage for neuroglancer visualization
 the format is the same with meshes
 """
 function save(self::NodeNet, cellId::UInt32, d_json::GSDict, d_bin::GSDict)
+    error("the format is not correct here.")
     # get the bounding box of nodeNet and transfer to string representation
     # example string: 1432-1944_1264-1776_16400-16912
     rangeString = BigArrays.Indexes.unit_range2string( UnitRange(self) )
