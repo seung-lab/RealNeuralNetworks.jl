@@ -1,4 +1,4 @@
-using TEASAR.SWCs
+using RealNeuralNetworks.SWCs
 using Base.Test
 
 @testset "test SWC" begin 

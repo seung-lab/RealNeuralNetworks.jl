@@ -1,6 +1,6 @@
 using JLD
-using TEASAR
-using TEASAR.SWCs
+using RealNeuralNetworks
+using RealNeuralNetworks.SWCs
 
 data = load("/tmp/point_clouds.jld")
 point_cloud = data["point_cloud"]

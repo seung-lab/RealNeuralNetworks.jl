@@ -1,5 +1,5 @@
-using TEASAR
-using TEASAR.DBFs   
+using RealNeuralNetworks
+using RealNeuralNetworks.DBFs   
 using Base.Test
 
 seg = zeros(UInt32,(100,100,100))
@@ -7,8 +7,8 @@ seg[48:52,48:52,:] = UInt32(1)
 seg[49:52, 49:52, 48:52] = 1
 seg[47:54, 47:54, 71:78] = 1
 
-points = TEASAR.PointArrays.from_seg(seg)
-boundary_point_indexes = TEASAR.PointArrays.get_boundary_point_indexes(points, seg)
+points = RealNeuralNetworks.PointArrays.from_seg(seg)
+boundary_point_indexes = RealNeuralNetworks.PointArrays.get_boundary_point_indexes(points, seg)
 
 @testset "test dbf computation" begin 
     dbf1 = DBFs.compute_DBF(points)

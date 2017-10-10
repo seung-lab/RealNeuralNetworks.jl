@@ -1,7 +1,7 @@
 using Base.Test
-using TEASAR.BranchNets
-using TEASAR.NodeNets
-using TEASAR.SWCs
+using RealNeuralNetworks.BranchNets
+using RealNeuralNetworks.NodeNets
+using RealNeuralNetworks.SWCs
 
 const ONE_UINT32 = UInt32(1)
 const ZERO_UINT32 = UInt32(0)

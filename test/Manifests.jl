@@ -1,10 +1,10 @@
 using BigArrays
 using GSDicts
 using Base.Test
-using TEASAR 
-using TEASAR.Manifests
-using TEASAR.NodeNets
-using TEASAR.SWCs
+using RealNeuralNetworks 
+using RealNeuralNetworks.Manifests
+using RealNeuralNetworks.NodeNets
+using RealNeuralNetworks.SWCs
 using JLD
 
 const cellId = 77497

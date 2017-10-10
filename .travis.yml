@@ -12,4 +12,4 @@ git:
 
 script:
     - julia -e 'Pkg.add("HDF5")'
-    - julia -e 'Pkg.clone(pwd()); Pkg.test("TEASAR")'
+    - julia -e 'Pkg.clone(pwd()); Pkg.test("RealNeuralNetworks")'

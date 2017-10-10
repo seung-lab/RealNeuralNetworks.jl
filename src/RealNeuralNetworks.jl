@@ -1,5 +1,6 @@
 __precompile__();
-module TEASAR
+module RealNeuralNetworks
+
 include("DBFs.jl"); using .DBFs;
 include("PointArrays.jl"); using .PointArrays;
 include("NodeNets.jl"); 
@@ -11,4 +12,5 @@ using .SWCs
 using .NodeNets 
 using .Manifests
 using .BranchNets
+
 end # end of module

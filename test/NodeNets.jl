@@ -1,10 +1,10 @@
-using TEASAR  
+using RealNeuralNetworks  
 using Base.Test
 using HDF5
 using BigArrays
 using GSDicts
-using TEASAR.NodeNets
-using TEASAR.SWCs
+using RealNeuralNetworks.NodeNets
+using RealNeuralNetworks.SWCs
 using JLD
 
 const CELL_ID = UInt32(76880)

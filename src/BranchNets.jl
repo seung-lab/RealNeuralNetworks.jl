@@ -1,8 +1,8 @@
 module BranchNets
 include("Branches.jl")
 using .Branches 
-using ..TEASAR.NodeNets
-using ..TEASAR.SWCs
+using ..RealNeuralNetworks.NodeNets
+using ..RealNeuralNetworks.SWCs
 
 export BranchNet
 

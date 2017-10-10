@@ -1,5 +1,5 @@
-using TEASAR
-using TEASAR.PointArrays
+using RealNeuralNetworks
+using RealNeuralNetworks.PointArrays
 
 using Base.Test
 

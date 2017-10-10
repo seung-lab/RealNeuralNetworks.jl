@@ -1,5 +1,5 @@
 module SWCs
-using ..TEASAR.NodeNets
+using ..RealNeuralNetworks.NodeNets
 
 export SWC
 
