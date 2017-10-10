@@ -28,12 +28,6 @@ function BoundingBox(nodeList::Vector{NTuple{4,Float32}})
     BoundingBox(minCorner, maxCorner)
 end 
 
-function distance_from(self::BoundingBox, point::Union{Tuple, Vector})
-    @assert length(point) == 3 || length(point)==4
-    min(norm([self.minCorner...] .- [point[1:3]...]), 
-        norm([self.maxCorner...] .- [point[1:3]...]))
-end
-
 function Base.isequal(self::BoundingBox, other::BoundingBox)
     self.minCorner==other.minCorner && self.maxCorner==other.maxCorner 
 end
@@ -47,5 +41,31 @@ function Base.union(self::BoundingBox, other::BoundingBox)
     maxCorner = map(max, self.maxCorner, other.maxCorner)
     BoundingBox(minCorner, maxCorner)
 end
+
+function isinside(self::BoundingBox, point::Union{Tuple, Vector})
+    all( map((x,y)->x>y, self.maxCorner, point[1:3]) ) && 
+    all( map((x,y)->x<y, self.minCorner, point[1:3]) )
+end 
+
+"""
+    distance_from(self::BoundingBox, point::Union{Tuple, Vector})
+
+compute the distance from bounding box using a smart way
+https://stackoverflow.com/questions/5254838/calculating-distance-between-a-point-and-a-rectangular-box-nearest-point
+
+code in JS
+function distance(rect, p) {
+  var dx = Math.max(rect.min.x - p.x, 0, p.x - rect.max.x);
+  var dy = Math.max(rect.min.y - p.y, 0, p.y - rect.max.y);
+  return Math.sqrt(dx*dx + dy*dy);
+}
+"""
+function distance_from(self::BoundingBox, point::Union{Tuple, Vector})
+    @assert length(point) == 3 || length(point)==4
+    d = map((cmin, p, cmax)-> max(cmin-p, 0, p-cmax), 
+                            self.minCorner, point[1:3], self.maxCorner )
+    norm([d...])
+end
+
 
 end # module
