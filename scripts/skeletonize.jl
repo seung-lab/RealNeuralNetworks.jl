@@ -1,11 +1,11 @@
 #!/usr/bin/env julia 
 using ArgParse
 
-using TEASAR
-using TEASAR.NodeNets
-using TEASAR.Manifests
-using TEASAR.SWCs
-using TEASAR.BranchNets
+using RealNeuralNetworks
+using RealNeuralNetworks.NodeNets
+using RealNeuralNetworks.Manifests
+using RealNeuralNetworks.SWCs
+using RealNeuralNetworks.BranchNets
 
 using JLD
 using ProgressMeter

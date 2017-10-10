@@ -18,7 +18,7 @@ WORKDIR /root/.julia/v0.5/
 RUN mkdir RealNeuralNetworks 
 ADD . RealNeuralNetworks/ 
 
-RUN julia -e 'using TEASAR'
+RUN julia -e 'using RealNeuralNetworks'
 WORKDIR /root/.julia/v0.5/RealNeuralNetworks/scripts
 ENTRYPOINT /bin/bash 
 CMD ["julia", "skeletonize.jl", "-h"]
