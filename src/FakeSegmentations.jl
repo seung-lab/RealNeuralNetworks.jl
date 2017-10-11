@@ -29,8 +29,30 @@ function broken_cylinder(;radius::Float32=RADIUS, height::Integer=HEIGHT,
     seg
 end 
 
-function ring(; centerLineRadius::Float32 = Float32(50), ringRadius::Float32=Float32(5))
-    error("unimplemented")
+function ring(; centerLineRadius::Integer = 50, ringRadius::Integer=5)
+    seg = zeros(UInt32, (2*centerLineRadius+2*ringRadius + 5, 
+                         2*centerLineRadius+2*ringRadius + 5, 2*ringRadius + 5) )
+    center = [map(x->div(x,2), size(seg))...]
+    for y in 1:size(seg, 2)
+        for x in 1:size(seg, 1)
+            d = norm([x,y] .- center[1:2])
+            if abs(d-centerLineRadius) < 2 
+                # this point is on the center line of the ring
+                for rz in center[3]-ringRadius : center[3]+ringRadius 
+                    for ry in y-ringRadius : y+ringRadius 
+                        for rx in x-ringRadius : x+ringRadius
+                            d2 = norm([x,y,center[3]] .- [rx,ry,rz])
+                            if d2 <= ringRadius
+                                seg[rx,ry,rz] = ONE_UINT32 
+                            end 
+                        end 
+                    end 
+                end 
+            end 
+        end 
+    end 
+    @assert ndims(seg) == 3
+    seg
 end 
 
 function Y_shape()
