@@ -11,16 +11,19 @@ using JLD
 using ProgressMeter
 
 # this is the mip level 4
-const EXPANSION = (16,16,1)
-const MIP = 4
+const MIP = UInt32(4)
+const VOXEL_SIZE = (5,5,45)
 
-function trace(cellId; swcDir="/tmp/", jldDir="/tmp/", mip=MIP)
-    manifest = Manifest("gs://neuroglancer/zfish_v1/consensus-20170829/mesh_mip_4", 
-                            "$(cellId):0", "gs://neuroglancer/zfish_v1/consensus-20170829/80_80_45")
+function trace(cellId::Integer; swcDir::AbstractString="/tmp/", 
+                                jldDir::AbstractString="/tmp/", 
+                                mip::Integer=MIP, voxelSize=VOXEL_SIZE)
+    manifest = Manifest("gs://neuroglancer/zfish_v1/consensus-20170928/mesh_mip_4", 
+                            "$(cellId):0", "gs://neuroglancer/zfish_v1/consensus-20170928/80_80_45")
     nodeNet = Manifests.trace(manifest, cellId)
     branchNet = BranchNet( nodeNet )
     swc = SWCs.SWC( branchNet )
     SWCs.stretch_coordinates!(swc, mip)
+    SWCs.stretch_coordinates!(swc, voxelSize) 
     save(joinpath(jldDir, "$(cellId).jld"), "nodeNet", nodeNet, "branchNet", branchNet, "swc", swc)
     SWCs.save(swc, joinpath(swcDir, "$(cellId).swc"))
 end 
@@ -70,10 +73,14 @@ function parse_commandline()
             help = "the directory to store jld file"
             arg_type = String
             default = "/tmp"
+        "--voxelsize", "-v"
+            help = "voxel size of the raw image, mip level 0"
+            arg_type = NTuple{3,Int}
+            default = VOXEL_SIZE 
         "--mip", "-m"
             help = "mip level of the dataset" 
             arg_type = UInt32
-            default = UInt32(4)
+            default = MIP 
         "--idlistfile", "-f"
             help = "the id list in text from google spreasheet"
             arg_type = String
