@@ -116,9 +116,12 @@ function BranchNet!(seedNodeIndex::Integer, nodeNet::NodeNet,
         end 
     end
     @assert length(parentBranchIndexList) == length(childBranchIndexList)
-    # note that the connectivity matrix may not be a square matrix
-    connectivityMatrix = sparse(parentBranchIndexList, childBranchIndexList, 
+    # note that the connectivity matrix should be a square matrix for easier use
+    connectivityMatrix = spzeros(Bool, length(branchList), length(branchList))
+    tempConnectivityMatrix = sparse(parentBranchIndexList, childBranchIndexList, 
                                 ones(Bool,length(childBranchIndexList)))
+    connectivityMatrix[1:size(tempConnectivityMatrix,1), 
+                       1:size(tempConnectivityMatrix,2)] = tempConnectivityMatrix 
     BranchNet(branchList, connectivityMatrix)
 end 
 
