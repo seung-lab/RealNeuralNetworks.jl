@@ -227,6 +227,8 @@ reference:
 https://github.com/seung-lab/neuroglancer/wiki/Skeletons
 """
 function get_neuroglancer_precomputed(self::NodeNet)
+    @show get_node_num(self)
+    @show get_edge_num(self)
     # total number of bytes
     num_bytes = 4 + 4 + 4*3*get_node_num(self) + 4*2*get_edge_num(self)
     buffer = IOBuffer( num_bytes )
@@ -239,8 +241,9 @@ function get_neuroglancer_precomputed(self::NodeNet)
     end
     # write the edges
     for edge in get_edges( self )
-        write(buffer, UInt32( edge[1] ))
-        write(buffer, UInt32( edge[2] ))
+        # neuroglancer index is 0-based
+        write(buffer, UInt32( edge[1]-ONE_UINT32 ))
+        write(buffer, UInt32( edge[2]-ONE_UINT32 ))
     end
     bin = Vector{UInt8}(take!(buffer))
     close(buffer)
@@ -265,16 +268,12 @@ end
 save nodeNet in google cloud storage for neuroglancer visualization
 the format is the same with meshes
 """
-function save(self::NodeNet, cellId::Integer, d_json::Associative, d_bin::Associative)
+function save(self::NodeNet, cellId::Integer, d_bin::Associative)
     # get the bounding box of nodeNet and transfer to string representation
     # example string: 1432-1944_1264-1776_16400-16912
     rangeString = BigArrays.Indexes.unit_range2string( UnitRange(self) )
-    # construct manifest file
-    d_json["$(cellId):0"] = """
-    {"fragments": ["$(cellId):0:$(rangeString)"]}
-""" 
     # write the binary representation of nodeNet
-    d_bin["$(cellId):0:$(rangeString)"] = get_neuroglancer_precomputed(self)
+    d_bin["$(cellId)"] = get_neuroglancer_precomputed(self)
 end
 
 """

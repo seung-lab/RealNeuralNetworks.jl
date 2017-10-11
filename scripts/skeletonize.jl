@@ -9,9 +9,9 @@ using RealNeuralNetworks.SWCs
 using RealNeuralNetworks.BranchNets
 
 using JLD
-using ProgressMeter
 
 # this is the mip level 4
+const SEGMENTAT_ID = 92540687
 const MIP = UInt32(4)
 const VOXEL_SIZE = (5,5,45)
 const SEGMENTATION_LAYER ="gs://neuroglancer/zfish_v1/consensus-20170928"
@@ -28,17 +28,15 @@ function trace(cellId::Integer; swcDir      ::AbstractString = "/tmp/",
     
     nodeNet = Manifests.trace(manifest, cellId)
     
-    # transform the coordinate to highest resolution
-    # because neuroglancer use the voxel-based coordinate system in highest resolution
+    # transform to physical coordinate system
     NodeNets.stretch_coordinates!( nodeNet, mip )
+    NodeNets.stretch_coordinates!( nodeNet, voxelSize)
+ 
     # save to neuroglancer
     d_bin  = GSDict(joinpath(segmentationLayer, "skeleton_mip_$(mip)"))
-    d_json = GSDict(joinpath(segmentationLayer, "skeleton_mip_$(mip)"); valueType=String)
-    NodeNets.save( nodeNet, cellId, d_json, d_bin )
+    NodeNets.save( nodeNet, cellId, d_bin )
     
-    # transform to physical coordinate system
-    NodeNets.stretch_coordinates!( nodeNet, voxelSize)
-    
+   
     # reconnect the broken pieces and reset root to the soma center
     branchNet = BranchNet( nodeNet )
     swc = SWCs.SWC( branchNet )
@@ -83,7 +81,7 @@ function parse_commandline()
         "--neuronid", "-i"
             help = "the segment id to skeletonize"
             arg_type = Int
-            default = 77497
+            default = SEGMENTAT_ID #77497
         "--swcdir", "-s"
             help = "the directory to store swc file"
             arg_type = String
@@ -116,7 +114,7 @@ function main()
     @show args
     if args["idlistfile"] != nothing
         idList = read_cell_id_list(args["idlistfile"])
-        @showprogress 1 "tracing ..." for id in idList 
+        for id in idList 
             trace(id; swcDir=args["swcdir"], jldDir=args["jlddir"], 
                         mip=args["mip"])
         end 
