@@ -1,5 +1,6 @@
 #!/usr/bin/env julia 
 using ArgParse
+using GSDicts
 
 using RealNeuralNetworks
 using RealNeuralNetworks.NodeNets
@@ -13,18 +14,36 @@ using ProgressMeter
 # this is the mip level 4
 const MIP = UInt32(4)
 const VOXEL_SIZE = (5,5,45)
+const SEGMENTATION_LAYER ="gs://neuroglancer/zfish_v1/consensus-20170928"
 
-function trace(cellId::Integer; swcDir::AbstractString="/tmp/", 
-                                jldDir::AbstractString="/tmp/", 
-                                mip::Integer=MIP, voxelSize=VOXEL_SIZE)
-    manifest = Manifest("gs://neuroglancer/zfish_v1/consensus-20170928/mesh_mip_4", 
-                            "$(cellId):0", "gs://neuroglancer/zfish_v1/consensus-20170928/80_80_45")
+function trace(cellId::Integer; swcDiri     ::AbstractString = "/tmp/", 
+                                jldDir      ::AbstractString = "/tmp/", 
+                                mip         ::Integer        = MIP, 
+                                voxelSize   ::Union{Tuple,Vector} = VOXEL_SIZE,
+                                segmentationLayer::AbstractString = SEGMENTATION_LAYER)
+
+    manifest = Manifest(joinpath(segmentationLayer, "mesh_mip_$(mip)"), "$(cellId):0", 
+                        joinpath(segmentationLayer, 
+                            "$(2^mip*voxelSize[1])_$(2^mip*voxelSize[2])_$(voxelSize[3])"))
+    
     nodeNet = Manifests.trace(manifest, cellId)
+    
+    # transform the coordinate to highest resolution
+    # because neuroglancer use the voxel-based coordinate system in highest resolution
+    NodeNets.stretch_coordinates!( nodeNet, mip )
+    # save to neuroglancer
+    d_bin  = GSDict(joinpath(segmentationLayer, "skeleton_mip_$(mip)"))
+    d_json = GSDict(joinpath(segmentationLayer, "skeleton_mip_$(mip)"); valueType=String)
+    NodeNets.save( nodeNet, cellId, d_json, d_bin )
+    
+    # transform to physical coordinate system
+    NodeNets.stretch_coordinates!( nodeNet, voxelSize)
+    
+    # reconnect the broken pieces and reset root to the soma center
     branchNet = BranchNet( nodeNet )
     swc = SWCs.SWC( branchNet )
-    SWCs.stretch_coordinates!(swc, mip)
-    SWCs.stretch_coordinates!(swc, voxelSize) 
-    save(joinpath(jldDir, "$(cellId).jld"), "nodeNet", nodeNet, "branchNet", branchNet, "swc", swc)
+    save(joinpath(jldDir, "$(cellId).jld"), "nodeNet", nodeNet, 
+                                            "branchNet", branchNet, "swc", swc)
     SWCs.save(swc, joinpath(swcDir, "$(cellId).swc"))
 end 
 
@@ -84,6 +103,10 @@ function parse_commandline()
         "--idlistfile", "-f"
             help = "the id list in text from google spreasheet"
             arg_type = String
+        "--segmentationlayer", "-l"
+            help = "segmentation layer path in the cloud storage, only support Google Cloud Storage now"
+            arg_type = String
+            default = SEGMENTATION_LAYER
     end 
     return parse_args(s)
 end 
@@ -99,7 +122,8 @@ function main()
         end 
     else 
         trace(args["neuronid"]; swcDir = args["swcdir"], jldDir=args["jlddir"], 
-                    mip=args["mip"])
+              mip=args["mip"], voxelSize=args["voxelsize"], 
+              segmentationLayer=args["segmentationlayer"])
     end 
 end
 

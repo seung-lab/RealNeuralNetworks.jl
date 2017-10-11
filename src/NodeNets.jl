@@ -4,7 +4,6 @@ include("PointArrays.jl"); using .PointArrays;
 
 import LightGraphs
 using Base.Cartesian
-using GSDicts
 import BigArrays
 
 const ZERO_UINT32 = convert(UInt32, 0)
@@ -229,20 +228,20 @@ https://github.com/seung-lab/neuroglancer/wiki/Skeletons
 """
 function get_neuroglancer_precomputed(self::NodeNet)
     # total number of bytes
-    num_bytes = 4 + 4 + 4*3*get_node_num(self) + 4*2*length(get_edge_num(self))
+    num_bytes = 4 + 4 + 4*3*get_node_num(self) + 4*2*get_edge_num(self)
     buffer = IOBuffer( num_bytes )
-    # write the number of vertex
+    # write the number of vertex, and edges
     write(buffer, UInt32(get_node_num(self)))
     write(buffer, UInt32(get_edge_num(self)))
     # write the node coordinates
     for node in get_node_list(self)
         write(buffer, [node[1:3]...])
-    end 
+    end
+    # write the edges
     for edge in get_edges( self )
         write(buffer, UInt32( edge[1] ))
         write(buffer, UInt32( edge[2] ))
     end
-    #bin = Vector{UInt8}(takebuf_array(buffer))
     bin = Vector{UInt8}(take!(buffer))
     close(buffer)
     return bin 
@@ -261,13 +260,12 @@ end
 
 ###################### IO #################################
 """
-    save(self::NodeNet, cellId::UInt32, d_json::GSDict, d_bin::GSDict)
+    save(self::NodeNet, cellId::UInt32, d_json::Associative, d_bin::Associative)
 
 save nodeNet in google cloud storage for neuroglancer visualization
 the format is the same with meshes
 """
-function save(self::NodeNet, cellId::UInt32, d_json::GSDict, d_bin::GSDict)
-    error("the format is not correct here.")
+function save(self::NodeNet, cellId::Integer, d_json::Associative, d_bin::Associative)
     # get the bounding box of nodeNet and transfer to string representation
     # example string: 1432-1944_1264-1776_16400-16912
     rangeString = BigArrays.Indexes.unit_range2string( UnitRange(self) )
@@ -300,6 +298,19 @@ function add_offset!(self::NodeNet, offset::Union{Vector,Tuple} )
     for i in 1:get_node_num(self)
         xyz = map((x,y)->x+y, self.nodeList[i][1:3],offset)
         self.nodeList[i] = (xyz..., self.nodeList[i][4])
+    end 
+end
+
+function stretch_coordinates!(self::NodeNet, mip::Real)
+    expansion = (2^mip, 2^mip, 1) 
+    stretch_coordinates!(self, expansion)
+end 
+function stretch_coordinates!(self::NodeNet, expansion::Union{Vector, Tuple})
+    @assert length(expansion) == 3
+    nodeList = get_node_list(self)
+    for (nodeIndex, node) in enumerate(nodeList)
+        self.nodeList[ nodeIndex ] = (map((x,y)->x*y, node[1:3], expansion)..., 
+                                      node[4]* (prod(expansion)^(1/3)))
     end 
 end 
 
