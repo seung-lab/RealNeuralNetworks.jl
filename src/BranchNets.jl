@@ -163,6 +163,21 @@ function get_num_nodes( self::BranchNet )
 end 
 
 """
+    get_children_branch_index_list(self::BranchNet, parentBranchIndex::Integer)
+"""
+function get_children_branch_index_list(self::BranchNet, parentBranchIndex::Integer)
+    childrenBranchIndexList,_ = findnz(self.connectivityMatrix[parentBranchIndex, :])
+    childrenBranchIndexList 
+end
+
+function get_parent_branch_index( self::BranchNet, childBranchIndex::Integer )
+    parentBranchIndexList,_ = findnz(self.connectivityMatrix[:, childBranchIndex])
+    @assert length(parentBranchIndexList) == 1
+    parentBranchIndexList[1]
+end 
+
+############################### Base functions ###################################
+"""
 merge two nets at a specific branch location
 """
 function Base.merge(self::BranchNet, other::BranchNet, 
@@ -173,7 +188,7 @@ function Base.merge(self::BranchNet, other::BranchNet,
     branchList2 = get_branch_list( other )
     num_branches1 = get_num_branches(self)
     num_branches2 = get_num_branches(other)
- 
+    
     if nearestNodeIndexInBranch == length(branchList1[nearestBranchIndex])
         # the connection point is the end of a branch, no need to break branch
         # just stitch the new branches and rebuild the connection matrix
@@ -195,20 +210,29 @@ function Base.merge(self::BranchNet, other::BranchNet,
         return BranchNet(mergedBranchList, mergedConnectivityMatrix)
     else 
         # need to break the nearest branch and rebuild connectivity matrix
-        total_num_branches = num_branches1 + num_branches2 + 1
+        total_num_branches = num_branches1 + 1 + num_branches2 
         mergedBranchList = branchList1 
         mergedConnectivityMatrix = spzeros(Bool, total_num_branches, total_num_branches)
         
         # need to break the branch and then stitch the new branches
-        branchPart1, branchPart2 = split(self.branchList[nearestBranchIndex], 
-                                                nearestNodeIndexInBranch)
+        branchPart1, branchPart2 = split(branchList1[nearestBranchIndex], 
+                                                    nearestNodeIndexInBranch)
         mergedBranchList[nearestBranchIndex] = branchPart1 
         mergedConnectivityMatrix[1:size(self.connectivityMatrix,1), 
                                  1:size(self.connectivityMatrix,2)] = 
-                                                        self.connectivityMatrix
+                                                        self.connectivityMatrix 
         # reconnect the breaked two branches
         push!(mergedBranchList, branchPart2)
         mergedConnectivityMatrix[nearestBranchIndex, num_branches1+1] = true 
+
+        # redirect the children branches to branchPart2
+        childrenBranchIndexList = get_children_branch_index_list(self, nearestBranchIndex)
+        for childBranchIndex in childrenBranchIndexList
+            # remove old connection
+            mergedConnectivityMatrix[nearestBranchIndex, childBranchIndex] = false
+            # build new connection
+            mergedConnectivityMatrix[num_branches1+1, childBranchIndex] = true 
+        end 
 
         # merge the other net
         mergedBranchList = vcat(mergedBranchList, branchList2)
@@ -248,11 +272,8 @@ function SWCs.SWC(self::BranchNet)
                 if length(swc) == 0
                     pointObj.parent = -1
                 else
-                    # find the connected parent branch index 
-                    parentBranchIndexList,_ = findnz(branchConnectivityMatrix[:, branchIndex])
-                    # always have and only have one parent branch
-                    @assert length(parentBranchIndexList) == 1
-                    parentBranchIndex = parentBranchIndexList[1]
+                    # find the connected parent branch index
+                    parentBranchIndex = get_parent_branch_index(self, branchIndex)
                     # the node index of parent branch end
                     pointObj.parent= branchEndNodeIndexList[ parentBranchIndex ]
                 end 
