@@ -55,6 +55,15 @@ function ring(; centerLineRadius::Integer = 50, ringRadius::Integer=5)
     seg
 end 
 
+function broken_ring(; centerLineRadius::Integer = 50, ringRadius::Integer=5)
+    seg = ring(; centerLineRadius = centerLineRadius, ringRadius = ringRadius)
+    center = map(x->div(x,2), size(seg))
+    d = div(centerLineRadius, 10)
+    seg[center[1]-d:center[1]+d, :, :] = ZERO_UINT32 
+    seg[:, center[2]-d:center[2]+d, :] = ZERO_UINT32 
+    seg
+end 
+
 function Y_shape()
     error("unimplemented")
 end 

@@ -304,32 +304,40 @@ find the uncollected node which is nearest to the branch list
 function find_nearest_node_index(branchList::Vector{Branch}, 
                                  nodes::Vector{NTuple{4,Float32}},
                                  collectedFlagVec ::Vector{Bool})
-    ret = (0,0,0)
+    # initialization 
+    nearestNodeIndex = 0
+    nearestBranchIndex = 0
+    nearestNodeIndexInBranch = 0
     distance = typemax(Float32)
+    
     @assert !isempty(branchList)
     @assert length(nodes) == length(collectedFlagVec)
     @assert !all(collectedFlagVec)
+    
     for (nodeIndex, node) in enumerate(nodes)
         if !collectedFlagVec[nodeIndex]
             for (branchIndex, branch) in enumerate(branchList)
                 # distance from bounding box give the maximum bound of nearest distance
                 # this was used to filter out far away branches quickly
                 # no need to compute all the distances between nodes
+                # this is the lower bound of the distance
                 bbox_distance = Branches.get_bounding_box_distance(branch, node)
                 if bbox_distance < distance 
                     d, nodeIndexInBranch = Branches.distance_from(branch, node)
                     if d < distance 
                         distance = d
-                        ret = (nodeIndex, branchIndex, nodeIndexInBranch)
+                        nearestNodeIndex = nodeIndex 
+                        nearestBranchIndex = branchIndex 
+                        nearestNodeIndexInBranch = nodeIndexInBranch 
                     end 
                 end 
             end
         end 
     end
     # the branchIndex should be inside the branchList
-    @assert ret[2] <= length(branchList)
-    @assert ret!=(0,0,0) 
-    ret 
+    @assert nearestBranchIndex > 0
+    @assert nearestBranchIndex <= length(branchList)
+    return nearestNodeIndex, nearestBranchIndex, nearestNodeIndexInBranch 
 end 
 
 function add_offset(self::BranchNet, offset::Union{Vector, Tuple})
@@ -340,7 +348,5 @@ function add_offset(self::BranchNet, offset::Union{Vector, Tuple})
     end 
     BranchNet(branchList, self.connectivityMatrix)
 end 
-
-
 
 end # module

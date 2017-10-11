@@ -14,7 +14,7 @@ using RealNeuralNetworks.SWCs
     SWCs.save(swc, "/tmp/cylinder.swc")
 
     println("create fake ring segmentation ...")
-    seg = FakeSegmentations.ring()
+    seg = FakeSegmentations.broken_ring()
     branchNet = BranchNet(seg)
     swc = SWCs.SWC( branchNet )
     SWCs.save(swc, "/tmp/ring.swc")

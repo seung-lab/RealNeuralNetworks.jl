@@ -581,9 +581,10 @@ end
 """
 function nodes_within_radius{T}( sub::Array{T,1}, ind2node, r, max_dims::Vector );
 
-  beginning = convert(Vector{T}, ceil(max(sub[:] .- r,1)));
-  ending    = convert(Vector{T}, floor(min(sub[:] .+ r, max_dims)));
-  ind::T = convert(T,0);
+  beginning = convert(Vector{Int}, ceil(max(sub[:] .- r,1)));
+  ending    = convert(Vector{Int}, floor(min(sub[:] .+ r, max_dims)));
+  ind::Int = convert(Int,0);
+    max_dims = Vector{Int}(max_dims)
 
   nodes = Set{T}();
   for x in beginning[1]:ending[1]
