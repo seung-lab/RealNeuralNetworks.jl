@@ -16,7 +16,7 @@ const MIP = UInt32(4)
 const VOXEL_SIZE = (5,5,45)
 const SEGMENTATION_LAYER ="gs://neuroglancer/zfish_v1/consensus-20170928"
 
-function trace(cellId::Integer; swcDiri     ::AbstractString = "/tmp/", 
+function trace(cellId::Integer; swcDir      ::AbstractString = "/tmp/", 
                                 jldDir      ::AbstractString = "/tmp/", 
                                 mip         ::Integer        = MIP, 
                                 voxelSize   ::Union{Tuple,Vector} = VOXEL_SIZE,
