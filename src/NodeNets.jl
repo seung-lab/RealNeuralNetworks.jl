@@ -341,10 +341,10 @@ function create_node_lookup{T}( points::Array{T,2} )
   #need the max in order to define the bounds of that volume
   # tuple allows the point to be passed to fns as dimensions
   max_dims = ( maximum( points, 1 )... );
-  #max_dims = map(Int, max_dims)
+  max_dims = map(Int, max_dims)
   num_points = size(points,1);
   #creating the sparse vector mapping indices -> node ids
-  ind2node = sparsevec( Int[sub2ind(max_dims, points[i,:]... ) for i=1:num_points ],
+  ind2node = sparsevec( [sub2ind(max_dims, Vector{Int}(points[i,:])... ) for i=1:num_points ],
   	                    1:num_points,
   	                    prod(max_dims),
   	                    (x,y) -> x #ignore duplicates
