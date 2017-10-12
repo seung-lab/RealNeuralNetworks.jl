@@ -8,8 +8,6 @@ using RealNeuralNetworks.Manifests
 using RealNeuralNetworks.SWCs
 using RealNeuralNetworks.BranchNets
 
-using JLD
-
 # this is the mip level 4
 const SEGMENTAT_ID = 92540687
 const MIP = UInt32(4)
@@ -32,17 +30,16 @@ function trace(cellId::Integer; swcDir      ::AbstractString = "/tmp/",
     NodeNets.stretch_coordinates!( nodeNet, mip )
     NodeNets.stretch_coordinates!( nodeNet, voxelSize)
  
-    # save to neuroglancer
-    d_bin  = GSDict(joinpath(segmentationLayer, "skeleton_mip_$(mip)"))
-    NodeNets.save( nodeNet, cellId, d_bin )
-    
+   
    
     # reconnect the broken pieces and reset root to the soma center
     branchNet = BranchNet( nodeNet )
     swc = SWCs.SWC( branchNet )
-    save(joinpath(jldDir, "$(cellId).jld"), "nodeNet", nodeNet, 
-                                            "branchNet", branchNet, "swc", swc)
     SWCs.save(swc, joinpath(swcDir, "$(cellId).swc"))
+    
+    # save to neuroglancer
+    d_bin  = GSDict(joinpath(segmentationLayer, "skeleton_mip_$(mip)"))
+    d_bin["$cellId"] = SWCs.get_neuroglancer_precomputed( swc )
 end 
 
 """
