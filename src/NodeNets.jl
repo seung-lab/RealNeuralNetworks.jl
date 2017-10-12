@@ -566,7 +566,7 @@ end
 """
 function remove_path_from_rns( reachable_nodes::Vector, path::Vector,
   points, ind2node, dbf, max_dims, inspected_nodes,
-  scale_param::Int=6, const_param::Int=6 );
+  scale_param::Int=2, const_param::Int=4 );
 
   r = dbf[path]*scale_param + const_param;
 

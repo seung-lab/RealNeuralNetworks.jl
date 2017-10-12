@@ -1,6 +1,8 @@
 module SWCs
 using ..RealNeuralNetworks.NodeNets
 
+const ONE_UINT32 = UInt32(1)
+
 export SWC
 
 type PointObj
