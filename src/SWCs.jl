@@ -113,10 +113,20 @@ function get_neuroglancer_precomputed(self::SWC)
     return bin 
 end 
 
+function Base.String(self::SWC)
+    io = IOBuffer()
+    for (index, pointObj) in enumerate(self)
+        write(io, "$index $(String(pointObj)) \n")
+    end 
+    str = String(take!(io))
+    close(io)
+    str 
+end 
+
 function save(self::SWC, file_name::AbstractString)
     f = open(file_name, "w")
-    for i in 1:length(self)
-        write(f, "$i $(String(self[i])) \n")
+    for (index, pointObj) in enumerate(self)
+        write(f, "$index $(String(pointObj)) \n")
     end
     close(f)
 end 
