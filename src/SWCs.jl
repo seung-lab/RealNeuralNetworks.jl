@@ -1,5 +1,4 @@
 module SWCs
-using ..RealNeuralNetworks.NodeNets
 
 const ONE_UINT32 = UInt32(1)
 
@@ -25,21 +24,26 @@ end
 
 typealias SWC Vector{PointObj}
 
-function SWC(nodeNet::NodeNet)
-    edges = NodeNets.get_edges(nodeNet)
+function SWC( swcString::AbstractString )
     swc = SWC()
-    sizehint!(swc, NodeNets.get_node_num(nodeNet))
-
-    for node in NodeNets.get_node_list(nodeNet)
-        point = PointObj(0, node[1], node[2], node[3], node[4], -1)
-        push!(swc, point)
+    for line in split(swcString, "\n")
+        try 
+            numbers = map(parse, split(line))
+            # construct a point object
+            pointObj = PointObj( numbers[2:7] )
+            push!(swc, pointObj)
+        catch err 
+            if !contains(line, "#")
+                println("comment in swc file: $line")
+            else
+                warn("invalid line: $line")
+            end 
+        end 
     end
-    # assign parents according to edge 
-    for e in edges 
-        swc[e[2]].parent = e[1]
-    end  
     swc
-end
+end 
+################## properties #######################
+function get_node_num(self::SWC) length(self) end
 
 ################## properties #######################
 function get_node_num(self::SWC)
@@ -117,25 +121,9 @@ function save(self::SWC, file_name::AbstractString)
     close(f)
 end 
 
-function load(file_name::AbstractString)
-    swc = SWC()
-    open(file_name) do f
-        for line in eachline(f)
-            try 
-                numbers = map(parse, split(line))
-                # construct a point object
-                pointObj = PointObj( numbers[2:7] )
-                push!(swc, pointObj)
-            catch err 
-                if !constains(line, "#")
-                    println("comment in swc file: $line")
-                else
-                    warn("invalid line: $line")
-                end 
-            end 
-        end 
-    end 
-    return swc
+function load(fileName::AbstractString)
+    swcString = readstring( fileName )
+    SWC( swcString )    
 end 
 
 #################### manipulate ######################

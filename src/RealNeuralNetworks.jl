@@ -2,8 +2,8 @@ __precompile__();
 module RealNeuralNetworks
 
 include("FakeSegmentations.jl")
-include("NodeNets.jl"); 
 include("SWCs.jl");  
+include("NodeNets.jl"); 
 include("Manifests.jl"); 
 include("BranchNets.jl")
 
