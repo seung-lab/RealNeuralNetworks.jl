@@ -178,7 +178,7 @@ function SWCs.SWC(nodeNet::NodeNet)
     sizehint!(swc, NodeNets.get_node_num(nodeNet))
 
     for node in NodeNets.get_node_list(nodeNet)
-        point = PointObj(0, node[1], node[2], node[3], node[4], -1)
+        point = SWCs.PointObj(0, node[1], node[2], node[3], node[4], -1)
         push!(swc, point)
     end
     # assign parents according to edge 

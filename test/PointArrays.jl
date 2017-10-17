@@ -1,5 +1,5 @@
 using RealNeuralNetworks
-using RealNeuralNetworks.PointArrays
+using RealNeuralNetworks.NodeNets.PointArrays
 
 using Base.Test
 

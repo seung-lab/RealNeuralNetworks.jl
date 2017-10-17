@@ -53,7 +53,7 @@ end
     NodeNets.add_offset!(nodeNet, (-1,-1,-1))
     bin = NodeNets.get_neuroglancer_precomputed(nodeNet)
     # open("/tmp/fake.bin", "w") do f write(f, bin)  end 
-    @time swc = SWC( nodeNet )
+    @time swc = SWCs.SWC( nodeNet )
     SWCs.stretch_coordinates!(swc, MIP)
     @test length(swc) > 1
     SWCs.save(swc, "/tmp/$(CELL_ID).swc")
