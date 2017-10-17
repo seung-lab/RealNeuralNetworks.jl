@@ -4,6 +4,12 @@ using RealNeuralNetworks.BranchNets
 using RealNeuralNetworks.NodeNets
 using RealNeuralNetworks.SWCs
 
+@testset "test BranchNet IO" begin 
+    branchNet = BranchNets.load_swc( joinpath(dirname(@__FILE__), "../assert/example.swc" ))
+    BranchNets.save(branchNet, "/tmp/branchNet.swc")
+    rm("/tmp/branchNet.swc")
+end 
+
 @testset "test BranchNets" begin
     println("create fake cylinder segmentation...")
     @time seg = FakeSegmentations.broken_cylinder()

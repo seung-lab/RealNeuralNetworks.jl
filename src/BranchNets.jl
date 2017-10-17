@@ -129,7 +129,26 @@ function BranchNet{T}( seg::Array{T,3}; obj_id::T = convert(T,1),
                         expansion::NTuple{3,UInt32}=EXPANSION )
     nodeNet = NodeNet( seg; obj_id = obj_id, expansion = expansion )
     BranchNet( nodeNet )
+end
+
+function BranchNet( swcString::AbstractString )
+    swc = SWC(swcString)
+    nodeNet = NodeNet( swc )
+    BranchNet( nodeNet )
+end
+
+######################### IO ################
+function load_swc( fileName::AbstractString )
+    swcString = readstring( fileName )
+    BranchNet( swcString )
 end 
+
+function save(self::BranchNet, fileName)
+    swc = SWC(self)
+    SWCs.save( swc, fileName )
+end 
+
+####################### properties ##############
 
 """
     get_num_branches(self::BranchNet)
@@ -254,6 +273,16 @@ end
 
 function Base.isempty(self::BranchNet)    isempty(self.branchList) end 
 
+"""
+    Base.split(self::BranchNet, branchIndex::Integer; nodeIndexInBranch::Integer=0)
+
+split the branch net into two branchNets
+the nodeIndexInBranch will be included in the first main net including the original root node  
+"""
+function Base.split(self::BranchNet, branchIndex::Integer; nodeIndexInBranch::Integer=0)
+    error("unimplement")
+end 
+
 ########################## type convertion ####################
 function SWCs.SWC(self::BranchNet)
     # initialize swc, which is a list of point objects
@@ -319,7 +348,9 @@ function get_neuroglancer_precomputed(self::BranchNet)
     return bin 
 end 
 
+############################### manipulations ##########################################
 
+############################### TEASAR algorithm functions #############################
 """
     find_nearest_node_index(branchList::Vector{Branch}, nodes::Vector{NTuple{4,Float32}})
 

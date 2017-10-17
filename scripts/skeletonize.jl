@@ -40,7 +40,9 @@ function trace(cellId::Integer; swcDir      ::AbstractString = "/tmp/",
     
     # save to neuroglancer
     d_bin  = GSDict(joinpath(segmentationLayer, "skeleton_mip_$(mip)"))
+    d_str  = GSDict(joinpath(segmentationLayer, "swc"; valueType=String))
     d_bin["$cellId"] = SWCs.get_neuroglancer_precomputed( swc )
+    d_str["$cellId"] = String(swc)
 end 
 
 """

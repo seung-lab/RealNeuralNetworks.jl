@@ -1,5 +1,4 @@
 module SWCs
-using ..RealNeuralNetworks.NodeNets
 
 const ONE_UINT32 = UInt32(1)
 
@@ -25,21 +24,26 @@ end
 
 typealias SWC Vector{PointObj}
 
-function SWC(nodeNet::NodeNet)
-    edges = NodeNets.get_edges(nodeNet)
+function SWC( swcString::AbstractString )
     swc = SWC()
-    sizehint!(swc, NodeNets.get_node_num(nodeNet))
-
-    for node in NodeNets.get_node_list(nodeNet)
-        point = PointObj(0, node[1], node[2], node[3], node[4], -1)
-        push!(swc, point)
+    for line in split(swcString, "\n")
+        try 
+            numbers = map(parse, split(line))
+            # construct a point object
+            pointObj = PointObj( numbers[2:7] )
+            push!(swc, pointObj)
+        catch err 
+            if !contains(line, "#")
+                println("comment in swc file: $line")
+            else
+                warn("invalid line: $line")
+            end 
+        end 
     end
-    # assign parents according to edge 
-    for e in edges 
-        swc[e[2]].parent = e[1]
-    end  
     swc
-end
+end 
+################## properties #######################
+function get_node_num(self::SWC) length(self) end
 
 ################## properties #######################
 function get_node_num(self::SWC)
@@ -109,33 +113,27 @@ function get_neuroglancer_precomputed(self::SWC)
     return bin 
 end 
 
+function Base.String(self::SWC)
+    io = IOBuffer()
+    for (index, pointObj) in enumerate(self)
+        write(io, "$index $(String(pointObj)) \n")
+    end 
+    str = String(take!(io))
+    close(io)
+    str 
+end 
+
 function save(self::SWC, file_name::AbstractString)
     f = open(file_name, "w")
-    for i in 1:length(self)
-        write(f, "$i $(String(self[i])) \n")
+    for (index, pointObj) in enumerate(self)
+        write(f, "$index $(String(pointObj)) \n")
     end
     close(f)
 end 
 
-function load(file_name::AbstractString)
-    swc = SWC()
-    open(file_name) do f
-        for line in eachline(f)
-            try 
-                numbers = map(parse, split(line))
-                # construct a point object
-                pointObj = PointObj( numbers[2:7] )
-                push!(swc, pointObj)
-            catch err 
-                if !constains(line, "#")
-                    println("comment in swc file: $line")
-                else
-                    warn("invalid line: $line")
-                end 
-            end 
-        end 
-    end 
-    return swc
+function load(fileName::AbstractString)
+    swcString = readstring( fileName )
+    SWC( swcString )    
 end 
 
 #################### manipulate ######################

@@ -5,6 +5,7 @@ using Base.Test
     # read swc
     exampleFile = joinpath(dirname(@__FILE__), "../assert/example.swc")
     swc = SWCs.load( exampleFile )
+    str = String(swc)
     tempFile = tempname() * ".swc"
     SWCs.save(swc, tempFile)
     @test readstring(exampleFile) == readstring( tempFile )

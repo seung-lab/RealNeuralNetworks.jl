@@ -1,6 +1,7 @@
 module NodeNets
 include("DBFs.jl"); using .DBFs;
 include("PointArrays.jl"); using .PointArrays;
+using ..RealNeuralNetworks.SWCs
 
 import LightGraphs
 using Base.Cartesian
@@ -156,6 +157,37 @@ function NodeNet{T}( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
     add_offset!(nodeNet, bbox_offset)
     return nodeNet
 end
+
+function NodeNet(swc::SWC)
+    nodeList = Vector{NTuple{4, Float32}}()
+    connectivityMatrix = spzeros(Bool, length(swc), length(swc))
+    for (index, point) in enumerate(swc) 
+        push!(nodeList, (point.x, point.y, point.z, point.radius))
+        if point.parent != -1
+            # the connectivity matrix is symetric
+            connectivityMatrix[index, point.parent] = true
+            connectivityMatrix[point.parent, index] = true
+        end 
+    end 
+    NodeNet(nodeList, connectivityMatrix)
+end 
+
+function SWCs.SWC(nodeNet::NodeNet)
+    edges = NodeNets.get_edges(nodeNet)
+    swc = SWC()
+    sizehint!(swc, NodeNets.get_node_num(nodeNet))
+
+    for node in NodeNets.get_node_list(nodeNet)
+        point = PointObj(0, node[1], node[2], node[3], node[4], -1)
+        push!(swc, point)
+    end
+    # assign parents according to edge 
+    for e in edges 
+        swc[e[2]].parent = e[1]
+    end  
+    swc
+end
+
 
 ##################### properties ###############################
 function get_node_list(self::NodeNet) self.nodeList end 
