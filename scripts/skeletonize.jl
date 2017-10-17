@@ -27,6 +27,7 @@ function trace(cellId::Integer; swcDir      ::AbstractString = "/tmp/",
     nodeNet = Manifests.trace(manifest, cellId)
     
     # transform to physical coordinate system
+    NodeNets.add_offset!( nodeNet, (-1,-1,-1) )
     NodeNets.stretch_coordinates!( nodeNet, mip )
     NodeNets.stretch_coordinates!( nodeNet, voxelSize)
  

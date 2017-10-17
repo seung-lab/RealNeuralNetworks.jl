@@ -50,18 +50,13 @@ end
     println("building nodeNet ...")
     #@time nodeNet = NodeNet( seg; obj_id = CELL_ID )
     @time nodeNet = NodeNet( seg; obj_id = UInt32(1) )
+    NodeNets.add_offset!(nodeNet, (-1,-1,-1))
     bin = NodeNets.get_neuroglancer_precomputed(nodeNet)
     # open("/tmp/fake.bin", "w") do f write(f, bin)  end 
     @time swc = SWC( nodeNet )
     SWCs.stretch_coordinates!(swc, MIP)
     @test length(swc) > 1
-    save("/tmp/$(CELL_ID).jld", "nodeNet", nodeNet, "swc", swc)
     SWCs.save(swc, "/tmp/$(CELL_ID).swc")
-
-    # test saving to google cloud for neuroglancer visualization
-    d_json = GSDict( GS_SKELETON_PATH; valueType = String )
-    d_bin  = GSDict( GS_SKELETON_PATH )
-    NodeNets.save(nodeNet, CELL_ID, d_json, d_bin)
 end 
 
 
