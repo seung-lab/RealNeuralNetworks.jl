@@ -114,7 +114,7 @@ function main()
     @show args
     if args["idlistfile"] != nothing
         idList = read_cell_id_list(args["idlistfile"])
-        for id in idList 
+        @parallel for id in idList 
             trace(id; swcDir=args["swcdir"], jldDir=args["jlddir"], 
                         mip=args["mip"])
         end 
