@@ -45,10 +45,6 @@ end
 ################## properties #######################
 function get_node_num(self::SWC) length(self) end
 
-################## properties #######################
-function get_node_num(self::SWC)
-    length(self)
-end 
 function get_edge_num(self::SWC)
     num_edges = 0
     for pointObj in self 
