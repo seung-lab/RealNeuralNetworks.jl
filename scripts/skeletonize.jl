@@ -1,20 +1,20 @@
 #!/usr/bin/env julia 
 using ArgParse
-using GSDicts
+@everywhere using GSDicts
 
-using RealNeuralNetworks
-using RealNeuralNetworks.NodeNets
-using RealNeuralNetworks.Manifests
-using RealNeuralNetworks.SWCs
-using RealNeuralNetworks.BranchNets
+@everywhere using RealNeuralNetworks
+@everywhere using RealNeuralNetworks.NodeNets
+@everywhere using RealNeuralNetworks.Manifests
+@everywhere using RealNeuralNetworks.SWCs
+@everywhere using RealNeuralNetworks.BranchNets
 
 # this is the mip level 4
-const SEGMENTAT_ID = 92540687
-const MIP = UInt32(4)
-const VOXEL_SIZE = (5,5,45)
-const SEGMENTATION_LAYER ="gs://neuroglancer/zfish_v1/consensus-20170928"
+@everywhere const SEGMENTAT_ID = 92540687
+@everywhere const MIP = UInt32(4)
+@everywhere const VOXEL_SIZE = (5,5,45)
+@everywhere const SEGMENTATION_LAYER ="gs://neuroglancer/zfish_v1/consensus-20170928"
 
-function trace(cellId::Integer; swcDir      ::AbstractString = "/tmp/", 
+@everywhere function trace(cellId::Integer; swcDir      ::AbstractString = "/tmp/", 
                                 jldDir      ::AbstractString = "/tmp/", 
                                 mip         ::Integer        = MIP, 
                                 voxelSize   ::Union{Tuple,Vector} = VOXEL_SIZE,
@@ -40,7 +40,7 @@ function trace(cellId::Integer; swcDir      ::AbstractString = "/tmp/",
     
     # save to neuroglancer
     d_bin  = GSDict(joinpath(segmentationLayer, "skeleton_mip_$(mip)"))
-    d_str  = GSDict(joinpath(segmentationLayer, "swc"; valueType=String))
+    d_str  = GSDict(joinpath(segmentationLayer, "swc"); valueType=String)
     d_bin["$cellId"] = SWCs.get_neuroglancer_precomputed( swc )
     d_str["$cellId"] = String(swc)
 end 
@@ -114,10 +114,8 @@ function main()
     @show args
     if args["idlistfile"] != nothing
         idList = read_cell_id_list(args["idlistfile"])
-        @parallel for id in idList 
-            trace(id; swcDir=args["swcdir"], jldDir=args["jlddir"], 
-                        mip=args["mip"])
-        end 
+        pmap(id -> trace(id; swcDir=args["swcdir"], jldDir=args["jlddir"], mip=args["mip"]), 
+                                                                                        idList)
     else 
         trace(args["neuronid"]; swcDir = args["swcdir"], jldDir=args["jlddir"], 
               mip=args["mip"], voxelSize=args["voxelsize"], 
