@@ -1,5 +1,6 @@
 #!/usr/bin/env julia 
-using ArgParse
+using ArgParse 
+@everywhere using SQSChannels
 @everywhere using GSDicts
 
 @everywhere using RealNeuralNetworks
@@ -100,6 +101,9 @@ function parse_commandline()
         "--idlistfile", "-f"
             help = "the id list in text from google spreasheet"
             arg_type = String
+        "--sqsqueue", "-q"
+            help = "AWS SQS queue name"
+            arg_type = String 
         "--segmentationlayer", "-l"
             help = "segmentation layer path in the cloud storage, only support Google Cloud Storage now"
             arg_type = String
@@ -115,6 +119,14 @@ function main()
         idList = read_cell_id_list(args["idlistfile"])
         pmap(id -> trace(id; swcDir=args["swcdir"], jldDir=args["jlddir"], mip=args["mip"]), 
                                                                                         idList)
+    elseif args["sqsqueue"] != nothing 
+        sqsChannel = SQSChannel( args["sqsqueue"] )
+        while true 
+            handle, body = fetch(sqsChannel) 
+            d = JSON.parse( body )
+            trace(d["id"]; swcDir=d["swcdir"], jldDir=d["jlddir"], mip=d["mip"])
+            delete!(sqsChannel, handle)
+        end 
     else 
         trace(args["neuronid"]; swcDir = args["swcdir"], jldDir=args["jlddir"], 
               mip=args["mip"], voxelSize=args["voxelsize"], 
