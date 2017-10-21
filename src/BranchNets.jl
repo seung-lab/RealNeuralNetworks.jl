@@ -196,7 +196,29 @@ function get_parent_branch_index( self::BranchNet, childBranchIndex::Integer )
     parentBranchIndexList,_ = findnz(self.connectivityMatrix[:, childBranchIndex])
     @assert length(parentBranchIndexList) == 1
     parentBranchIndexList[1]
+end
+
+function get_terminal_branch_index_list( self::BranchNet; startBranchIndex::Integer = 1 )
+    terminalBranchIndexList = Vector{Int}()
+    branchIndexList = [ startBranchIndex ]
+    while !isempty( branchIndexList )
+        branchIndex = pop!( branchIndexList )
+        childrenBranchIndexList = get_children_branch_index_list( self, branchIndex )
+        if isempty( childrenBranchIndexList ) 
+            # this is a terminal branch
+            push!(terminalBranchIndexList, branchIndex )
+        else
+            append!(branchIndexList, childrenBranchIndexList)
+        end 
+    end 
+    terminalBranchIndexList 
+end
+
+function get_terminal_node_list( self::BranchNet; startBranchIndex::Integer = 1 )
+    terminalBranchIndexList = get_terminal_branch_index_list( self )
+    map( x -> Branches.get_node_list(x)[end], get_branch_list(self)[ terminalBranchIndexList ] )
 end 
+
 
 ############################### Base functions ###################################
 """
@@ -280,7 +302,7 @@ split the branch net into two branchNets
 the nodeIndexInBranch will be included in the first main net including the original root node  
 """
 function Base.split(self::BranchNet, branchIndex::Integer; nodeIndexInBranch::Integer=0)
-    error("unimplement")
+    
 end 
 
 ########################## type convertion ####################

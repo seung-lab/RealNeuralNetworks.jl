@@ -24,4 +24,11 @@ end
     branchNet = BranchNet(seg)
     swc = SWCs.SWC( branchNet )
     SWCs.save(swc, "/tmp/ring.swc")
+
+    println("get terminal branch index list...")
+    @time terminalBranchIndexList = BranchNets.get_terminal_branch_index_list( branchNet )
+    @test !isempty( terminalBranchIndexList )
+    println("get terminal node list ...")
+    @time terminalNodeList = BranchNets.get_terminal_node_list( branchNet )
+    @test !isempty( terminalNodeList )
 end 
