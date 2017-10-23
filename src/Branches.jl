@@ -48,6 +48,13 @@ function Base.split(self::Branch, index::Integer)
     branch1 = Branch(nodeList1; class=self.class)
     branch2 = Branch(nodeList2; class=self.class)
     return branch1, branch2
+end
+
+"""
+    Base.getindex(self::Branch, index::Integer)
+"""
+function Base.getindex(self::Branch, index::Integer)
+    get_node_list(self)[ index ]
 end 
 
 """
@@ -89,5 +96,6 @@ function add_offset(self::Branch, offset::Union{Tuple, Vector})
     end
     Branch(nodeList, self.class, self.boundingBox)    
 end 
+
 
 end # module

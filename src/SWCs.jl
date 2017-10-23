@@ -1,26 +1,8 @@
 module SWCs
-
+include("PointObjs.jl")
+using .PointObjs 
 const ONE_UINT32 = UInt32(1)
-
 export SWC
-
-type PointObj
-    point_type  :: UInt8 
-    x           :: Float32 
-    y           :: Float32 
-    z           :: Float32 
-    radius      :: Float32 
-    parent      :: Int32
-end
-
-function PointObj( p::Union{Tuple, Vector} )
-    @assert length(p)==6
-    PointObj( UInt8(p[1]), Float32(p[2]), Float32(p[3]), Float32(p[4]), Float32(p[5]), Int32(p[6]) )
-end 
-
-function Base.String(self::PointObj)
-    "$(self.point_type) $(self.x) $(self.y) $(self.z) $(self.radius) $(self.parent)"
-end 
 
 typealias SWC Vector{PointObj}
 
@@ -33,8 +15,10 @@ function SWC( swcString::AbstractString )
             pointObj = PointObj( numbers[2:7] )
             push!(swc, pointObj)
         catch err 
-            if !contains(line, "#")
+            if contains(line, "#")
                 println("comment in swc file: $line")
+            elseif line == "\n"
+                continue 
             else
                 warn("invalid line: $line")
             end 
@@ -42,13 +26,14 @@ function SWC( swcString::AbstractString )
     end
     swc
 end 
+
 ################## properties #######################
 function get_node_num(self::SWC) length(self) end
 
 function get_edge_num(self::SWC)
     num_edges = 0
     for pointObj in self 
-        if pointObj.parent != -1
+        if PointObjs.get_parent( pointObj ) != -1
             num_edges += 1
         end 
     end 
@@ -63,11 +48,24 @@ get the edges represented as a Vector{NTuple{2,UInt32}}
 function get_edges(self::SWC)
     edges = Vector{NTuple{2,UInt32}}()
     for (index, pointObj) in enumerate(self)
-        if pointObj.parent != -1
-            push!(edges, (pointObj.parent, index))
+        if PointObjs.get_parent( pointObj ) != -1
+            push!(edges, ( PointObjs.get_parent( pointObj ), index ))
         end 
     end 
     edges 
+end 
+
+"""
+    get_total_length( self::SWC )
+accumulate all the euclidean distance of edges 
+"""
+function get_total_length( self::SWC )
+    total_length = Float64(0)
+    edges = get_edges( self )
+    for e in edges 
+        total_length += PointObjs.euclidean_distance( self[e[1]], self[e[2]] )
+    end 
+    total_length 
 end 
 
 ################## IO ###############################
