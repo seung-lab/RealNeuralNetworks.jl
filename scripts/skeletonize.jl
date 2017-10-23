@@ -72,6 +72,7 @@ function main()
         while true 
             handle, body = fetch(sqsChannel) 
             d = JSON.parse( body )
+            println("tracing cell: $(d["id"])")
             try 
                 trace(d["id"]; swcDir=d["swcdir"], mip=d["mip"])
             catch err 

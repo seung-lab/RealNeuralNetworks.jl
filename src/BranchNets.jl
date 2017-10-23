@@ -131,10 +131,18 @@ function BranchNet{T}( seg::Array{T,3}; obj_id::T = convert(T,1),
     BranchNet( nodeNet )
 end
 
-function BranchNet( swcString::AbstractString )
-    swc = SWC(swcString)
+function BranchNet( swc::SWC )
     nodeNet = NodeNet( swc )
     BranchNet( nodeNet )
+end 
+
+"""
+    BranchNet( swcString::AbstractString )
+transform string from swc content to BranchNet 
+"""
+function BranchNet( swcString::AbstractString )
+    swc = SWC(swcString)
+    BranchNet( swc )
 end
 
 ######################### IO ################
@@ -155,10 +163,15 @@ end
 
 get the number of branches  
 """
-function get_num_branches(self::BranchNet) length(self.branchList) end 
+function get_num_branches(self::BranchNet) length(self.branchList) end
+"""
+    get_num_branching_points(self::BranchNet)
+get number of branching points. assume that neuron tree do not have loop, 
+so the number of branching points is num_branches-1.
+"""
+function get_num_branching_points(self::BranchNet) get_num_branches(self)-1 end 
 function get_branch_list(self::BranchNet) self.branchList end 
 function get_connectivity_matrix(self::BranchNet) self.connectivityMatrix end 
-function get_num_node_edges(self::BranchNet) error("unimplemented") end 
 
 """
     get_branch_length_list( self::BranchNet )
@@ -183,6 +196,8 @@ function get_num_nodes( self::BranchNet )
     branchList = get_branch_list(self)
     sum(map(length, branchList))
 end 
+
+
 
 """
     get_children_branch_index_list(self::BranchNet, parentBranchIndex::Integer)
