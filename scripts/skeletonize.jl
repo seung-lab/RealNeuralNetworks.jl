@@ -72,7 +72,15 @@ function main()
         while true 
             handle, body = fetch(sqsChannel) 
             d = JSON.parse( body )
-            trace(d["id"]; swcDir=d["swcdir"], mip=d["mip"])
+            try 
+                trace(d["id"]; swcDir=d["swcdir"], mip=d["mip"])
+            catch err 
+                if isa(err, KeyError)
+                    warn("not tracable cell id: $(d["id"])") 
+                else 
+                    rethrow()
+                end 
+            end 
             delete!(sqsChannel, handle)
         end 
     else 
