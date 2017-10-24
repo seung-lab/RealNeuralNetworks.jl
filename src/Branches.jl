@@ -39,12 +39,12 @@ end
 
 """
 split the branch from the node list index to two branches
-the indexed node will be included in the first branch 
+the indexed node will be included in the second branch 
 """
 function Base.split(self::Branch, index::Integer)
-    @assert index >=1 && index<length(self)
-    nodeList1 = self.nodeList[1:index]     
-    nodeList2 = self.nodeList[index+1:end]
+    @assert index >=1 && index<=length(self)
+    nodeList1 = self.nodeList[1:index-1]     
+    nodeList2 = self.nodeList[index:end]
     branch1 = Branch(nodeList1; class=self.class)
     branch2 = Branch(nodeList2; class=self.class)
     return branch1, branch2

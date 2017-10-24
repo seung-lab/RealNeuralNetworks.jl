@@ -31,4 +31,9 @@ end
     println("get terminal node list ...")
     @time terminalNodeList = BranchNets.get_terminal_node_list( branchNet )
     @test !isempty( terminalNodeList )
+
+    println("test split a tree...")
+    @time tree1, tree2 = split(branchNet, 2; nodeIndexInBranch = 5)
+    @test !isempty(tree1)
+    @test !isempty(tree2)
 end 

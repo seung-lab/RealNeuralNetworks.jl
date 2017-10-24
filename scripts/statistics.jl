@@ -30,9 +30,8 @@ function main()
             end 
         end 
     end
-    @show lengthList
-    h5write("statistics.h5",    "totalPathLengthList",      totalPathLengthList,
-                                "numBranchingPointsList",   numBranchingPointsList)
+    h5write("statistics.h5",    "totalPathLengthList",      totalPathLengthList)
+    h5write("statistics.h5",    "numBranchingPointsList",   numBranchingPointsList)
     #p = histogram( lengthList )    
     # display(p)
 end

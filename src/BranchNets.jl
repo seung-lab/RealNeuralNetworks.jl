@@ -209,9 +209,31 @@ end
 
 function get_parent_branch_index( self::BranchNet, childBranchIndex::Integer )
     parentBranchIndexList,_ = findnz(self.connectivityMatrix[:, childBranchIndex])
-    @assert length(parentBranchIndexList) == 1
-    parentBranchIndexList[1]
+    @assert length(parentBranchIndexList) <= 1
+    if isempty( parentBranchIndexList ) 
+        # no parent, this is a root branch
+        return 0
+    else 
+        return parentBranchIndexList[1]
+    end 
 end
+
+"""
+    get_subtree_branch_index_list( self, branchInde )
+get the branch index list of subtree 
+"""
+function get_subtree_branch_index_list( self::BranchNet, branchIndex::Integer )
+    @assert branchIndex > 0 && branchIndex <= get_num_branches(self)
+    subtreeBranchIndexList = Vector{Integer}()
+    seedBranchIndexList = [branchIndex]
+    while !isempty( seedBranchIndexList )
+        seedBranchIndex = pop!( seedBranchIndexList )
+        push!(subtreeBranchIndexList, seedBranchIndex)
+        childrenBranchIndexList = get_children_branch_index_list( self, seedBranchIndex )
+        append!(seedBranchIndexList, childrenBranchIndexList)
+    end 
+    subtreeBranchIndexList 
+end 
 
 function get_terminal_branch_index_list( self::BranchNet; startBranchIndex::Integer = 1 )
     terminalBranchIndexList = Vector{Int}()
@@ -311,13 +333,87 @@ end
 function Base.isempty(self::BranchNet)    isempty(self.branchList) end 
 
 """
-    Base.split(self::BranchNet, branchIndex::Integer; nodeIndexInBranch::Integer=0)
+    Base.split(self::BranchNet, splitBranchIndex::Integer; nodeIndexInBranch::Integer=0)
 
 split the branch net into two branchNets
 the nodeIndexInBranch will be included in the first main net including the original root node  
 """
-function Base.split(self::BranchNet, branchIndex::Integer; nodeIndexInBranch::Integer=0)
-    
+function Base.split(self::BranchNet, splitBranchIndex::Integer; nodeIndexInBranch::Integer=1)
+    if splitBranchIndex == 1 && nodeIndexInBranch < 1 
+        return BranchNet(), self
+    end 
+
+    branchList = get_branch_list(self)
+    connectivityMatrix = get_connectivity_matrix(self)
+
+    branchIndexListInSubtree2 = get_subtree_branch_index_list( self, splitBranchIndex )
+    subtree1Branch, subtree2RootBranch = split(branchList[splitBranchIndex], 
+                                               nodeIndexInBranch)
+
+    # build the split out subtree2, which do not contain the root node
+    branchList2 = [subtree2RootBranch]
+    append!(branchList2, branchList[ branchIndexListInSubtree2 ])
+    branchIndexMap = Dict{Int,Int}()
+    sizehint!(branchIndexMap, length(branchIndexListInSubtree2))
+    for (branchIndexInSubtree2, mainTreeBranchIndex ) in 
+                                                    enumerate(branchIndexListInSubtree2)
+        branchIndexMap[ mainTreeBranchIndex ] = branchIndexInSubtree2 
+    end
+    connectivityMatrix2 = spzeros( Bool, length(branchList2), length(branchList2) )
+    for (branchIndexInSubtree2, branchIndexInOriginalTree) in 
+                                            enumerate(branchIndexListInSubtree2)
+        parentBranchIndexInOriginalTree = 
+                                get_parent_branch_index(self, branchIndexInOriginalTree)
+        if haskey(branchIndexMap, parentBranchIndexInOriginalTree)
+            parentBranchIndexInSubtree2 = branchIndexMap[ parentBranchIndexInOriginalTree ]
+            connectivityMatrix2[ parentBranchIndexInSubtree2, branchIndexInSubtree2 ] = true 
+        else 
+            # this is the root branch of new tree 
+            println("find root of new tree in the original tree : $(parentBranchIndexInOriginalTree)")
+        end 
+    end 
+    subtree2 = BranchNet( branchList2, connectivityMatrix2 )
+
+    # rebuild the main tree without the subtree2. 
+    # the main tree still contains the old root
+    branchList1 = Vector{Branch}()
+    branchIndexListInSubtree1 = Vector{Int}()
+    branchIndexMap = Dict{Int,Int}()
+    # the first one is the root branch
+    seedBranchIndexList = [1]
+    # build branchList1 without the splitout branch, will deal with it later
+    while !isempty( seedBranchIndexList )
+        seedBranchIndex = pop!( seedBranchIndexList )
+        if seedBranchIndex != splitBranchIndex 
+            push!(branchList1, branchList[seedBranchIndex])
+            push!(branchIndexListInSubtree1, seedBranchIndex)
+            # map the old branch index to the new branch index
+            # 3 => 2 means the 3rd branch of old tree is the 2nd branch of new tree
+            branchIndexMap[ seedBranchIndex ] = length(branchList1)
+            childrenBranchIndexList = get_children_branch_index_list(self, seedBranchIndex)
+            append!(seedBranchIndexList, childrenBranchIndexList)
+        else 
+            # deal with the split out branch
+            if nodeIndexInBranch != 1
+                @assert length(subtree1Branch) != 0
+                push!(branchList1, subtree1Branch)
+                # do not need to travase the subtree2 
+                # so don't put children to seed list
+            end 
+        end 
+    end 
+    connectivityMatrix1 = spzeros(Bool, length(branchList1), length(branchList1))
+    for (branchIndexInSubtree1, branchIndexInOriginalTree) in 
+                                                    enumerate(branchIndexListInSubtree1)
+        parentBranchIndexInOriginalTree = 
+                                get_parent_branch_index(self, branchIndexInOriginalTree)
+        if parentBranchIndexInOriginalTree > 0
+            parentBranchIndexInSubtree1 = branchIndexMap[ parentBranchIndexInOriginalTree ]
+            connectivityMatrix1[ parentBranchIndexInSubtree1, branchIndexInSubtree1 ] = true 
+        end 
+    end 
+    subtree1 = BranchNet( branchList1, connectivityMatrix1 )
+    return subtree1, subtree2
 end 
 
 ########################## type convertion ####################
