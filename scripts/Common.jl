@@ -30,6 +30,10 @@ function parse_commandline()
             help = "the directory to store swc file"
             arg_type = String
             default = "/tmp"
+        "--outputpath", "-o"
+            help = "the path to store outputs"
+            arg_type = String
+            default = "/tmp"
         "--voxelsize", "-v"
             help = "voxel size of the raw image, mip level 0"
             arg_type = NTuple{3,Int}
