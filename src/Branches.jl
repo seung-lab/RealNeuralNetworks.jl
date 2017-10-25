@@ -25,7 +25,25 @@ function get_connectivity_matrix( self::Branch ) self.connectivityMatrix end
 function get_bounding_box( self::Branch ) self.boundingBox end 
 function get_class( self::Branch ) self.class end 
 
+function get_bounding_box_distance(self::Branch, point::Union{Tuple, Vector})
+    @assert length(point) >= 3
+    BoundingBoxes.distance_from(self.boundingBox, point)
+end 
+
+"""
+    get_path_length(self::Branch)
+accumulate the euclidean distance between neighboring nodes 
+"""
+function get_path_length(self::Branch)
+    ret = 0.0
+    for i in 2:length(self)
+        ret += norm( [map((x,y)-> x-y, self[i][1:3], self[i-1][1:3] )...] )
+    end
+    ret
+end 
+
 ###################### Base functions ################
+function Base.endof(self::Branch) length(self) end
 function Base.isempty(self::Branch) isempty(self.nodeList) end 
 
 """
@@ -80,11 +98,6 @@ function distance_from(self::Branch, point::Vector)
     @assert ret[2] <= length(self)
     @assert ret!=(0,0)
     ret 
-end 
-
-function get_bounding_box_distance(self::Branch, point::Union{Tuple, Vector})
-    @assert length(point) >= 3
-    BoundingBoxes.distance_from(self.boundingBox, point)
 end 
 
 function add_offset(self::Branch, offset::Union{Tuple, Vector})

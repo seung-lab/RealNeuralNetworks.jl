@@ -23,7 +23,13 @@ end
     seg = FakeSegmentations.broken_ring()
     branchNet = BranchNet(seg)
     swc = SWCs.SWC( branchNet )
-    SWCs.save(swc, "/tmp/ring.swc")
+
+    println("get branch path length list ...")
+    @time branchPathLengthList = BranchNets.get_branch_path_length_list( branchNet )
+    @show branchPathLengthList
+    @show length( branchPathLengthList )
+    @show BranchNets.get_num_branches( branchNet ) 
+    @test length( branchPathLengthList ) == BranchNets.get_num_branches(branchNet)
 
     println("get terminal branch index list...")
     @time terminalBranchIndexList = BranchNets.get_terminal_branch_index_list( branchNet )

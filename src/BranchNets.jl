@@ -181,6 +181,27 @@ get a vector of Integer, which represent the length of each branch
 function get_branch_length_list( self::BranchNet ) map(length, get_branch_list(self)) end
 
 """
+    get_branch_path_length_list(self::BranchNet)
+get euclidean path length of each branch 
+"""
+function get_branch_path_length_list( self::BranchNet )
+    ret = Vector{Float64}()
+    for (index, branch) in enumerate( get_branch_list(self) )
+        branchPathLength = Branches.get_path_length( branch )
+        # add the edge length to parent node
+        parentBranchIndex = get_parent_branch_index(self, index)
+        if parentBranchIndex > 0
+            parentBranch = get_branch_list(self)[ parentBranchIndex ]
+            parentNode = parentBranch[ end ]
+            node = branch[1]
+            branchPathLength += norm( [map((x,y)->x-y, node[1:3], parentNode[1:3])...] )
+        end 
+        push!(ret, branchPathLength)
+    end 
+    ret 
+end 
+
+"""
     get_branch_end_node_index_list( self::BranchNet )
 
 get a vector of integer, which represent the node index of branch end 
@@ -196,8 +217,6 @@ function get_num_nodes( self::BranchNet )
     branchList = get_branch_list(self)
     sum(map(length, branchList))
 end 
-
-
 
 """
     get_children_branch_index_list(self::BranchNet, parentBranchIndex::Integer)
