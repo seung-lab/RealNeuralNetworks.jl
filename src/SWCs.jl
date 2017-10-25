@@ -1,6 +1,8 @@
 module SWCs
 include("PointObjs.jl")
 using .PointObjs 
+using Libz
+
 const ONE_UINT32 = UInt32(1)
 export SWC
 
@@ -128,6 +130,18 @@ end
 function load(fileName::AbstractString)
     swcString = readstring( fileName )
     SWC( swcString )    
+end
+
+function save_gzip_swc( self::SWC, fileName::AbstractString )
+    io = open(fileName, "w")                                                    
+    stream = ZlibDeflateOutputStream(io)                                              
+    write(stream, String(self))                                                          
+    close(stream)                                                                     
+end 
+
+function load_gzip_swc( fileName::AbstractString )
+    stream = open( fileName ) |> ZlibInflateInputStream
+    SWC( readstring( stream ) )
 end 
 
 #################### manipulate ######################
