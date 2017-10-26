@@ -159,6 +159,23 @@ end
 ####################### properties ##############
 
 """
+    get_root_branch_index( self::BranchNet )
+
+the first branch should be the root branch, and the first node should be the root node 
+"""
+function get_root_branch_index(self::BranchNet) 1 end 
+
+"""
+    get_root_node( self::BranchNet )
+the returned root node is a tuple of Float64, which represents x,y,z,r
+"""
+function get_root_node( self::BranchNet ) 
+    rootBranchIndex = get_root_branch_index(self)
+    rootBranch = get_branch_list(self)[ rootBranchIndex ]
+    rootBranch[1]
+end 
+
+"""
     get_num_branches(self::BranchNet)
 
 get the number of branches  
@@ -416,6 +433,7 @@ function Base.split(self::BranchNet, splitBranchIndex::Integer; nodeIndexInBranc
             if nodeIndexInBranch != 1
                 @assert length(subtree1Branch) != 0
                 push!(branchList1, subtree1Branch)
+                branchIndexMap[ seedBranchIndex ] = length(branchList1)
                 # do not need to travase the subtree2 
                 # so don't put children to seed list
             end 
@@ -433,7 +451,92 @@ function Base.split(self::BranchNet, splitBranchIndex::Integer; nodeIndexInBranc
     end 
     subtree1 = BranchNet( branchList1, connectivityMatrix1 )
     return subtree1, subtree2
+end
+
+
+function remove_branches!(self::BranchNet, removeBranchIndexList::Union{Vector,Set})
+    self = remove_branches( self, removeBranchIndexList )
 end 
+
+function remove_branches(self::BranchNet, removeBranchIndexList::Vector{Int})
+    remove_branches(self, Set{Int}( removeBranchIndexList ))
+end 
+
+function remove_branches(self::BranchNet, removeBranchIndexList::Set{Int})
+    @assert !(1 in removeBranchIndexList) "should not contain the root branch!"
+
+    branchList = get_branch_list(self)
+    connectivityMatrix = get_connectivity_matrix(self)
+
+    # rebuild the main tree without the subtree2. 
+    # the main tree still contains the old root
+    newBranchList = Vector{Branch}()
+    newBranchIndexList = Vector{Int}()
+    branchIndexMap = Dict{Int,Int}()
+    # the first one is the root branch
+    seedBranchIndexList = [1]
+    # build branchList1 without the splitout branch, will deal with it later
+    while !isempty( seedBranchIndexList )
+        seedBranchIndex = pop!( seedBranchIndexList )
+        if !(seedBranchIndex in removeBranchIndexList) 
+            # should contain this branch
+            push!(newBranchList, branchList[seedBranchIndex])
+            push!(newBranchIndexList, seedBranchIndex)
+            # map the old branch index to the new branch index
+            branchIndexMap[ seedBranchIndex ] = length(newBranchList)
+            childrenBranchIndexList = get_children_branch_index_list(self, seedBranchIndex)
+            append!(seedBranchIndexList, childrenBranchIndexList)
+        end 
+    end 
+    newConnectivityMatrix = spzeros(Bool, length(newBranchList), length(newBranchList))
+    for (newBranchIndex, branchIndexInOriginalTree) in 
+                                                    enumerate(newBranchIndexList)
+        parentBranchIndexInOriginalTree = 
+                                get_parent_branch_index(self, branchIndexInOriginalTree)
+        if parentBranchIndexInOriginalTree > 0
+            newParentBranchIndex = branchIndexMap[ parentBranchIndexInOriginalTree ]
+            newConnectivityMatrix[ newParentBranchIndex, newBranchIndex ] = true 
+        end 
+    end 
+    return BranchNet( newBranchList, newConnectivityMatrix )
+end 
+
+"""
+    remove_subtree_in_soma!(self::BranchNet)
+
+remove the subtree which is inside the soma, which is an artifact of TEASAR algorithm
+"""
+function remove_subtree_in_soma( self::BranchNet )
+    removeBranchIndexList = Vector{Int}()
+    rootBranchIndex = get_root_branch_index( self )
+    rootNode = get_root_node( self )
+    childrenBranchIndexList = get_children_branch_index_list( self, rootBranchIndex )
+    for branchIndex in childrenBranchIndexList 
+        terminalNodeList = get_terminal_node_list( self; startBranchIndex=branchIndex )
+        if all( map(n->Branches.get_nodes_distance(n, rootNode) < rootNode[4]*2, 
+                                                                terminalNodeList ) )
+            println("remove branch: $branchIndex")
+            push!(removeBranchIndexList, branchIndex)
+        end 
+    end
+    return remove_branches( self, removeBranchIndexList )
+end
+
+function remove_hair( self::BranchNet )
+    branchList = get_branch_list(self)
+    removeBranchIndexList = Vector{Int}()
+    for terminalBranchIndex in get_terminal_branch_index_list(self)
+        parentBranchIndex = get_parent_branch_index(self, terminalBranchIndex)
+        terminalNode = branchList[ terminalBranchIndex ][end]
+        parentNode = branchList[ parentBranchIndex ][end]
+        distance = Branches.get_nodes_distance(terminalNode, parentNode)
+        if distance < 2*parentNode[4]
+            println("remove branch $(terminalBranchIndex) with distance of $(distance) and radius of $(parentNode[4])")
+            push!(removeBranchIndexList, terminalBranchIndex)
+        end 
+    end 
+    return remove_branches(self, removeBranchIndexList)
+end
 
 ########################## type convertion ####################
 function SWCs.SWC(self::BranchNet)

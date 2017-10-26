@@ -19,7 +19,7 @@ function SWC( swcString::AbstractString )
         catch err 
             if contains(line, "#")
                 println("comment in swc file: $line")
-            elseif line == "\n"
+            elseif isempty(line) || line == " " || line == "\n"
                 continue 
             else
                 warn("invalid line: $line")

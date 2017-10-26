@@ -4,13 +4,15 @@ include("BoundingBoxes.jl")
 # include(joinpath(dirname(@__FILE__), "BoundingBoxes.jl"))
 using .BoundingBoxes 
 
+typealias Node NTuple{4,Float64}
+
 const CLASS = UInt8(0)
 const ZERO_FLOAT32 = Float32(0)
 
 export Branch 
 type Branch 
     # x,y,z,r
-    nodeList    ::Vector{NTuple{4, Float32}}
+    nodeList    ::Vector{Node}
     class       ::UInt8
     boundingBox ::BoundingBox
 end 
@@ -20,6 +22,13 @@ function Branch(nodeList::Vector; class=CLASS)
 end 
 
 ###################### properties ###################
+"""
+    get_nodes_distance(self::Node, other::Node)
+compute the euclidean distance between two nodes 
+"""
+function get_nodes_distance(self::Node, other::Node)
+    norm( [map((x,y)->x-y, self[1:3], other[1:3]) ...])
+end 
 function get_node_list(self::Branch) self.nodeList end 
 function get_connectivity_matrix( self::Branch ) self.connectivityMatrix end 
 function get_bounding_box( self::Branch ) self.boundingBox end 

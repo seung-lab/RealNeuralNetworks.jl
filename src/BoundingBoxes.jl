@@ -18,7 +18,7 @@ end
 """
 get bounding box from a node list 
 """
-function BoundingBox(nodeList::Vector{NTuple{4,Float32}})
+function BoundingBox(nodeList::Vector)
     minCorner = [Inf32, Inf32, Inf32]
     maxCorner = [ZERO_FLOAT32, ZERO_FLOAT32, ZERO_FLOAT32]
     for node in nodeList 
