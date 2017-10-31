@@ -712,6 +712,10 @@ function distill!{T}(point_array::Array{T,2},
     for i in 1:num_edges
         path_edges[i] = (id_map[path_edges[i][1]], id_map[path_edges[i][2]])
     end
+    for edge in path_edges 
+        # no self connecting edge!
+        @assert edge[1] != edge[2]
+    end 
     return nodes, path_edges
 end 
 
