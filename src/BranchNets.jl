@@ -198,6 +198,58 @@ get a vector of Integer, which represent the length of each branch
 function get_branch_length_list( self::BranchNet ) map(length, get_branch_list(self)) end
 
 """
+    get_node_num( self::BranchNet )
+get total number of nodes  
+"""
+function get_node_num( self::BranchNet )
+    sum(map(length, get_branch_list(self)))
+end 
+
+"""
+    get_node_list(self::BranchNet)
+get the node list. the first one is root node.
+"""
+function get_node_list( self::BranchNet )
+    nodeList = Vector{NTuple{4, Float32}}()
+    sizehint!(nodeList, get_node_num(self))
+    for branch in get_branch_list(self)
+        append!(nodeList, Branches.get_node_list(branch))
+    end 
+    nodeList
+end 
+
+"""
+    get_edge_list( self::BranchNet )
+get the edges with type of Vector{NTuple{2, Int}}
+"""
+function get_edge_list( self::BranchNet )
+    edgeList = Vector{NTuple{2,Int}}()
+    branchStartNodeIndexList = Vector{Int}()
+    branchStopNodeIndexList = Vector{Int}()
+    # total number of nodes
+    nodeNum = 0
+    for (branchIndex, branch) in enumerate(get_branch_list(self))
+        push!(branchStartNodeIndexList, nodeNum+1)
+        # build the edges inside branch
+        for nodeIndex in nodeNum+1:nodeNum+length(branch)-1
+            push!(edgeList, (nodeIndex, nodeIndex+1))
+        end 
+        # update node number
+        nodeNum += length(branch)
+        push!(branchStopNodeIndexList,  nodeNum)
+    end 
+    # add branch connections
+    parentBranchIndexList, childBranchIndexList, _ = findnz( get_connectivity_matrix(self) )
+    for (index, parentBranchIndex) in enumerate( parentBranchIndexList )
+        childBranchIndex = childBranchIndexList[ index ]
+        parentNodeIndex = branchStopNodeIndexList[ parentBranchIndex ]
+        childNodeIndex  = branchStartNodeIndexList[ childBranchIndex ]
+        push!( edgeList, (parentNodeIndex, childNodeIndex) )
+    end 
+    edgeList 
+end 
+
+"""
     get_branch_path_length_list(self::BranchNet)
 get euclidean path length of each branch 
 """
@@ -502,7 +554,7 @@ function remove_branches(self::BranchNet, removeBranchIndexList::Set{Int})
 end 
 
 """
-    remove_subtree_in_soma!(self::BranchNet)
+    remove_subtree_in_soma(self::BranchNet)
 
 remove the subtree which is inside the soma, which is an artifact of TEASAR algorithm
 """
@@ -539,6 +591,16 @@ function remove_hair( self::BranchNet )
 end
 
 ########################## type convertion ####################
+"""
+    NodeNets.NodeNet( self::BranchNet )
+transform to NodeNet, the first node is the root node.
+"""
+function NodeNets.NodeNet(self::BranchNet)
+    nodeList = get_node_list( self )
+    edges = get_edge_list( self )
+    error("not fully implemented")
+end 
+
 function SWCs.SWC(self::BranchNet)
     # initialize swc, which is a list of point objects
     swc = SWCs.SWC()
