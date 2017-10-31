@@ -20,12 +20,24 @@ end
     branchNet = BranchNet(seg)
     println("transform to SWC structure ...")
     @time swc = SWCs.SWC( branchNet )
+    tempFile = tempname() * ".swc"
+    SWCs.save(swc, tempFile)
+    rm(tempFile)
 
     println("load swc of a real neuron...")
-    @time branchNet = BranchNets.load_swc("../assert/76869.swc")
+    @time swc = SWCs.load_gzip_swc("../assert/76869.swc.gz")
+    println("save as gzip compressed file ...")
+    @time SWCs.save_gzip_swc(swc, "/tmp/76869.swc.gz")
+    rm("/tmp/76869.swc.gz")
+
+    branchNet = BranchNet( swc )
+    println("get node list ...")
+    @time nodeList = BranchNets.get_node_list(branchNet)
+    println("get edge list ...")
+    @time edgeList = BranchNets.get_edge_list(branchNet)
 
     println("remove subtree in soma...")
-    @time BranchNets.remove_subtree_in_soma!(branchNet)
+    @time newBranchNet = BranchNets.remove_subtree_in_soma(branchNet)
 
     println("get branch path length list ...")
     @time branchPathLengthList = BranchNets.get_branch_path_length_list( branchNet )

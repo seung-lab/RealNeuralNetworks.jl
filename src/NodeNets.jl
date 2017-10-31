@@ -232,6 +232,26 @@ assume that the graph is acyclic, no loop.
 """
 function get_num_branches(self::NodeNet)
     get_num_branch_point(self) + 2
+end
+
+"""
+    get_sholl_number(self::NodeNet, radius::AbstractFloat)
+get the number of points which is in neurite and incounters with a sphere centered on root node 
+"""
+function get_sholl_number(self::NodeNet, radius::AbstractFloat; rootNodeIndex::Integer=1)
+    shollNum = 0
+    nodeList = get_node_list(self)
+    rootNode = nodeList[ rootNodeIndex ]
+    for edge in get_edges(self)
+        node1 = nodeList[ edge[1] ]
+        node2 = nodeList[ edge[2] ]
+        r1 = distance_from( rootNode, node1 )
+        r2 = distance_from( rootNode, node2 )
+        if r1>radius != r2>radius
+            shollNum += 1
+        end 
+    end 
+    shollNum
 end 
 
 function Base.UnitRange(self::NodeNet)
