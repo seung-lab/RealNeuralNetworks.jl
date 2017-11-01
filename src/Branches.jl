@@ -65,6 +65,20 @@ function Base.length(self::Branch)
 end 
 
 """
+    Base.merge(self::Branch, other::Branch)
+merge two branches  
+"""
+function Base.merge(self::Branch, other::Branch)
+    nodeList1 = get_node_list(self)
+    nodeList2 = get_node_list(other)
+    mergedNodeList = vcat( nodeList1, nodeList2 )
+    # winner taks all!
+    class = length(nodeList1)>length(nodeList2)? get_class(self) : get_class(other)
+    boundingBox = union( get_bounding_box(self), get_bounding_box(other) )
+    Branch(mergedNodeList, class, boundingBox)
+end 
+
+"""
 split the branch from the node list index to two branches
 the indexed node will be included in the second branch 
 """

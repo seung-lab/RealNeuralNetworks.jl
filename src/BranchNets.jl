@@ -164,6 +164,9 @@ end
 the first branch should be the root branch, and the first node should be the root node 
 """
 function get_root_branch_index(self::BranchNet) 1 end 
+function get_root_branch(self::BranchNet) 
+    get_branch_list(self)[get_root_branch_index(self)]
+end 
 
 """
     get_root_node( self::BranchNet )
@@ -177,16 +180,23 @@ end
 
 """
     get_num_branches(self::BranchNet)
-
-get the number of branches  
 """
 function get_num_branches(self::BranchNet) length(self.branchList) end
+
 """
     get_num_branching_points(self::BranchNet)
-get number of branching points. assume that neuron tree do not have loop, 
-so the number of branching points is num_branches-1.
 """
-function get_num_branching_points(self::BranchNet) get_num_branches(self)-1 end 
+function get_num_branching_points(self::BranchNet)
+    numBranchingPoint = 0
+    for index in 1:get_num_branches(self)
+        childrenBranchIndexList = get_children_branch_index_list(self, index)
+        if length(childrenBranchIndexList) > 0
+            numBranchingPoint += 1
+        end 
+    end 
+    numBranchingPoint
+end 
+
 function get_branch_list(self::BranchNet) self.branchList end 
 function get_connectivity_matrix(self::BranchNet) self.connectivityMatrix end 
 
@@ -347,7 +357,8 @@ end
 
 ############################### Base functions ###################################
 """
-merge two nets at a specific branch location
+merge two nets at a specific branch location.
+the root node of second net will be connected to the first net
 """
 function Base.merge(self::BranchNet, other::BranchNet, 
                     nearestBranchIndex::Integer, nearestNodeIndexInBranch::Integer)
@@ -360,22 +371,31 @@ function Base.merge(self::BranchNet, other::BranchNet,
     
     if nearestNodeIndexInBranch == length(branchList1[nearestBranchIndex])
         # the connection point is the end of a branch, no need to break branch
-        # just stitch the new branches and rebuild the connection matrix
-        mergedBranchList = vcat( branchList1, branchList2 )
+        # merge the root branch of second net to the first net
+        mergedBranchList1 = copy(branchList1)
+        # assume that the first branch is the root branch
+        mergedBranchList1[nearestBranchIndex] = 
+                                merge(mergedBranchList[nearestBranchIndex], branchList2[1])
+        mergedBranchList = vcat( mergedBranchList1, branchList2[2:end] )
+
         # total number of branches
-        total_num_branches = num_branches1 + num_branches2 
+        total_num_branches = num_branches1 + num_branches2 - 1 
+        
         mergedConnectivityMatrix = spzeros(Bool, total_num_branches, total_num_branches)
         mergedConnectivityMatrix[1:size(self.connectivityMatrix,1), 
                                  1:size(self.connectivityMatrix,2)] = 
                                                                 self.connectivityMatrix 
-
+        # do not include the connection of root in net2
         mergedConnectivityMatrix[
-                num_branches1+1 : num_branches1+1+size(other.connectivityMatrix,1)-1, 
+                num_branches1+1+1 : num_branches1+1+size(other.connectivityMatrix,1)-1, 
                 num_branches1+1 : num_branches1+1+size(other.connectivityMatrix,2)-1] = 
-                                                                other.connectivityMatrix
-
-        # connect the two nets, the row index is the parent and the column is the child
-        mergedConnectivityMatrix[nearestBranchIndex, num_branches1+1] = true
+                                                        other.connectivityMatrix[2:end, :]
+        # reestablish the connection of root2
+        childrenBranchIndexList2 = get_children_branch_index_list(other, 1)
+        for childBranchIndex2 in childrenBranchIndexList2
+            mergedConnectivityMatrix[ nearestBranchIndex, 
+                                      num_branches1+childBranchIndex-1 ] = true 
+        end 
         return BranchNet(mergedBranchList, mergedConnectivityMatrix)
     else 
         # need to break the nearest branch and rebuild connectivity matrix

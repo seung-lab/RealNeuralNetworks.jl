@@ -30,6 +30,9 @@ using .Common
    
     # reconnect the broken pieces and reset root to the soma center
     branchNet = BranchNet( nodeNet )
+    branchNet = BranchNets.remove_subtree_in_soma(branchNet)
+    branchNet = BranchNets.remove_hair( branchNet )
+
     swc = SWCs.SWC( branchNet )
     SWCs.save(swc, joinpath(swcDir, "$(cellId).swc"))
     
