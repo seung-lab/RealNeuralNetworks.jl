@@ -35,6 +35,8 @@ end
     @time nodeList = BranchNets.get_node_list(branchNet)
     println("get edge list ...")
     @time edgeList = BranchNets.get_edge_list(branchNet)
+    println("get branch order list...")
+    @time branchOrderList = BranchNets.get_branch_order_list( branchNet )
 
     println("remove subtree in soma...")
     @time newBranchNet = BranchNets.remove_subtree_in_soma(branchNet)

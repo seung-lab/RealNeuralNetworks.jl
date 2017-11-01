@@ -201,6 +201,32 @@ function get_branch_list(self::BranchNet) self.branchList end
 function get_connectivity_matrix(self::BranchNet) self.connectivityMatrix end 
 
 """
+    get_branch_order_list( self::BranchNet )
+following the Julia indexing style, the root branch order is 1.
+"""
+function get_branch_order_list(self::BranchNet)
+    branchOrderList = Vector{Int}()
+    sizehint!(branchOrderList, get_num_branches(self))
+    
+    index2order = Dict{Int,Int}()
+    # the first one is branch index, the second one is branch order 
+    seedBranchIndexOrderList = Vector{NTuple{2,Int}}([(1,1)])
+    while !isempty( seedBranchIndexOrderList )
+        branchIndex, branchOrder = pop!(seedBranchIndexOrderList)
+        index2order[branchIndex] = branchOrder 
+        childrenBranchIndexList = get_children_branch_index_list(self, branchIndex)
+        for childBranchIndex in childrenBranchIndexList 
+            push!(seedBranchIndexOrderList, (childBranchIndex, branchOrder+1))
+        end 
+    end 
+    
+    for index in 1:get_num_branches( self )
+        push!(branchOrderList, index2order[index])
+    end 
+    branchOrderList
+end 
+
+"""
     get_branch_length_list( self::BranchNet )
 
 get a vector of Integer, which represent the length of each branch 
