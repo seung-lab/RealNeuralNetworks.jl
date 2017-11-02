@@ -66,6 +66,16 @@ function get_tail_head_radius_ratio( self::Branch )
     maximum(tailRadiusList) / minimum(headRadiusList)
 end 
 
+"""
+    get_tortuosity( self::Branch )
+the ratio of the actual path length to the euclidean distance between head and tail node 
+"""
+function get_tortuosity(self::Branch)
+    pathLength = get_path_length(self)
+    euclideanLength = get_nodes_distance( self[1], self[end] )
+    pathLength / euclideanLength 
+end 
+
 ###################### Base functions ################
 function Base.start( self::Branch ) 1 end 
 function Base.next( self::Branch, state::Integer ) get_node_list(self)[state], state+1 end 

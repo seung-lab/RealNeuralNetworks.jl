@@ -10,6 +10,8 @@ using Base.Test
     # get a random branch
     branch = branchNet[5]
     
+    println("get tortuosity...")
+    @show Branches.get_tortuosity( branch )
     println("get tail head radius ratio ...")
-    @time Branches.get_tail_head_radius_ratio( branch )
+    @show Branches.get_tail_head_radius_ratio( branch )
 end 
