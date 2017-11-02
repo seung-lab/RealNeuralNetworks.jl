@@ -2,19 +2,19 @@ RealNeuralNetworks.jl
 ========================
 3D neuron models extracted from EM image segmentation
 
-## Installation
+# Installation
 run this inside julia REPL:
 
     Pkg.clone("https://github.com/seung-lab/RealNeuralNetworks.jl.git")
 
-## Usage
+# Usage
 you must have google secret json file in `/secrets/google-secret.json`, same with configuration of [GSDicts.jl](https://github.com/seung-lab/GSDicts.jl) or [cloudvolume](https://github.com/seung-lab/cloud-volume)
 
-### commandline
+## commandline
 `julia ~/julia/v0.5/RealNeuralNetworks/scripts/skeletonize.jl -h`
 
-### Docker (recommanded)
-#### build docker image
+## Docker (recommanded)
+### build docker image
     cd ~/julia/v0.5/RealNeuralNetworks
     sudo docker build . -t realneuralnetworks
 
@@ -22,7 +22,7 @@ you must have google secret json file in `/secrets/google-secret.json`, same wit
 docker run -v /tmp:/tmp -v /secrets:/secrets --net=host realneuralnetworks julia skeletonize.jl -h
 ```
 
-### REPL in Julia
+## REPL in Julia
 
 ```Julia
 using RealNeuralNetworks.NodeNets
@@ -34,6 +34,7 @@ branchNet = BranchNet( nodeNet )
 swc = SWC(branchNet)
 SWCs.save(swc, tempname()*".swc")
 ```
+
 # Morphological Features
 
 ## features represent a whole neuron
@@ -56,7 +57,7 @@ SWCs.save(swc, tempname()*".swc")
 - [ ] number of branches per branch order (second principal component)
 - [ ] distribution of morphological distance of branches from soma along the skeleton as a function of branch order (first principal component)
 
-# features represent branches in a neuron
+## features represent branches in a neuron
 - [x] ratio of tail diameter to head. could be useful to identify spines. 8af50c09fc396489c8f10e5c205fa7ef1903b36c
 - [x] branch order
 - [x] branch length
@@ -66,7 +67,7 @@ SWCs.save(swc, tempname()*".swc")
 - [ ] [branch asymmetry](http://www.treestoolbox.org/manual/asym_tree.html)
 - [x] average radius. easy to compute with radius list.
 
-## Credit 
+# Credit 
 The skeletonization was originally implemented in Matlab by Alexander Bae using TEASAR algorithm, which was translated to Julia by Nicholas Turner.
 
 # References:
