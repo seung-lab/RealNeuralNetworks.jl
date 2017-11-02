@@ -308,7 +308,7 @@ function get_path_to_root_length(self::BranchNet, branchIndex::Integer)
         end 
     end
     path2RootLength 
-end 
+end
 
 """
     get_branch_path_length_list(self::BranchNet)
@@ -403,6 +403,40 @@ end
 function get_terminal_node_list( self::BranchNet; startBranchIndex::Integer = 1 )
     terminalBranchIndexList = get_terminal_branch_index_list( self )
     map( x -> Branches.get_node_list(x)[end], get_branch_list(self)[ terminalBranchIndexList ] )
+end 
+
+"""
+    get_branching_angle( self::BranchNet, branchIndex::Integer; nodeDistance::AbstractFloat  )
+if the node is too close the angle might not be accurate. For example, if they are voxel neighbors, the angle will alwasys be 90 or 45 degree. Thus, we have nodeDistance here to help make the nodes farther away.
+Note that the acos returns angle in the format of radiens.
+"""
+function get_branching_angle( self::BranchNet, branchIndex::Integer; nodeDistance::Real = 5000.0 )
+    branch = self[branchIndex]
+    parentBranch = self[ get_parent_branch_index(self, branchIndex) ]
+    branchingNode = parentBranch[end]
+    parentNode = parentBranch[end-1]
+    for node in parentBranch 
+        if Branches.get_nodes_distance(node, branchingNode) < nodeDistance
+            parentNode = node 
+            break 
+        end 
+    end
+    childNode = branch[1]
+    for index in length(branch):1
+        node = branch[index]
+        if Branches.get_nodes_distance(node, branchingNode) < nodeDistance 
+            childNode = node 
+            break 
+        end 
+    end 
+    # compute the angle among the three nodes using the definition of dot product
+    # get the two vectors
+    v1 = map(-, parentNode[1:3], branchingNode[1:3] )
+    v2 = map(-, branchingNode[1:3], childNode[1:3] )
+    # normalize the vector
+    nv1 = normalize([v1...]) 
+    nv2 = normalize([v2...])
+    return acos( dot(nv1, nv2) )
 end 
 
 """

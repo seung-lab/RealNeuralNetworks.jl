@@ -40,7 +40,10 @@ end
 
     println("remove subtree in soma...")
     @time newBranchNet = BranchNets.remove_subtree_in_soma(branchNet)
-   
+  
+    println("get branching angle ...")
+    @time angle = BranchNets.get_branching_angle( branchNet, 5 )
+
     println("get path to root length ...")
     @time path2RootLength = BranchNets.get_path_to_root_length( branchNet, 5 )
 
