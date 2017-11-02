@@ -361,6 +361,20 @@ function get_mass_center( self::BranchNet )
 end
 
 """
+    get_typical_radius( self::BranchNet )
+Typical radius is the root-mean-square distance of dendritic arbor points to the center of mass (in nm)
+"""
+function get_typical_radius( self::BranchNet )
+    massCenter = get_mass_center( self )
+    nodeList = get_node_list( self )
+    typicalRadius = 0.0
+    for node in nodeList 
+        typicalRadius += norm([massCenter...] .- [node[1:3]...]) / length(nodeList)
+    end 
+    typicalRadius 
+end 
+
+"""
     get_asymmetry( self::BranchNet )
 asymmetry was measured by the euclidean distance between root node and mass center 
 """
@@ -773,6 +787,25 @@ function remove_hair( self::BranchNet )
     return remove_branches(self, removeBranchIndexList)
 end
 
+"""
+    remove_terminal_blobs( self::BranchNet )
+some terminal segmentation was fragmented. a lot of blobs was attatched to dendrite.
+The blob terminal branch path length is normally smaller than the distance to parent dendrite.
+"""
+function remove_terminal_blobs( self::BranchNet )
+    terminalBranchIndexList = get_terminal_branch_index_list( self )
+    blobTerminalBranchIndexList = Vector{Int}()
+    for index in terminalBranchIndexList 
+        branch = self[index]
+        parentBranch = self[ get_parent_branch_index(self, index) ]
+        branchInnerPathLength = Branches.get_path_length( branch )
+        distance2Parent = Branches.get_nodes_distance( branch[1], parentBranch[end] )
+        if distance2Parent > branchInnerPathLength 
+            push!(blobTerminalBranchIndexList, index)
+        end 
+    end 
+    return remove_branches( self, blobTerminalBranchIndexList )
+end 
 ########################## type convertion ####################
 """
     NodeNets.NodeNet( self::BranchNet )

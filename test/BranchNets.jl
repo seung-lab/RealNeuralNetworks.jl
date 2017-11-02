@@ -41,6 +41,9 @@ end
     println("remove subtree in soma...")
     @time newBranchNet = BranchNets.remove_subtree_in_soma(branchNet)
 
+    println("get typical radius ...")
+    @show BranchNets.get_typical_radius( branchNet )
+
     println("get asymmetry ...")
     @show BranchNets.get_asymmetry( branchNet )
  
