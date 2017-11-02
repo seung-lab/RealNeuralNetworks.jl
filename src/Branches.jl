@@ -49,9 +49,28 @@ function get_path_length(self::Branch)
         ret += norm( [map((x,y)-> x-y, self[i][1:3], self[i-1][1:3] )...] )
     end
     ret
+end
+
+function get_radius_list( self::Branch ) map(n->n[4], self) end 
+
+"""
+    get_tail_head_radius_ratio( self::Branch )
+the spine is normally thick in tail, and thin in the head. 
+The head should point to dendrite. This is a very good feature to identify spine.
+"""
+function get_tail_head_radius_ratio( self::Branch )
+    radiusList = get_radius_list( self )
+    N = length(self)
+    headRadiusList = radiusList[1:cld(N,2)]
+    tailRadiusList = radiusList[cld(N,2):N]
+    maximum(tailRadiusList) / minimum(headRadiusList)
 end 
 
 ###################### Base functions ################
+function Base.start( self::Branch ) 1 end 
+function Base.next( self::Branch, state::Integer ) get_node_list(self)[state], state+1 end 
+function Base.done( self::Branch, state::Integer ) state > length(self) end 
+
 function Base.endof(self::Branch) length(self) end
 function Base.isempty(self::Branch) isempty(self.nodeList) end 
 

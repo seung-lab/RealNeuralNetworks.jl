@@ -149,11 +149,20 @@ end
 function load_swc( fileName::AbstractString )
     swcString = readstring( fileName )
     BranchNet( swcString )
+end
+
+function load_gzip_swc( fileName::AbstractString )
+    swc = SWCs.load_gzip_swc( fileName )
+    BranchNet( swc )
 end 
 
-function save(self::BranchNet, fileName)
+function save(self::BranchNet, fileName::AbstractString)
     swc = SWC(self)
     SWCs.save( swc, fileName )
+end
+
+function save_gzip_swc( self::BranchNet, fileName::AbstractString )
+    SWCs.save_gzip_swc( SWCs.SWC(self), fileName )
 end 
 
 ####################### properties ##############
@@ -435,6 +444,9 @@ end
 
 
 ############################### Base functions ###################################
+function Base.getindex(self::BranchNet, index::Integer)
+    get_branch_list(self)[index]
+end 
 """
 merge two nets at a specific branch location.
 the root node of second net will be connected to the first net
