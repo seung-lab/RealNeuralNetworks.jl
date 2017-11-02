@@ -239,6 +239,7 @@ end
 get the number of points which is in neurite and incounters with a sphere centered on root node 
 """
 function get_sholl_number(self::NodeNet, radius::AbstractFloat; rootNodeIndex::Integer=1)
+    error("depracated, use the function in BranchNets.")
     shollNum = 0
     nodeList = get_node_list(self)
     rootNode = nodeList[ rootNodeIndex ]

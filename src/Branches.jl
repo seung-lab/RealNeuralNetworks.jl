@@ -4,7 +4,7 @@ include("BoundingBoxes.jl")
 # include(joinpath(dirname(@__FILE__), "BoundingBoxes.jl"))
 using .BoundingBoxes 
 
-typealias Node NTuple{4,Float64}
+typealias Node NTuple{4,Float32}
 
 const CLASS = UInt8(0)
 const ZERO_FLOAT32 = Float32(0)

@@ -40,6 +40,9 @@ end
 
     println("remove subtree in soma...")
     @time newBranchNet = BranchNets.remove_subtree_in_soma(branchNet)
+    
+    println("sholl analysis ...")
+    @time shollNumList = BranchNets.get_sholl_number_list(branchNet, 10000 )
 
     println("get branch path length list ...")
     @time branchPathLengthList = BranchNets.get_branch_path_length_list( branchNet )

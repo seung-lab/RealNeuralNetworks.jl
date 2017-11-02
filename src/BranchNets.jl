@@ -380,6 +380,59 @@ function get_terminal_node_list( self::BranchNet; startBranchIndex::Integer = 1 
     map( x -> Branches.get_node_list(x)[end], get_branch_list(self)[ terminalBranchIndexList ] )
 end 
 
+"""
+    get_sholl_number(self::BranchNet, shollRadius::AbstractFloat)
+suppose there is a sphere centered on the root node. The sholl number is the number of contact points of the neuron and sphere. 
+"""
+function get_sholl_number(self::BranchNet, shollRadius::AbstractFloat)
+    shollNum = 0
+    root = get_root_node(self)
+    nodeList = get_node_list( self )
+    edgeList = get_edge_list( self )
+    for edge in edgeList 
+        node1 = nodeList[ edge[1] ]
+        node2 = nodeList[ edge[2] ]
+        if  Branches.get_nodes_distance(root, node1) > shollRadius != 
+            Branches.get_nodes_distance(root, node2) > shollRadius 
+            shollNum += 1
+        end 
+    end 
+    shollNum 
+end 
+
+function get_sholl_number_list(self::BranchNet, shollRadiusList::Vector)
+    shollNumList = zeros(Float64, length(shollRadiusList))
+    for (index, shollRadius) in enumerate(shollRadiusList)
+        shollNumList = get_sholl_number(self, shollRadius) 
+    end 
+    shollNumList 
+end
+
+"""
+    get_sholl_number_list(self::BranchNet, radiusStep::AbstractFloat; numStep::Integer=0)
+if the number of steps is 0, we'll auto compute the step number according to the farthest terminal node.
+"""
+function get_sholl_number_list(self::BranchNet, radiusStep::Real;
+                               numStep::Integer=0)
+    shollNumList = Vector{Float64}()
+    if numStep==0
+        # automatically computing step number 
+        root = get_root_node(self)
+        terminalNodeList = get_terminal_node_list(self)
+        terminal2RootDistanceList = map(n->Branches.get_nodes_distance(root,n), terminalNodeList)
+        maxDistance = maximum( terminal2RootDistanceList )
+        numStep = fld(maxDistance, radiusStep)
+    end
+
+    radius = 0.0
+    for n in 1:numStep
+        radius += n*radiusStep 
+        shollNum = get_sholl_number( self, radius )
+        push!(shollNumList, shollNum)
+    end 
+    shollNumList 
+end 
+
 
 ############################### Base functions ###################################
 """
