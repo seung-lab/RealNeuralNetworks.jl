@@ -349,6 +349,28 @@ function get_num_nodes( self::BranchNet )
 end 
 
 """
+    get_mass_center( self::BranchNet )
+mass center was computed simply as center of all nodes 
+"""
+function get_mass_center( self::BranchNet )
+    nodeList = get_node_list(self)
+    x = sum(map(n->n[1], nodeList)) / length(nodeList)
+    y = sum(map(n->n[2], nodeList)) / length(nodeList)
+    z = sum(map(n->n[3], nodeList)) / length(nodeList)
+    (x,y,z)
+end
+
+"""
+    get_asymmetry( self::BranchNet )
+asymmetry was measured by the euclidean distance between root node and mass center 
+"""
+function get_asymmetry( self::BranchNet )
+    massCenter = get_mass_center( self )
+    root = get_root_node( self )
+    norm( [massCenter...] .- [root[1:3]...] )
+end 
+
+"""
     get_children_branch_index_list(self::BranchNet, parentBranchIndex::Integer)
 """
 function get_children_branch_index_list(self::BranchNet, parentBranchIndex::Integer)

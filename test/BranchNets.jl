@@ -40,7 +40,13 @@ end
 
     println("remove subtree in soma...")
     @time newBranchNet = BranchNets.remove_subtree_in_soma(branchNet)
-  
+
+    println("get asymmetry ...")
+    @show BranchNets.get_asymmetry( branchNet )
+ 
+    println("get mass center ...")
+    @show BranchNets.get_mass_center( branchNet )
+
     println("get branching angle ...")
     @time angle = BranchNets.get_branching_angle( branchNet, 5 )
 
