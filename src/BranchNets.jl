@@ -294,9 +294,11 @@ function get_edge_list( self::BranchNet )
     edgeList 
 end 
 
-function get_path_to_root_length(self::BranchNet, branchIndex::Integer)
+function get_path_to_root_length(self::BranchNet, branchIndex::Integer; branchPathLengthList::Vector = [])
     path2RootLength = 0.0
-    branchPathLengthList = get_branch_path_length_list( self )
+    if isempty(branchPathLengthList)
+        branchPathLengthList = get_branch_path_length_list( self )
+    end 
     while true 
         path2RootLength += branchPathLengthList[ branchIndex ]
         parentBranchIndex = get_parent_branch_index(self, branchIndex )
@@ -488,15 +490,19 @@ end
 suppose there is a sphere centered on the root node. The sholl number is the number of contact points of the neuron and sphere. 
 """
 function get_sholl_number(self::BranchNet, shollRadius::AbstractFloat)
-    shollNum = 0
     root = get_root_node(self)
     nodeList = get_node_list( self )
     edgeList = get_edge_list( self )
+    get_sholl_number( root, nodeList, edgeList, shollRadius )
+end 
+
+function get_sholl_number(root::NTuple{4, Float32}, nodeList::Vector{NTuple{4,Float32}}, 
+                          edgeList::Vector{NTuple{2,Int}}, shollRadius::AbstractFloat)
+    shollNum = 0
     for edge in edgeList 
         node1 = nodeList[ edge[1] ]
         node2 = nodeList[ edge[2] ]
-        if  Branches.get_nodes_distance(root, node1) > shollRadius != 
-            Branches.get_nodes_distance(root, node2) > shollRadius 
+        if  (Branches.get_nodes_distance(root, node1) > shollRadius) != (Branches.get_nodes_distance(root, node2) > shollRadius) 
             shollNum += 1
         end 
     end 
@@ -504,9 +510,12 @@ function get_sholl_number(self::BranchNet, shollRadius::AbstractFloat)
 end 
 
 function get_sholl_number_list(self::BranchNet, shollRadiusList::Vector)
-    shollNumList = zeros(Float64, length(shollRadiusList))
+    root = get_root_node(self)
+    nodeList = get_node_list( self )
+    edgeList = get_edge_list( self )
+    shollNumList = zeros(Int, length(shollRadiusList))
     for (index, shollRadius) in enumerate(shollRadiusList)
-        shollNumList[index] = get_sholl_number(self, shollRadius) 
+        shollNumList[index] = get_sholl_number(root, nodeList, edgeList, shollRadius) 
     end 
     shollNumList 
 end
