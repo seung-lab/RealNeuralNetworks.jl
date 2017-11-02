@@ -17,7 +17,7 @@ type Branch
     boundingBox ::BoundingBox
 end 
 
-function Branch(nodeList::Vector; class=CLASS)
+function Branch(nodeList::Vector, class=CLASS)
     Branch(nodeList, class, BoundingBox(nodeList))
 end 
 
@@ -56,6 +56,7 @@ function get_radius_list( self::Branch ) map(n->n[4], self) end
 """
     get_tail_head_radius_ratio( self::Branch )
 the spine is normally thick in tail, and thin in the head. 
+ratio = max_tail / mean_head
 The head should point to dendrite. This is a very good feature to identify spine.
 """
 function get_tail_head_radius_ratio( self::Branch )
@@ -63,7 +64,7 @@ function get_tail_head_radius_ratio( self::Branch )
     N = length(self)
     headRadiusList = radiusList[1:cld(N,2)]
     tailRadiusList = radiusList[cld(N,2):N]
-    maximum(tailRadiusList) / minimum(headRadiusList)
+    maximum(tailRadiusList) / mean(headRadiusList)
 end 
 
 """
@@ -71,8 +72,13 @@ end
 the ratio of the actual path length to the euclidean distance between head and tail node 
 """
 function get_tortuosity(self::Branch)
+    if length(self) == 1 
+        return 1.0
+    end 
     pathLength = get_path_length(self)
     euclideanLength = get_nodes_distance( self[1], self[end] )
+    @assert self[1] != self[end]
+    @assert euclideanLength != 0.0
     pathLength / euclideanLength 
 end 
 
@@ -162,5 +168,27 @@ function add_offset(self::Branch, offset::Union{Tuple, Vector})
     Branch(nodeList, self.class, self.boundingBox)    
 end 
 
+function remove_node(self::Branch, removeNodeIndex::Integer)
+    newNodeList = Vector{NTuple{4, Float32}}()
+    for (index,node) in enumerate(get_node_list(self))
+        if index != removeNodeIndex 
+            push!(newNodeList, node)
+        end 
+    end 
+    Branch(newNodeList, get_class(self))
+end 
+
+function remove_redundent_nodes!(self::Branch)
+    nodeList = get_node_list(self)
+    newNodeList = Vector{NTuple{4, Float32}}()
+    for index in 1:length(nodeList)-1
+        if nodeList[index] != nodeList[index+1]
+            push!(newNodeList, nodeList[index])
+        end 
+    end 
+    # get the final node
+    push!(newNodeList, nodeList[end])
+    self.nodeList = newNodeList 
+end 
 
 end # module

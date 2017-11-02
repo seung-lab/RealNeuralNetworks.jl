@@ -448,7 +448,15 @@ Note that the acos returns angle in the format of radiens.
 """
 function get_branching_angle( self::BranchNet, branchIndex::Integer; nodeDistance::Real = 5000.0 )
     branch = self[branchIndex]
+    parentBranchIndex = get_parent_branch_index(self, branchIndex)
+    if parentBranchIndex < 1
+        # this is root branch
+        return 0.0
+    end
     parentBranch = self[ get_parent_branch_index(self, branchIndex) ]
+    if length(parentBranch) == 1 || length(branch) == 1
+        return 0.0
+    end 
     branchingNode = parentBranch[end]
     parentNode = parentBranch[end-1]
     for node in parentBranch 
@@ -498,7 +506,7 @@ end
 function get_sholl_number_list(self::BranchNet, shollRadiusList::Vector)
     shollNumList = zeros(Float64, length(shollRadiusList))
     for (index, shollRadius) in enumerate(shollRadiusList)
-        shollNumList = get_sholl_number(self, shollRadius) 
+        shollNumList[index] = get_sholl_number(self, shollRadius) 
     end 
     shollNumList 
 end
@@ -779,7 +787,7 @@ function remove_hair( self::BranchNet )
         terminalNode = branchList[ terminalBranchIndex ][end]
         parentNode = branchList[ parentBranchIndex ][end]
         distance = Branches.get_nodes_distance(terminalNode, parentNode)
-        if distance < 2*parentNode[4]
+        if distance < 2*parentNode[4] || distance < 2000
             println("remove branch $(terminalBranchIndex) with distance of $(distance) and radius of $(parentNode[4])")
             push!(removeBranchIndexList, terminalBranchIndex)
         end 
@@ -800,11 +808,40 @@ function remove_terminal_blobs( self::BranchNet )
         parentBranch = self[ get_parent_branch_index(self, index) ]
         branchInnerPathLength = Branches.get_path_length( branch )
         distance2Parent = Branches.get_nodes_distance( branch[1], parentBranch[end] )
-        if distance2Parent > branchInnerPathLength 
+        if distance2Parent > branchInnerPathLength
+            println("remove terminal blob. distance to parent: $(distance2Parent). branch inner path length: $(branchInnerPathLength).")
             push!(blobTerminalBranchIndexList, index)
         end 
     end 
     return remove_branches( self, blobTerminalBranchIndexList )
+end
+
+"""
+    remove_redundent_nodes( self::BranchNet )
+if neighboring node is the same, remove one of them 
+"""
+function remove_redundent_nodes(self::BranchNet)
+    newBranchList = Vector{Branch}()
+    sizehint!(newBranchList, get_num_branches(self))
+    removeBranchIndexList = Vector{Int}()
+    branchList = get_branch_list(self)
+    for (branchIndex, branch) in enumerate( branchList )
+        Branches.remove_redundent_nodes!( branch )
+        parentBranchIndex = get_parent_branch_index(self, branchIndex)
+        if parentBranchIndex > 0 
+            parentBranch = branchList[ parentBranchIndex ]
+            if branch[1] == parentBranch[end]
+                branch = Branches.remove_node(branch, 1)
+            end
+        end 
+        push!(newBranchList, branch) 
+        if length(branch) == 0
+            # empty branch, should be removed later
+            push!(removeBranchIndexList, branchIndex)
+        end 
+    end 
+    newBranchNet = BranchNet( newBranchList, get_connectivity_matrix(self) )
+    return remove_branches(newBranchNet, removeBranchIndexList)
 end 
 ########################## type convertion ####################
 """
