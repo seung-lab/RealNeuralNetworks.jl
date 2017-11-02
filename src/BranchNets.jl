@@ -294,6 +294,22 @@ function get_edge_list( self::BranchNet )
     edgeList 
 end 
 
+function get_path_to_root_length(self::BranchNet, branchIndex::Integer)
+    path2RootLength = 0.0
+    branchPathLengthList = get_branch_path_length_list( self )
+    while true 
+        path2RootLength += branchPathLengthList[ branchIndex ]
+        parentBranchIndex = get_parent_branch_index(self, branchIndex )
+        if parentBranchIndex < 1 
+            # root branch do not have parent 
+            break 
+        else
+            branchIndex = parentBranchIndex 
+        end 
+    end
+    path2RootLength 
+end 
+
 """
     get_branch_path_length_list(self::BranchNet)
 get euclidean path length of each branch 
