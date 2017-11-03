@@ -545,6 +545,64 @@ function get_sholl_number_list(self::BranchNet, radiusStep::Real;
     shollNumList 
 end 
 
+"""
+    get_gyration_radius( self::BranchNet )
+The radius of gyration of an object is the square root of the sum of the squares of the radii from the center of mass to all the points on the object, divided by the square root of the number of points. 
+"""
+function get_gyration_radius( self::BranchNet;  nodeList = get_node_list(self), 
+                                                massCenter = get_mass_center(self) )
+    distance2MassCenterList = map( n -> norm([massCenter...].-[n[1:3]...]), nodeList )
+    sqrt( sum( distance2MassCenterList.^2 ) ) / sqrt(length(nodeList))
+end 
+
+"""
+    get_fractal_dimension( self::BranchNet )
+compute fractal dimension using cumulative-mass method.
+https://www.sciencedirect.com/science/article/pii/016502709400115W
+
+Return:
+    fractalDimension::Int 
+    radiusList::Float64 the scanning disk radii 
+    averageMassList::Float64 the average mass inside the disk   
+"""
+function get_fractal_dimension( self::BranchNet )
+    nodeList = get_node_list( self )
+    massCenter = get_mass_center(self)
+    gyrationRadius = get_gyration_radius( self; nodeList=nodeList, massCenter=massCenter )
+    
+    # find the nodes inside the gyration radius
+    diskCenterList = Vector{NTuple{4,Float32}}()
+    for node in nodeList
+        if Branches.get_nodes_distance( massCenter, node ) < gyrationRadius 
+            push!(diskCenterList, node)
+        end 
+    end 
+    
+    # radius list of a sequence of concentric disks
+    radiusNum = 10
+    radiusStep = 2*gyrationRadius/radiusNum
+    radiusList = zeros(radiusNum)
+    radius = 0.0
+    for i in 1:radiusNum
+        radius += i*radiusStep 
+        radiusList[i] = radius 
+    end 
+
+    # iterate all the nodes inside gyration radius as the center of scanning disks
+    averageMassList = zeros( length(radiusList) )
+    for (centerIndex, center) in enumerate(diskCenterList)
+        for (radiusIndex, radius) in enumerate()
+            for node in nodeList 
+                if Branches.get_nodes_distance( center,  node) < radius
+                    averageMassList[radiusIndex] += 1.0 / length(diskCenterList)
+                end 
+            end 
+        end 
+    end 
+
+    # fit the curve and get slop as fractal dimension
+    error("imcomplete implementation...")
+end 
 
 ############################### Base functions ###################################
 function Base.getindex(self::BranchNet, index::Integer)
