@@ -11,10 +11,13 @@ typealias SWC Vector{PointObj}
 function SWC( swcString::AbstractString )
     swc = SWC()
     for line in split(swcString, "\n")
+        if isempty(line)
+            continue 
+        end 
         try 
             numbers = map(parse, split(line))
             # construct a point object
-            pointObj = PointObj( numbers[2:7] )
+            pointObj = PointObj( numbers[2:7]... )
             push!(swc, pointObj)
         catch err 
             if contains(line, "#")
@@ -131,6 +134,43 @@ function load(fileName::AbstractString)
     swcString = readstring( fileName )
     SWC( swcString )    
 end
+
+"""
+    save_swc_bin( self::SWC, fileName::AbstractString )
+represent swc file as binary file. the data structure is the same with swc.
+"""
+function save_swc_bin( self::SWC, fileName::AbstractString )
+    open(fileName, "w") do f
+        #write(f, length(self))
+        for (index, pointObj) in enumerate(self)
+            # write(f, index)
+            write(f, pointObj.point_type)
+            write(f, pointObj.x)
+            write(f, pointObj.y)
+            write(f, pointObj.z)
+            write(f, pointObj.radius)
+            write(f, pointObj.parent)
+        end 
+    end 
+end 
+
+"""
+    load_swc_bin( fileName::AbstractString )
+load binary swc file 
+"""
+function load_swc_bin( fileName::AbstractString )
+    data = read( fileName )
+    # a pointObj is 21 byte
+    @assert mod(length(data), 21) == 0 "the binary file do not match the byte layout of pointObj."
+    nodeNum = div(length(data), 21) 
+    swc = Vector{PointObj}()
+    sizehint!(swc, nodeNum)
+    for i in 1:nodeNum 
+        pointObj = PointObj( data[(i-1)*21+1:i*21] )
+        push!(swc, pointObj)
+    end 
+    swc
+end 
 
 function save_gzip_swc( self::SWC, fileName::AbstractString )
     io = open(fileName, "w")                                                    

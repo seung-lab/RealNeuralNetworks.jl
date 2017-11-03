@@ -77,7 +77,7 @@ function get_tortuosity(self::Branch)
     end 
     pathLength = get_path_length(self)
     euclideanLength = get_nodes_distance( self[1], self[end] )
-    @assert self[1] != self[end]
+    @assert self[1]!=self[end] "branch start is the same with the end: $(self)"
     @assert euclideanLength != 0.0
     pathLength / euclideanLength 
 end 

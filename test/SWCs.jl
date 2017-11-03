@@ -14,6 +14,13 @@ using Libz
     @time SWCs.save(swc, tempFile)
     @test readstring(exampleFile) == readstring( tempFile )
     rm(tempFile)
+    
+    println("save binary swc ...")
+    @time SWCs.save_swc_bin( swc, "$(tempFile).swc.bin" )
+    println("load binary swc ...")
+    @time swc2 = SWCs.load_swc_bin( "$(tempFile).swc.bin" )
+    @test swc == swc2
+    rm("$(tempFile).swc.bin")
 
     println("save gzip swc file: $(tempFile).gz ...")
     @time SWCs.save_gzip_swc(swc, "$(tempFile).gz")
