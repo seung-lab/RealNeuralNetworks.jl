@@ -4,31 +4,9 @@ using RealNeuralNetworks.BranchNets
 using RealNeuralNetworks.NodeNets
 using RealNeuralNetworks.SWCs
 
-@testset "test BranchNet IO" begin 
-    branchNet = BranchNets.load_swc( joinpath(dirname(@__FILE__), "../assert/example.swc" ))
-    BranchNets.save(branchNet, "/tmp/branchNet.swc")
-    rm("/tmp/branchNet.swc")
-end 
-
 @testset "test BranchNets" begin
-    #println("create fake cylinder segmentation...")
-    #@time seg = FakeSegmentations.broken_cylinder()
-    #println("skeletonization to build a BranchNet ...")
-    #@time branchNet = BranchNet(seg)
-    println("create fake ring segmentation ...")
-    seg = FakeSegmentations.broken_ring()
-    branchNet = BranchNet(seg)
-    println("transform to SWC structure ...")
-    @time swc = SWCs.SWC( branchNet )
-    tempFile = tempname() * ".swc"
-    SWCs.save(swc, tempFile)
-    rm(tempFile)
-
     println("load swc of a real neuron...")
-    @time swc = SWCs.load_gzip_swc("../assert/76869.swc.gz")
-    println("save as gzip compressed file ...")
-    @time SWCs.save_gzip_swc(swc, "/tmp/76869.swc.gz")
-    rm("/tmp/76869.swc.gz")
+    @time swc = SWCs.load_swc_bin("../assert/76869.swc.bin")
 
     branchNet = BranchNet( swc )
     println("get node list ...")
@@ -38,8 +16,16 @@ end
     println("get branch order list...")
     @time branchOrderList = BranchNets.get_branch_order_list( branchNet )
 
-    println("remove subtree in soma...")
-    @time newBranchNet = BranchNets.remove_subtree_in_soma(branchNet)
+    println("clean up the neuron ...")
+    branchNet = BranchNets.remove_subtree_in_soma(branchNet)
+    branchNet = BranchNets.remove_hair(branchNet)
+    branchNet = BranchNets.remove_subtree_in_soma(branchNet)
+    branchNet = BranchNets.remove_terminal_blobs(branchNet)
+    branchNet = BranchNets.remove_redundent_nodes(branchNet)
+
+    println("get fractal dimension ...")
+    @time fractalDimension, _,_ = BranchNets.get_fractal_dimension( branchNet )
+    @show fractalDimension 
 
     println("get typical radius ...")
     @show BranchNets.get_typical_radius( branchNet )
@@ -78,3 +64,27 @@ end
     @test !isempty(tree1)
     @test !isempty(tree2)
 end 
+
+@testset "test BranchNet IO" begin 
+    branchNet = BranchNets.load_swc( joinpath(dirname(@__FILE__), "../assert/example.swc" ))
+    BranchNets.save(branchNet, "/tmp/branchNet.swc")
+    rm("/tmp/branchNet.swc")
+end 
+
+@testset "test fake segmentation skeletonization" begin 
+    println("create fake cylinder segmentation...")
+    @time seg = FakeSegmentations.broken_cylinder()
+    println("skeletonization to build a BranchNet ...")
+    @time branchNet = BranchNet(seg)
+    
+    println("create fake ring segmentation ...")
+    seg = FakeSegmentations.broken_ring()
+    branchNet = BranchNet(seg)
+    println("transform to SWC structure ...")
+    @time swc = SWCs.SWC( branchNet )
+    tempFile = tempname() * ".swc"
+    SWCs.save(swc, tempFile)
+    rm(tempFile)
+end 
+
+

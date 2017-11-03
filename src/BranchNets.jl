@@ -3,6 +3,7 @@ include("Branches.jl")
 using .Branches 
 using ..RealNeuralNetworks.NodeNets
 using ..RealNeuralNetworks.SWCs
+using LsqFit
 
 const ONE_UINT32 = UInt32(1)
 const EXPANSION = (ONE_UINT32, ONE_UINT32, ONE_UINT32)
@@ -467,6 +468,11 @@ function get_branching_angle( self::BranchNet, branchIndex::Integer; nodeDistanc
             break 
         end 
     end
+    if parentNode == branchingNode
+        warn("parent node is the same with branching node: $(branchingNode)")
+        return 0.0
+    end 
+
     childNode = branch[1]
     for index in length(branch):1
         node = branch[index]
@@ -475,6 +481,11 @@ function get_branching_angle( self::BranchNet, branchIndex::Integer; nodeDistanc
             break 
         end 
     end 
+    if childNode == branchingNode 
+        warn("child node is the same with branching node: $(branchingNode)")
+        return 0.0 
+    end 
+
     # compute the angle among the three nodes using the definition of dot product
     # get the two vectors
     v1 = map(-, parentNode[1:3], branchingNode[1:3] )
@@ -482,7 +493,12 @@ function get_branching_angle( self::BranchNet, branchIndex::Integer; nodeDistanc
     # normalize the vector
     nv1 = normalize([v1...]) 
     nv2 = normalize([v2...])
-    return acos( dot(nv1, nv2) )
+    #@show nv1, nv2
+    #@show childNode, branchingNode, parentNode
+    dotProduct = dot(nv1, nv2)
+    # tolerate some numerical varition. the dot product could go greater than 1.
+    @assert dotProduct < 1.001 "impossible dotProduct: $(dotProduct)"
+    return acos( min(1.0, dotProduct) )
 end 
 
 """
@@ -591,7 +607,7 @@ function get_fractal_dimension( self::BranchNet )
     # iterate all the nodes inside gyration radius as the center of scanning disks
     averageMassList = zeros( length(radiusList) )
     for (centerIndex, center) in enumerate(diskCenterList)
-        for (radiusIndex, radius) in enumerate()
+        for (radiusIndex, radius) in enumerate(radiusList)
             for node in nodeList 
                 if Branches.get_nodes_distance( center,  node) < radius
                     averageMassList[radiusIndex] += 1.0 / length(diskCenterList)
@@ -601,7 +617,11 @@ function get_fractal_dimension( self::BranchNet )
     end 
 
     # fit the curve and get slop as fractal dimension
-    error("imcomplete implementation...")
+    model(x,p) = p[1]*x + p[2]
+    p0 = [1.0, 0]
+    fit = curve_fit(model, log(radiusList), log(averageMassList), p0)
+    fractalDimension = fit.param[1]
+    return fractalDimension, radiusList, averageMassList 
 end 
 
 ############################### Base functions ###################################
