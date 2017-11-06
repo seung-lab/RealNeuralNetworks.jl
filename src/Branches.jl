@@ -26,7 +26,7 @@ end
     get_nodes_distance(self::Node, other::Node)
 compute the euclidean distance between two nodes 
 """
-function get_nodes_distance(self::Union{Vector,Tuple}, other::Union{Vector,Tuple})
+@inline function get_nodes_distance(self::Union{Vector,Tuple}, other::Union{Vector,Tuple})
     norm( [map((x,y)->x-y, self[1:3], other[1:3]) ...])
 end 
 function get_node_list(self::Branch) self.nodeList end 

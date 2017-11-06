@@ -596,7 +596,7 @@ function get_fractal_dimension( self::BranchNet )
     
     # radius list of a sequence of concentric disks
     radiusNum = 10
-    radiusStep = 2*gyrationRadius/radiusNum
+    radiusStep = 0.5*gyrationRadius/radiusNum
     radiusList = zeros(radiusNum)
     radius = 0.0
     for i in 1:radiusNum
@@ -892,9 +892,15 @@ function remove_terminal_blobs( self::BranchNet )
     blobTerminalBranchIndexList = Vector{Int}()
     for index in terminalBranchIndexList 
         branch = self[index]
-        parentBranch = self[ get_parent_branch_index(self, index) ]
+        distance2Parent = 0.0
+        try 
+            parentBranch = self[ get_parent_branch_index(self, index) ]
+            distance2Parent = Branches.get_nodes_distance( branch[1], parentBranch[end] )
+        catch err 
+            @assert get_parent_branch_index(self, index) < 1
+            warn("this terminal branch is root branch!")
+        end 
         branchInnerPathLength = Branches.get_path_length( branch )
-        distance2Parent = Branches.get_nodes_distance( branch[1], parentBranch[end] )
         if distance2Parent > branchInnerPathLength
             println("remove terminal blob. distance to parent: $(distance2Parent). branch inner path length: $(branchInnerPathLength).")
             push!(blobTerminalBranchIndexList, index)
