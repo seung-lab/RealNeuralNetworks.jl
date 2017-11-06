@@ -2,7 +2,7 @@ module PointArrays
 
 export PointArray
 
-typealias PointArray Array{UInt32, 2}
+const PointArray = Array{UInt32, 2}
 
 const ZERO_UINT32 = convert(UInt32, 0)
 const ONE_UINT32  = convert(UInt32, 1)
@@ -25,8 +25,8 @@ end
 """
 find points inside an object from a segmentation array. 
 """
-function from_seg{T}(seg::Array{T,3}; obj_id::T=convert(T,1),
-                        offset::NTuple{3,UInt32}=DEFAULT_OFFSET)
+function from_seg(seg::Array{T,3}; obj_id::T=convert(T,1),
+                     offset::NTuple{3,UInt32}=DEFAULT_OFFSET) where T
     # compute the number of object voxels
     nov = 0
     for i in eachindex(seg)
@@ -59,8 +59,8 @@ end
 """
 find out the boundary voxels and represent them as indexes in the point array
 """
-function get_boundary_point_indexes{T, TSeg}(self::Array{T,2}, seg::Array{TSeg,3},
-                                             obj_id::TSeg = TSeg(1))
+function get_boundary_point_indexes(self::Array{T,2}, seg::Array{TSeg,3},
+                                    obj_id::TSeg = TSeg(1)) where {T, TSeg}
     # compute the indexes of boundary voxels
     ret = Vector{T}()
     for i in 1:size(self,1)
@@ -84,7 +84,7 @@ end
 """
 add offset to points
 """
-function add_offset!{T}(self::Array{T,2}, offset::NTuple{3,T})
+function add_offset!(self::Array{T,2}, offset::NTuple{3,T}) where T
     self[:, 1] .+= offset[1]
     self[:, 2] .+= offset[2]
     self[:, 3] .+= offset[3]
@@ -93,7 +93,7 @@ end
 """
     merge(self::Array{T,3}, other::Array{T,3})
 """
-function merge{T}(self::Array{T,2}, other::Array{T,2})
+function merge(self::Array{T,2}, other::Array{T,2}) where T
     vcat(self, other)
 end 
 

@@ -10,7 +10,7 @@ const EXPANSION = (ONE_UINT32, ONE_UINT32, ONE_UINT32)
 
 export BranchNet
 
-type BranchNet 
+mutable struct BranchNet 
     # x,y,z,r
     branchList ::Vector{Branch}
     connectivityMatrix ::SparseMatrixCSC{Bool, Int}
@@ -126,8 +126,8 @@ function BranchNet!(seedNodeIndex::Integer, nodeNet::NodeNet,
     BranchNet(branchList, connectivityMatrix)
 end 
 
-function BranchNet{T}( seg::Array{T,3}; obj_id::T = convert(T,1), 
-                        expansion::NTuple{3,UInt32}=EXPANSION )
+function BranchNet( seg::Array{T,3}; obj_id::T = convert(T,1), 
+                     expansion::NTuple{3,UInt32}=EXPANSION ) where T
     nodeNet = NodeNet( seg; obj_id = obj_id, expansion = expansion )
     BranchNet( nodeNet )
 end

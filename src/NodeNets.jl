@@ -14,7 +14,7 @@ const EXPANSION = (ONE_UINT32, ONE_UINT32, ONE_UINT32)
 
 export NodeNet 
 
-type NodeNet 
+mutable struct NodeNet 
     # x,y,z,r
     nodeList               :: Vector{NTuple{4,Float32}}
     # connectivity matrix to represent edges
@@ -27,10 +27,10 @@ end
     NodeNet( seg, obj_id; penalty_fn=alexs_penalty)
 Perform the teasar algorithm on the passed binary array.
 """
-function NodeNet{T}( seg::Array{T,3}; 
-                        obj_id::T = convert(T,1), 
-                        expansion::NTuple{3, UInt32} = EXPANSION,
-                        penalty_fn::Function = alexs_penalty )
+function NodeNet( seg::Array{T,3}; 
+                     obj_id::T = convert(T,1), 
+                     expansion::NTuple{3, UInt32} = EXPANSION,
+                     penalty_fn::Function = alexs_penalty ) where T
     # note that the object voxels are false and non-object voxels are true!
     # bin_im = DBFs.create_binary_image( seg, obj_id ) 
     points = PointArrays.from_seg(seg; obj_id=obj_id)
@@ -65,9 +65,9 @@ end
 
   Perform the teasar algorithm on the passed Nxd array of points
 """
-function NodeNet{T}( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
-                            penalty_fn::Function = alexs_penalty,
-                            expansion::NTuple{3, UInt32} = EXPANSION)
+function NodeNet( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
+                         penalty_fn::Function = alexs_penalty,
+                         expansion::NTuple{3, UInt32} = EXPANSION) where T
 
     println("total number of points: $(size(points,1))")
   points, bbox_offset = shift_points_to_bbox( points );
@@ -399,7 +399,7 @@ end
   Abstractly represent the points as a volume by means of
   linear indexes into a sparse vector.
 """
-function create_node_lookup{T}( points::Array{T,2} )
+function create_node_lookup( points::Array{T,2} ) where T
 
   #need the max in order to define the bounds of that volume
   # tuple allows the point to be passed to fns as dimensions
@@ -430,8 +430,8 @@ end
   euclidean distance between the indices of each point. These can
   be weighted or modified easily upon return.
 """
-function make_neighbor_graph{T}( points::Array{T,2}, ind2node=nothing, max_dims=nothing;
-                                expansion::NTuple{3, UInt32} = EXPANSION )
+function make_neighbor_graph( points::Array{T,2}, ind2node=nothing, max_dims=nothing;
+                             expansion::NTuple{3, UInt32} = EXPANSION ) where T
 
   if ind2node == nothing ind2node, max_dims = create_node_lookup(points) end
 
@@ -592,7 +592,7 @@ function find_new_root_node( points )
 end
 
 
-function filter_rows_by_min{T}( arr::Array{T,2}, dim )
+function filter_rows_by_min( arr::Array{T,2}, dim ) where T
 
   selected_rows = arr[:,dim] .== minimum(arr,1)[dim];
 
@@ -642,7 +642,7 @@ end
 
   Identifies the node indices within the subscript
 """
-function nodes_within_radius{T}( sub::Array{T,1}, ind2node, r, max_dims::Vector );
+function nodes_within_radius( sub::Array{T,1}, ind2node, r, max_dims::Vector ) where T;
 
   beginning = convert(Vector{Int}, ceil(max(sub[:] .- r,1)));
   ending    = convert(Vector{Int}, floor(min(sub[:] .+ r, max_dims)));
@@ -715,8 +715,8 @@ not need point_array anymore, which could be pretty big, we'll only reserve the 
 coordinates and let the gc release the point_array. 
 the same applys to path_edges 
 """
-function distill!{T}(point_array::Array{T,2}, 
-                     path_nodes::Vector{Int}, path_edges::Vector) 
+function distill!(point_array::Array{T,2}, 
+                  path_nodes::Vector{Int}, path_edges::Vector) where T 
     num_nodes = length(path_nodes) 
     num_edges = length(path_edges)
     nodes = Array(T, (num_nodes, 3))

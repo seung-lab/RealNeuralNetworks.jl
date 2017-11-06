@@ -6,7 +6,7 @@ using Libz
 const ONE_UINT32 = UInt32(1)
 export SWC
 
-typealias SWC Vector{PointObj}
+const SWC = Vector{PointObj}
 
 function SWC( swcString::AbstractString )
     swc = SWC()

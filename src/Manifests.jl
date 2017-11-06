@@ -11,7 +11,7 @@ const MIP_LEVEL = 4
 
 export Manifest
 
-immutable Manifest
+struct Manifest
     # the bigarray for cutout
     ba          ::AbstractBigArray
     # the id of object
@@ -38,7 +38,7 @@ end
 """
 example: ["770048087:0:2968-3480_1776-2288_16912-17424"]
 """
-function Manifest{D,T,N,C}( ranges::Vector, ba::BigArray{D,T,N,C} )
+function Manifest( ranges::Vector, ba::BigArray{D,T,N,C} ) where {D,T,N,C}
     obj_id = parse( split(ranges[1], ":")[1] )
     obj_id = convert(T, obj_id)
     ranges = map(x-> split(x,":")[end], ranges)
