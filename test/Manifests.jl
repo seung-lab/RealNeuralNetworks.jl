@@ -5,7 +5,6 @@ using RealNeuralNetworks
 using RealNeuralNetworks.Manifests
 using RealNeuralNetworks.NodeNets
 using RealNeuralNetworks.SWCs
-using JLD
 
 const cellId = 77497
 const VOXEL_SIZE = (80,80,45)

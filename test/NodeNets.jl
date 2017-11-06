@@ -5,7 +5,6 @@ using BigArrays
 using GSDicts
 using RealNeuralNetworks.NodeNets
 using RealNeuralNetworks.SWCs
-using JLD
 
 const CELL_ID = UInt32(76880)
 const EXPANSION= (UInt32(80), UInt32(80), UInt32(40))

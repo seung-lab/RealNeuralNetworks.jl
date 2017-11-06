@@ -108,7 +108,7 @@ function NodeNet( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
     dsp_dbf       = LightGraphs.dijkstra_shortest_paths(G, root_node, dbf_weights);
 
     #remove reachable nodes from the disconnected ones
-    reachable_nodes = find(!(isinf(dsp_euclidean.dists)));
+    reachable_nodes = find(.!(isinf.(dsp_euclidean.dists)));
     #another necessary precaution for duplicate nodes
     reachable_nodes = intersect(reachable_nodes, disconnected_nodes);
     setdiff!(disconnected_nodes, reachable_nodes);
@@ -442,7 +442,7 @@ function make_neighbor_graph( points::Array{T,2}, ind2node=nothing, max_dims=not
   #26-connectivity neighborhood
   # weights computed by euc_dist to center voxel
   nhood = [[i,j,k] for i=1:3,j=1:3,k=1:3];
-  map!( x-> (x .- [2,2,2]).*[expansion ...] , nhood );
+  map!( x-> (x .- [2,2,2]).*[expansion ...] , nhood, nhood )
   nhood_weights = map( norm, nhood );
 
   #only adding weights for non-duplicate nodes
@@ -644,8 +644,8 @@ end
 """
 function nodes_within_radius( sub::Array{T,1}, ind2node, r, max_dims::Vector ) where T;
 
-  beginning = convert(Vector{Int}, ceil(max(sub[:] .- r,1)));
-  ending    = convert(Vector{Int}, floor(min(sub[:] .+ r, max_dims)));
+  beginning = convert(Vector{Int}, ceil.(max.(sub[:] .- r,1)));
+  ending    = convert(Vector{Int}, floor.(min.(sub[:] .+ r, max_dims)));
   ind::Int = convert(Int,0);
     max_dims = Vector{Int}(max_dims)
 
@@ -719,7 +719,7 @@ function distill!(point_array::Array{T,2},
                   path_nodes::Vector{Int}, path_edges::Vector) where T 
     num_nodes = length(path_nodes) 
     num_edges = length(path_edges)
-    nodes = Array(T, (num_nodes, 3))
+    nodes = Array{T}(num_nodes, 3)
     # map the old path node id to new id 
     id_map = Dict{T, T}()
     sizehint!(id_map, num_nodes)
