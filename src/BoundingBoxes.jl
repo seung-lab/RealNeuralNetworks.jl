@@ -4,7 +4,7 @@ const ZERO_FLOAT32 = Float32(0)
 
 export BoundingBox 
 
-type BoundingBox
+mutable struct BoundingBox
     minCorner   ::NTuple{3,Float32}
     maxCorner   ::NTuple{3,Float32}
 end 

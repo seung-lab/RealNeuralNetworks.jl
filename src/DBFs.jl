@@ -9,7 +9,7 @@ using Base.Cartesian
 """
 use segmentation to get binary image to save memory usage
 """
-function compute_DBF{T}(seg::Array{T,3}, obj_id::T)
+function compute_DBF(seg::Array{T,3}, obj_id::T) where T
     error("unimplemented")
 end 
 
@@ -21,7 +21,7 @@ end
   a binary image, and runs bwd2 on it, though ideally we'd get rid of the
   need for an explicit bin_im
 """
-function compute_DBF{T}( point_cloud::Array{T, 2} )
+function compute_DBF( point_cloud::Array{T, 2} ) where T
     bin_im = create_binary_image( point_cloud );
     compute_DBF(point_cloud, bin_im)
 end
@@ -29,7 +29,7 @@ end
 """
     compute_DBF( bin_im )
 """
-function compute_DBF{T}( point_cloud::Array{T,2}, bin_im::Array{Bool, 3} )
+function compute_DBF( point_cloud::Array{T,2}, bin_im::Array{Bool, 3} ) where T
     dbf_im = distance_transform( bin_im );
     return extract_dbf_values( dbf_im, point_cloud );
 end 
@@ -39,7 +39,7 @@ compute Distance from Boundary Field (DBF) based on point cloud and the boundary
 
 WARN: this function do not work correctly!
 """
-function compute_DBF{T}( points::Array{T,2}, boundary_point_indexes::Vector )
+function compute_DBF( points::Array{T,2}, boundary_point_indexes::Vector ) where T
     error("this function do not work correctly, have a bug!")
     num = size(points, 1)
     dbf = Vector{Float32}(num)
@@ -73,8 +73,8 @@ end
   value will be a volume of the same size as d where the value at each index corresponds
   to the distance between that location and the nearest location for which d > 0.
 """
-@generated function distance_transform{T,N}( d::AbstractArray{T,N},
-  voxelSize::Vector{Float64}=ones(N) )
+@generated function distance_transform( d::AbstractArray{T,N},
+  voxelSize::Vector{Float64}=ones(N) ) where {T,N}
   quote
 
   @assert length(voxelSize) == $N;
@@ -101,14 +101,14 @@ end
 Fills an n-dimensional volume with initial states for edt transformation,
 inf for non-feature voxels, and 0 for feature voxels
 """
-@generated function fill_f0!{T,N}( arr::Array{Float64,N}, fv::AbstractArray{T,N} )
+@generated function fill_f0!( arr::Array{Float64,N}, fv::AbstractArray{T,N} ) where {T,N}
   quote
 
   #apparently this generates lots of allocations,
   # I'm still not entirely sure why... but cool!
   # (learned the answer - choice between 0 and Inf is type unstable)
   @nloops $N i arr begin
-    (@nref $N arr i) = (@nref $N fv i) > 0? 0. : Inf;
+    (@nref $N arr i) = (@nref $N fv i) > 0 ? 0. : Inf;
   end
 
   #arr[fv] = 0;
@@ -122,13 +122,13 @@ end
 Performs the edt transformation along the first dimension of the N-dimensional
 volume
 """
-@generated function vol_voronoi_edt!{N}( arr::Array{Float64,N}, dim::Float64 )
+@generated function vol_voronoi_edt!( arr::Array{Float64,N}, dim::Float64 ) where N
   quote
 
   s1 = size(arr,1);
   g = zeros(Float64,(s1,));
   h = zeros(Int,    (s1,));
-  @nloops $N i j->(j==1?0:1:size(arr,j)) begin
+  @nloops $N i j->(j==1 ? 0 : 1:size(arr,j)) begin
 
     fill!(h,0); fill!(g,0);
     later_indices = (@ntuple $N j->i_j);
@@ -143,15 +143,15 @@ end
 """
 Performs the edt over a specific row in the volume, following the first dimension
 """
-@generated function row_voronoi_edt!{N}( F::Array{Float64,N}, indices::Tuple,
-  g::Vector{Float64}, h::Vector{Int}, dim::Float64 )
+@generated function row_voronoi_edt!( F::Array{Float64,N}, indices::Tuple,
+  g::Vector{Float64}, h::Vector{Int}, dim::Float64 ) where N
   quote
 
   #count of potential feature vectors
   numPotentialFeatureVectors::Int = 0;
 
   #selecting out the value in the row
-  @inbounds f = @nref $N F j->(j==1?(:):indices[j-1]);
+  @inbounds f = @nref $N F j->(j==1 ? (:) : indices[j-1]);
 
   #construct set of feature voxels whose voronoi
   # cells intersect the row
@@ -196,7 +196,7 @@ Performs the edt over a specific row in the volume, following the first dimensio
       numPotentialFeatureVectors += 1;
     end
 
-    (@nref $N F j->(j==1?i:indices[j-1])) =  g[numPotentialFeatureVectors] + 
+    (@nref $N F j->(j==1 ? i : indices[j-1])) =  g[numPotentialFeatureVectors] + 
                                             (h[numPotentialFeatureVectors] - i)^2;
   end #for i
 
@@ -236,7 +236,7 @@ end
   Creates a boolean volume where the non-segment indices
   map to true, while the segment indices map to false.
 """
-function create_binary_image{T}( point_cloud::Array{T,2} );
+function create_binary_image( point_cloud::Array{T,2} ) where T;
 
   max_dims = maximum( point_cloud, 1 );
 
@@ -255,7 +255,7 @@ end
 Creates a boolean volume where the non-segment indices
 map to true, while the segment indices map to false 
 """
-function create_binary_image{T}( seg::Array{T,3}; obj_id::T = T(1) )
+function create_binary_image( seg::Array{T,3}; obj_id::T = T(1) ) where T
     bin_im = ones(Bool, size(seg))
     for i in eachindex(seg)
         if seg[i] == obj_id 
@@ -273,7 +273,7 @@ end
   Takes an array where rows indicate subscripts, and extracts the values
   within a volume at those subscripts (in row order)
 """
-@generated function extract_dbf_values{N}( dbf_image::Array{Float64,N}, point_cloud )
+@generated function extract_dbf_values( dbf_image::Array{Float64,N}, point_cloud ) where N
   quote
 
   num_points = size( point_cloud, 1 );

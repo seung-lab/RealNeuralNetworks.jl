@@ -4,13 +4,13 @@ include("BoundingBoxes.jl")
 # include(joinpath(dirname(@__FILE__), "BoundingBoxes.jl"))
 using .BoundingBoxes 
 
-typealias Node NTuple{4,Float32}
+const Node = NTuple{4,Float32}
 
 const CLASS = UInt8(0)
 const ZERO_FLOAT32 = Float32(0)
 
 export Branch 
-type Branch 
+mutable struct Branch 
     # x,y,z,r
     nodeList    ::Vector{Node}
     class       ::UInt8
@@ -108,7 +108,7 @@ function Base.merge(self::Branch, other::Branch)
     nodeList2 = get_node_list(other)
     mergedNodeList = vcat( nodeList1, nodeList2 )
     # winner taks all!
-    class = length(nodeList1)>length(nodeList2)? get_class(self) : get_class(other)
+    class = length(nodeList1)>length(nodeList2) ? get_class(self) : get_class(other)
     boundingBox = union( get_bounding_box(self), get_bounding_box(other) )
     Branch(mergedNodeList, class, boundingBox)
 end 

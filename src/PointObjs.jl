@@ -1,7 +1,7 @@
 module PointObjs
 export PointObj
 
-type PointObj
+mutable struct PointObj
     point_type  :: UInt8 
     x           :: Float32 
     y           :: Float32 
