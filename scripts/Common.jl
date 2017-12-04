@@ -13,7 +13,7 @@ const SEGMENTATION_LAYER ="gs://neuroglancer/zfish_v1/consensus-20170928"
 customized argument parse for tuple
 """
 function ArgParse.parse_item(::Type{NTuple{3,Int}}, x::AbstractString)
-    return map(parse, split(x,","))
+    return (map(parse, split(x,","))...)
 end
 function ArgParse.parse_item(::Type{UInt32}, x::AbstractString)
     return UInt32(parse(x))

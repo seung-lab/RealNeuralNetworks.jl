@@ -54,8 +54,8 @@ end
     # open("/tmp/fake.bin", "w") do f write(f, bin)  end 
     @time swc = SWCs.SWC( nodeNet )
     SWCs.stretch_coordinates!(swc, MIP)
+    SWCs.save(swc, "/tmp/test.swc")
     @test length(swc) > 1
-    SWCs.save(swc, "/tmp/$(CELL_ID).swc")
 end 
 
 

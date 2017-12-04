@@ -442,7 +442,8 @@ function make_neighbor_graph( points::Array{T,2}, ind2node=nothing, max_dims=not
   #26-connectivity neighborhood
   # weights computed by euc_dist to center voxel
   nhood = [[i,j,k] for i=1:3,j=1:3,k=1:3];
-  map!( x-> (x .- [2,2,2]).*[expansion ...] , nhood, nhood )
+
+  map!( x-> (x .- [2,2,2]).*[expansion ...] , nhood, nhood)
   nhood_weights = map( norm, nhood );
 
   #only adding weights for non-duplicate nodes
