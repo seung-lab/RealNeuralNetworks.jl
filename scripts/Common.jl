@@ -5,9 +5,9 @@ export parse_commandline
 export SEGMENT_ID, MIP, VOXEL_SIZE, SEGMENTATION_LAYER 
 # this is the mip level 4
 const SEGMENT_ID = 92540687
-const MIP = UInt32(4)
+const MIP = UInt32(3)
 const VOXEL_SIZE = (5,5,45)
-const SEGMENTATION_LAYER ="gs://neuroglancer/zfish_v1/consensus-20170928"
+const SEGMENTATION_LAYER ="gs://neuroglancer/zfish_v1/consensus-20171130"
 
 """
 customized argument parse for tuple

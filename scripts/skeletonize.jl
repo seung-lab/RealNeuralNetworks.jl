@@ -2,7 +2,7 @@
 include("Common.jl")
 using .Common 
 
-@everywhere using SQSChannels
+@everywhere using AWSSQS 
 @everywhere using GSDicts
 
 @everywhere using RealNeuralNetworks
@@ -30,8 +30,8 @@ using .Common
    
     # reconnect the broken pieces and reset root to the soma center
     branchNet = BranchNet( nodeNet )
-    branchNet = BranchNets.remove_subtree_in_soma(branchNet)
-    branchNet = BranchNets.remove_hair( branchNet )
+    #branchNet = BranchNets.remove_subtree_in_soma(branchNet)
+    #branchNet = BranchNets.remove_hair( branchNet )
 
     swc = SWCs.SWC( branchNet )
     SWCs.save(swc, joinpath(swcDir, "$(cellId).swc"))
@@ -68,24 +68,27 @@ function main()
     @show args
     if args["idlistfile"] != nothing
         idList = read_cell_id_list(args["idlistfile"])
-        pmap(id -> trace(id; swcDir=args["swcdir"], mip=args["mip"]), 
+        pmap(id -> trace(id; swcDir=args["swcdir"], mip=args["mip"], 
+                         voxelSize = args["voxelsize"],
+                         segmentationLayer=args["segmentationlayer"]), 
                                                                                         idList)
     elseif args["sqsqueue"] != nothing 
-        sqsChannel = SQSChannel( args["sqsqueue"] )
-        while true 
-            handle, body = fetch(sqsChannel) 
-            d = JSON.parse( body )
-            println("tracing cell: $(d["id"])")
+        q = sqs_get_queue(args["sqsqueue"])
+        for m in AWSSQS.sqs_messages(q)
+            id = parse(m[:message])
+            println("tracing cell: $(id)")
             try 
-                trace(d["id"]; swcDir=d["swcdir"], mip=d["mip"])
+                trace(id; swcDir=args["swcdir"], mip=args["mip"], 
+                      voxelSize = args["voxelsize"],
+                      segmentationLayer = args["segmentationlayer"])
             catch err 
                 if isa(err, KeyError)
-                    warn("not tracable cell id: $(d["id"])") 
+                    println("key not found: $(id)")
                 else 
-                    rethrow()
+                    rethrow() 
                 end 
-            end 
-            delete!(sqsChannel, handle)
+            end
+            sqs_delete_message(q, m)
         end 
     else 
         trace(args["neuronid"]; swcDir = args["swcdir"],  

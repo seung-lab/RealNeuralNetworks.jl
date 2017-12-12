@@ -15,11 +15,20 @@ parameter:
     bin_im: binary array. object voxels are false, non-object voxels are true!
 """
 function from_binary_image(bin_im::Array{Bool,3})
-    x,y,z = findn(.!bin_im)
-    x = Vector{UInt32}(x)
-    y = Vector{UInt32}(y)
-    z = Vector{UInt32}(z)
-    return hcat(x,y,z)
+    N = length(bin_im) - countnz(bin_im)
+    ret = zeros(UInt32, (N,3))
+    i = 0
+    for z in ONE_UINT32:UInt32(size(bin_im, 3))
+        for y in ONE_UINT32:UInt32(size(bin_im, 2))
+            for x in ONE_UINT32:UInt32(size(bin_im, 1))
+                if !bin_im[x,y,z]
+                    i += 1
+                    ret[i,:] = [x,y,z]
+                end 
+            end
+        end 
+    end 
+    ret 
 end 
 
 """

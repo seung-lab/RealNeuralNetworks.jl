@@ -46,6 +46,9 @@ function Manifest( ranges::Vector, ba::BigArray{D,T,N,C} ) where {D,T,N,C}
     Manifest( ba, obj_id, rangeList )
 end
 
+function Base.length(self::Manifest) length(get_range_list(self)) end 
+
+function get_range_list(self::Manifest) self.rangeList end 
 
 """
 the voxel offset in the neuroglancer precomputed info file 
@@ -66,7 +69,7 @@ build point cloud and dbf when iterating the chunks
 """
 function trace(self::Manifest, cellId)
     println("extract point clouds and distance from boundary fields ...")
-    @time pointCloudDBFList = pmap( identity, self )
+    @time pointCloudDBFList = pmap( identity, self );
     pointClouds = map( x->x[1], pointCloudDBFList )
     pointCloud = vcat(pointClouds ...)
     dbfs = map(x->x[2], pointCloudDBFList)
