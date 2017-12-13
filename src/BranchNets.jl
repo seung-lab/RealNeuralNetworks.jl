@@ -647,7 +647,7 @@ function Base.merge(self::BranchNet, other::BranchNet,
         mergedBranchList1 = copy(branchList1)
         # assume that the first branch is the root branch
         mergedBranchList1[nearestBranchIndex] = 
-                                merge(mergedBranchList[nearestBranchIndex], branchList2[1])
+                                merge(mergedBranchList1[nearestBranchIndex], branchList2[1])
         mergedBranchList = vcat( mergedBranchList1, branchList2[2:end] )
 
         # total number of branches
