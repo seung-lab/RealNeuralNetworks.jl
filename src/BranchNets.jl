@@ -4,6 +4,7 @@ using .Branches
 using ..RealNeuralNetworks.NodeNets
 using ..RealNeuralNetworks.SWCs
 using LsqFit
+#using JLD2
 
 const ONE_UINT32 = UInt32(1)
 const EXPANSION = (ONE_UINT32, ONE_UINT32, ONE_UINT32)
@@ -21,6 +22,7 @@ end
 a neuron modeled by interconnected branches 
 """
 function BranchNet(nodeNet::NodeNet)
+#    @save "nodenet.jld2" nodeNet 
     # the properties from nodeNet
     nodes = NodeNets.get_node_list(nodeNet)
     radii = NodeNets.get_radii(nodeNet)
@@ -91,7 +93,7 @@ function BranchNet!(seedNodeIndex::Integer, nodeNet::NodeNet,
             # find the connected nodes
             connectedNodeIndexList,_ = findnz(nodesConnectivityMatrix[:, seedNodeIndex])
             # exclude the collected nodes
-            connectedNodeIndexList = connectedNodeIndexList[ !collectedFlagVec[connectedNodeIndexList] ] 
+            connectedNodeIndexList = connectedNodeIndexList[ .!collectedFlagVec[connectedNodeIndexList] ] 
 
             if length(connectedNodeIndexList) == 1
                 # belong to the same branch
@@ -152,8 +154,8 @@ function load_swc( fileName::AbstractString )
     BranchNet( swcString )
 end
 
-function load_gzip_swc( fileName::AbstractString )
-    swc = SWCs.load_gzip_swc( fileName )
+function load_swc_bin( fileName::AbstractString )
+    swc = SWCs.load_swc_bin( fileName )
     BranchNet( swc )
 end 
 
@@ -162,8 +164,8 @@ function save(self::BranchNet, fileName::AbstractString)
     SWCs.save( swc, fileName )
 end
 
-function save_gzip_swc( self::BranchNet, fileName::AbstractString )
-    SWCs.save_gzip_swc( SWCs.SWC(self), fileName )
+function save_swc_bin( self::BranchNet, fileName::AbstractString )
+    SWCs.save_swc_bin( SWCs.SWC(self), fileName )
 end 
 
 ####################### properties ##############
@@ -627,7 +629,8 @@ end
 ############################### Base functions ###################################
 function Base.getindex(self::BranchNet, index::Integer)
     get_branch_list(self)[index]
-end 
+end
+
 """
 merge two nets at a specific branch location.
 the root node of second net will be connected to the first net
@@ -642,33 +645,62 @@ function Base.merge(self::BranchNet, other::BranchNet,
     num_branches2 = get_num_branches(other)
     
     if nearestNodeIndexInBranch == length(branchList1[nearestBranchIndex])
-        # the connection point is the end of a branch, no need to break branch
-        # merge the root branch of second net to the first net
-        mergedBranchList1 = copy(branchList1)
-        # assume that the first branch is the root branch
-        mergedBranchList1[nearestBranchIndex] = 
-                                merge(mergedBranchList1[nearestBranchIndex], branchList2[1])
-        mergedBranchList = vcat( mergedBranchList1, branchList2[2:end] )
-
-        # total number of branches
-        total_num_branches = num_branches1 + num_branches2 - 1 
-        
-        mergedConnectivityMatrix = spzeros(Bool, total_num_branches, total_num_branches)
-        mergedConnectivityMatrix[1:size(self.connectivityMatrix,1), 
-                                 1:size(self.connectivityMatrix,2)] = 
+        println("connecting to a branch end...")
+        childrenBranchIndexList = get_children_branch_index_list(self, nearestBranchIndex)
+        if length(childrenBranchIndexList) > 0
+            println("the nearest branch have children, do not merge the root branch")
+            total_num_branches = num_branches1 + num_branches2 
+            mergedBranchList = vcat(branchList1, branchList2)
+            @assert length(mergedBranchList) == total_num_branches 
+            mergedConnectivityMatrix = 
+                        spzeros(Bool, total_num_branches, total_num_branches)
+            mergedConnectivityMatrix[   1:size(self.connectivityMatrix,1), 
+                                        1:size(self.connectivityMatrix,2)] = 
                                                                 self.connectivityMatrix 
-        # do not include the connection of root in net2
-        mergedConnectivityMatrix[
-                num_branches1+1+1 : num_branches1+1+size(other.connectivityMatrix,1)-1, 
-                num_branches1+1 : num_branches1+1+size(other.connectivityMatrix,2)-1] = 
-                                                        other.connectivityMatrix[2:end, :]
-        # reestablish the connection of root2
-        childrenBranchIndexList2 = get_children_branch_index_list(other, 1)
-        for childBranchIndex2 in childrenBranchIndexList2
-            mergedConnectivityMatrix[ nearestBranchIndex, 
-                                      num_branches1+childBranchIndex-1 ] = true 
+            # do not include the connection of root in net2
+            mergedConnectivityMatrix[num_branches1+1 : end, 
+                                     num_branches1+1 : end] = other.connectivityMatrix 
+            mergedConnectivityMatrix[nearestBranchIndex, num_branches1+1] = true
+            return BranchNet(mergedBranchList, mergedConnectivityMatrix)
+        else 
+            println("the nearest branch is a terminal branch, merge the root branch of 'other'")
+            if num_branches2 == 1
+                #  only one branch of the other net
+                mergedBranchList = copy(branchList1)
+                mergedBranchList[nearestBranchIndex] = 
+                            merge(mergedBranchList[nearestBranchIndex], branchList2[1])
+                return BranchNet(mergedBranchList, self.connectivityMatrix)
+            else 
+                # the connection point is the end of a branch, no need to break branch
+                # merge the root branch of second net to the first net
+                # assume that the first branch is the root branch
+                mergedBranchList = vcat( branchList1, branchList2[2:end] )
+                mergedBranchList[nearestBranchIndex] = 
+                            merge(mergedBranchList[nearestBranchIndex], branchList2[1])
+
+                # total number of branches
+                total_num_branches = num_branches1 + num_branches2 - 1 
+                @assert length(mergedBranchList) == total_num_branches 
+                
+                mergedConnectivityMatrix = 
+                                spzeros(Bool, total_num_branches, total_num_branches)
+                mergedConnectivityMatrix[
+                                    1:size(self.connectivityMatrix,1), 
+                                    1:size(self.connectivityMatrix,2)] = 
+                                                        self.connectivityMatrix 
+                # do not include the connection of root in net2
+                mergedConnectivityMatrix[num_branches1+1+1 : end, 
+                                         num_branches1+1+1 : end] = 
+                                                other.connectivityMatrix[2:end, 2:end]
+                # reestablish the connection of root2
+                childrenBranchIndexList2 = get_children_branch_index_list(other, 1)
+                for childBranchIndex2 in childrenBranchIndexList2
+                    mergedConnectivityMatrix[ nearestBranchIndex, 
+                                              num_branches1+childBranchIndex2-1 ] = true 
+                end
+                return BranchNet(mergedBranchList, mergedConnectivityMatrix)
+            end 
         end 
-        return BranchNet(mergedBranchList, mergedConnectivityMatrix)
     else 
         # need to break the nearest branch and rebuild connectivity matrix
         total_num_branches = num_branches1 + 1 + num_branches2 
@@ -1012,8 +1044,6 @@ function get_neuroglancer_precomputed(self::BranchNet)
 end 
 
 ############################### manipulations ##########################################
-
-############################### TEASAR algorithm functions #############################
 """
     find_nearest_node_index(branchList::Vector{Branch}, nodes::Vector{NTuple{4,Float32}})
 
@@ -1053,8 +1083,12 @@ function find_nearest_node_index(branchList::Vector{Branch},
         end 
     end
     # the branchIndex should be inside the branchList
-    @assert nearestBranchIndex > 0
-    @assert nearestBranchIndex <= length(branchList)
+    #@assert nearestBranchIndex > 0
+    #@assert nearestBranchIndex <= length(branchList)
+    #@show distance
+    #if distance > 1000 
+    #    @show nearestNodeIndex, nearestBranchIndex, nearestNodeIndexInBranch
+    #end 
     return nearestNodeIndex, nearestBranchIndex, nearestNodeIndexInBranch 
 end 
 

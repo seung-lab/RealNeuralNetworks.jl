@@ -6,7 +6,7 @@ using Base.Test
 
 @testset "test Branches" begin
     # construct a branch
-    branchNet = BranchNets.load_gzip_swc("../assert/76869.swc.gz")
+    branchNet = BranchNets.load_swc_bin("../assert/78058.swc.bin")
     # get a random branch
     branch = branchNet[5]
     

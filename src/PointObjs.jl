@@ -28,6 +28,17 @@ function get_parent( self::PointObj )
     self.parent 
 end 
 
+function serialize(self::PointObj)
+    io = IOBuffer(21)
+    write(io, self.point_type)
+    write(io, self.x)
+    write(io, self.y)
+    write(io, self.z)
+    write(io, self.radius)
+    write(io, self.parent)
+    take!(io)
+end 
+
 function Base.String(self::PointObj)
     "$(self.point_type) $(self.x) $(self.y) $(self.z) $(self.radius) $(self.parent)"
 end

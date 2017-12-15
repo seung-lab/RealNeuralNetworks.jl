@@ -1,12 +1,15 @@
 module SWCs
 include("PointObjs.jl")
 using .PointObjs 
-using Libz
-
+using Blosc
 const ONE_UINT32 = UInt32(1)
 export SWC
 
 const SWC = Vector{PointObj}
+
+function __init__()
+    Blosc.set_num_threads( Sys.CPU_CORES )
+end 
 
 function SWC( swcString::AbstractString )
     swc = SWC()
@@ -135,31 +138,26 @@ function load(fileName::AbstractString)
     SWC( swcString )    
 end
 
+function serialize(self::SWC)
+    io = IOBuffer( length(self)*21 )
+    for pointObj in self
+        write(io, PointObjs.serialize(pointObj))
+    end
+    data = take!(io)   
+    Blosc.compress(data)
+end 
+
 """
     save_swc_bin( self::SWC, fileName::AbstractString )
 represent swc file as binary file. the data structure is the same with swc.
 """
 function save_swc_bin( self::SWC, fileName::AbstractString )
-    open(fileName, "w") do f
-        #write(f, length(self))
-        for (index, pointObj) in enumerate(self)
-            # write(f, index)
-            write(f, pointObj.point_type)
-            write(f, pointObj.x)
-            write(f, pointObj.y)
-            write(f, pointObj.z)
-            write(f, pointObj.radius)
-            write(f, pointObj.parent)
-        end 
-    end 
+    data = serialize(self)
+    write(fileName, data)
 end 
 
-"""
-    load_swc_bin( fileName::AbstractString )
-load binary swc file 
-"""
-function load_swc_bin( fileName::AbstractString )
-    data = read( fileName )
+function deserialize(data::Vector{UInt8})
+    data = Blosc.decompress(UInt8, data)
     # a pointObj is 21 byte
     @assert mod(length(data), 21) == 0 "the binary file do not match the byte layout of pointObj."
     nodeNum = div(length(data), 21) 
@@ -172,16 +170,12 @@ function load_swc_bin( fileName::AbstractString )
     swc
 end 
 
-function save_gzip_swc( self::SWC, fileName::AbstractString )
-    io = open(fileName, "w")                                                    
-    stream = ZlibDeflateOutputStream(io)                                              
-    write(stream, String(self))                                                          
-    close(stream)                                                                     
-end 
-
-function load_gzip_swc( fileName::AbstractString )
-    stream = open( fileName ) |> ZlibInflateInputStream
-    SWC( readstring( stream ) )
+"""
+    load_swc_bin( fileName::AbstractString )
+load binary swc file 
+"""
+function load_swc_bin( fileName::AbstractString )
+    read( fileName ) |> deserialize
 end 
 
 #################### manipulate ######################
