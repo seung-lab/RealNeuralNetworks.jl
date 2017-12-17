@@ -4,9 +4,20 @@ using RealNeuralNetworks.BranchNets
 using RealNeuralNetworks.NodeNets
 using RealNeuralNetworks.SWCs
 
+@testset "test BranchNet IO and resampling " begin 
+    println("load swc of a real neuron...")
+    @time swc = SWCs.load_swc_bin("../assert/78058.swc.bin")
+    branchNet = BranchNet( swc )
+    
+    BranchNets.save(branchNet, "/tmp/branchNet.swc")
+    branchNet2 = BranchNets.resample(branchNet, Float32(10))
+    BranchNets.save_swc(branchNet2, "/tmp/branchNet2.swc")
+    #rm("/tmp/branchNet.swc")
+end 
+
 @testset "test BranchNets" begin
     println("load swc of a real neuron...")
-    @time swc = SWCs.load_swc_bin("../assert/76869.swc.bin")
+    @time swc = SWCs.load_swc_bin("../assert/78058.swc.bin")
 
     branchNet = BranchNet( swc )
     println("get node list ...")
@@ -63,12 +74,6 @@ using RealNeuralNetworks.SWCs
     @time tree1, tree2 = split(branchNet, 2; nodeIndexInBranch = 5)
     @test !isempty(tree1)
     @test !isempty(tree2)
-end 
-
-@testset "test BranchNet IO" begin 
-    branchNet = BranchNets.load_swc( joinpath(dirname(@__FILE__), "../assert/example.swc" ))
-    BranchNets.save(branchNet, "/tmp/branchNet.swc")
-    rm("/tmp/branchNet.swc")
 end 
 
 @testset "test fake segmentation skeletonization" begin 

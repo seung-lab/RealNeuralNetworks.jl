@@ -26,8 +26,6 @@ using .Common
     NodeNets.stretch_coordinates!( nodeNet, mip )
     NodeNets.stretch_coordinates!( nodeNet, voxelSize)
  
-   
-   
     # reconnect the broken pieces and reset root to the soma center
     branchNet = BranchNet( nodeNet )
     #branchNet = BranchNets.remove_subtree_in_soma(branchNet)

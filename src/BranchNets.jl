@@ -7,12 +7,13 @@ using LsqFit
 #using JLD2
 
 const ONE_UINT32 = UInt32(1)
+const ZERO_FLOAT32 = Float32(0)
 const EXPANSION = (ONE_UINT32, ONE_UINT32, ONE_UINT32)
 
 export BranchNet
 
 mutable struct BranchNet 
-    # x,y,z,r
+    # x,y,z,r, the coordinates should be in physical coordinates
     branchList ::Vector{Branch}
     connectivityMatrix ::SparseMatrixCSC{Bool, Int}
 end 
@@ -162,7 +163,8 @@ end
 function save(self::BranchNet, fileName::AbstractString)
     swc = SWC(self)
     SWCs.save( swc, fileName )
-end
+end 
+save_swc = save
 
 function save_swc_bin( self::BranchNet, fileName::AbstractString )
     SWCs.save_swc_bin( SWCs.SWC(self), fileName )
@@ -1044,6 +1046,60 @@ function get_neuroglancer_precomputed(self::BranchNet)
 end 
 
 ############################### manipulations ##########################################
+"""
+    resample!( self::BranchNet, resampleDistance::Float32 )
+resampling the branches by a fixed point distance 
+"""
+function resample(self::BranchNet, resampleDistance::Float32)
+    newBranchList = Vector{Branch}()
+    branchList = get_branch_list(self)
+    local nodeList::Vector 
+    for (index, branch) in enumerate(branchList)
+        parentBranchIndex = get_parent_branch_index(self, index)
+        if parentBranchIndex > 0 
+            parentNode = branchList[parentBranchIndex][end]
+            nodeList = [parentNode, Branches.get_node_list(branch) ...]
+        else 
+            # no parent branch
+            nodeList = Branches.get_node_list(branch) 
+        end 
+        nodeList = resample(nodeList, resampleDistance) 
+        newBranch = Branch(nodeList[2:end]; class=Branches.get_class(branch))
+        push!(newBranchList, newBranch)
+    end 
+    BranchNet(newBranchList, get_connectivity_matrix(self))
+end
+
+function resample(nodeList::Vector{NTuple{4,Float32}}, resampleDistance::Float32)
+    # always keep the first node
+    ret = [nodeList[1]]
+
+    # walk through the nodes
+    walkedDistance = ZERO_FLOAT32 
+    requiredDistance = resampleDistance  
+    @inbounds for index in 1:length(nodeList)-1
+        n1 = [nodeList[index  ] ...]
+        n2 = [nodeList[index+1] ...]
+        nodePairDistance = norm(n1[1:3].-n2[1:3])
+        remainingDistance = nodePairDistance
+        finishedDistance = ZERO_FLOAT32
+        while remainingDistance > requiredDistance 
+            # walk a step 
+            # interperate the distance 
+            interpretRatio = finishedDistance / nodePairDistance 
+            interpretedNode = n1 .+ (n2.-n1) .* interpretRatio 
+            push!(ret, (interpretedNode...))
+
+            # update remaining distance 
+            finishedDistance += requiredDistance   
+            remainingDistance -= requiredDistance  
+            requiredDistance = resampleDistance 
+        end 
+        requiredDistance = resampleDistance - remainingDistance 
+    end 
+    ret 
+end 
+
 """
     find_nearest_node_index(branchList::Vector{Branch}, nodes::Vector{NTuple{4,Float32}})
 
