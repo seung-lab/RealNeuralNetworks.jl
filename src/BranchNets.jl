@@ -1,7 +1,6 @@
 module BranchNets
 include("Branches.jl")
 using .Branches
-using .Branches.BoundingBoxes 
 using ..RealNeuralNetworks.NodeNets
 using ..RealNeuralNetworks.SWCs
 using LsqFit
@@ -637,7 +636,7 @@ function Base.BitArray(self::BranchNet, voxelSize::Union{Tuple, Vector})
         voxelCoordinate = map(/, node[1:3], voxelSize)
         push!(voxelList, (voxelCoordinate...))
     end 
-    boundingBox = BoundingBox( voxelList )
+    boundingBox = Branches.BoundingBox( voxelList )
     @show boundingBox 
     sz = size(boundingBox)
     # initialize the map 

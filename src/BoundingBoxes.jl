@@ -15,10 +15,7 @@ function BoundingBox()
     BoundingBox( minCorner, maxCorner )
 end 
 
-function BoundingBox(   minCorner::Vector = [Inf32, Inf32, Inf32],
-                        maxCorner::Vector = [ZERO_FLOAT32, ZERO_FLOAT32, ZERO_FLOAT32])
-    @assert length(minCorner) == 3
-    @assert length(maxCorner) == 3
+function BoundingBox( minCorner::Vector{Float32}, maxCorner::Vector{Float32} )
     BoundingBox((minCorner...), (maxCorner...))
 end 
 
