@@ -1,10 +1,12 @@
 module BranchNets
 include("Branches.jl")
-using .Branches 
+using .Branches
+using .Branches.BoundingBoxes 
 using ..RealNeuralNetworks.NodeNets
 using ..RealNeuralNetworks.SWCs
 using LsqFit
 #using JLD2
+using ImageFiltering
 
 const ONE_UINT32 = UInt32(1)
 const ZERO_FLOAT32 = Float32(0)
@@ -628,6 +630,47 @@ function get_fractal_dimension( self::BranchNet )
     return fractalDimension, radiusList, averageMassList 
 end 
 
+function Base.BitArray(self::BranchNet, voxelSize::Union{Tuple, Vector})
+    nodeList = get_node_list(self)
+    voxelList = Vector{NTuple{3, Float32}}()
+    for node in nodeList 
+        voxelCoordinate = map(/, node[1:3], voxelSize)
+        push!(voxelList, (voxelCoordinate...))
+    end 
+    boundingBox = BoundingBox( voxelList )
+    @show boundingBox 
+    sz = size(boundingBox)
+    # initialize the map 
+    bitMask = falses(map(x->x+1, sz))
+    @inbounds for voxel in voxelList
+        # add a small number to make sure that there is no 0
+        idx = [voxel...] .- boundingBox.minCorner + 0.0000001
+        idx = map(x->ceil(Int, x), idx)
+        bitMask[idx...] = true 
+    end 
+    bitMask
+end 
+
+"""
+    get_arbor_density_map(self::BranchNet, 
+                        voxelSize::Union{Tuple, Vector},
+                        gaussianFilterStd ::AbstractFloat)
+compute the arbor density map
+
+Return:
+    * densityMap::Array{Float64, 3} 
+"""
+function get_arbor_density_map(self::BranchNet, voxelSize::Union{Tuple, Vector},
+                                            gaussianFilterStd::AbstractFloat)
+    bitMask = BitArray(self, voxelSize)
+    densityMap = Array{Float64,3}(bitMask)
+    # gaussion convolution
+    kernel = fill(gaussianFilterStd, 3) |> Kernel.gaussian
+    @time densityMap = imfilter(densityMap, kernel)
+    densityMap
+end 
+
+
 ############################### Base functions ###################################
 function Base.getindex(self::BranchNet, index::Integer)
     get_branch_list(self)[index]
@@ -691,8 +734,8 @@ function Base.merge(self::BranchNet, other::BranchNet,
                                     1:size(self.connectivityMatrix,2)] = 
                                                         self.connectivityMatrix 
                 # do not include the connection of root in net2
-                mergedConnectivityMatrix[num_branches1+1+1 : end, 
-                                         num_branches1+1+1 : end] = 
+                mergedConnectivityMatrix[num_branches1+1 : end, 
+                                         num_branches1+1 : end] = 
                                                 other.connectivityMatrix[2:end, 2:end]
                 # reestablish the connection of root2
                 childrenBranchIndexList2 = get_children_branch_index_list(other, 1)
@@ -704,7 +747,7 @@ function Base.merge(self::BranchNet, other::BranchNet,
             end 
         end 
     else 
-        # need to break the nearest branch and rebuild connectivity matrix
+        #println("need to break the nearest branch and rebuild connectivity matrix")
         total_num_branches = num_branches1 + 1 + num_branches2 
         mergedBranchList = branchList1 
         mergedConnectivityMatrix = spzeros(Bool, total_num_branches, total_num_branches)

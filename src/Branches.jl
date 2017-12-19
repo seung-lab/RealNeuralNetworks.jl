@@ -1,7 +1,6 @@
 module Branches
 
 include("BoundingBoxes.jl")
-# include(joinpath(dirname(@__FILE__), "BoundingBoxes.jl"))
 using .BoundingBoxes 
 
 const Node = NTuple{4,Float32}

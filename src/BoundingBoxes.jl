@@ -9,7 +9,14 @@ mutable struct BoundingBox
     maxCorner   ::NTuple{3,Float32}
 end 
 
-function BoundingBox(minCorner::Vector, maxCorner::Vector)
+function BoundingBox()
+    minCorner = (Inf32, Inf32, Inf32)
+    maxCorner = (ZERO_FLOAT32, ZERO_FLOAT32, ZERO_FLOAT32)
+    BoundingBox( minCorner, maxCorner )
+end 
+
+function BoundingBox(   minCorner::Vector = [Inf32, Inf32, Inf32],
+                        maxCorner::Vector = [ZERO_FLOAT32, ZERO_FLOAT32, ZERO_FLOAT32])
     @assert length(minCorner) == 3
     @assert length(maxCorner) == 3
     BoundingBox((minCorner...), (maxCorner...))
@@ -28,6 +35,10 @@ function BoundingBox(nodeList::Vector)
     BoundingBox(minCorner, maxCorner)
 end 
 
+function Base.size(self::BoundingBox)
+    map((x,y)->ceil(Int, x-y), self.maxCorner, self.minCorner)
+end 
+
 function Base.isequal(self::BoundingBox, other::BoundingBox)
     self.minCorner==other.minCorner && self.maxCorner==other.maxCorner 
 end
@@ -35,7 +46,10 @@ function Base.:(==)(self::BoundingBox, other::BoundingBox)
     isequal(self, other) 
 end 
 
-
+"""
+    Base.union(self::BoundingBox, other::BoundingBox)
+get the bounding box containing these two bounding boxes 
+"""
 function Base.union(self::BoundingBox, other::BoundingBox)
     minCorner = map(min, self.minCorner, other.minCorner)
     maxCorner = map(max, self.maxCorner, other.maxCorner)
@@ -45,6 +59,16 @@ end
 function isinside(self::BoundingBox, point::Union{Tuple, Vector})
     all( map((x,y)->x>y, self.maxCorner, point[1:3]) ) && 
     all( map((x,y)->x<y, self.minCorner, point[1:3]) )
+end 
+
+"""
+    to_voxel_space(self::BoundingBox, voxelSize::Union{Tuple, Vector})
+
+"""
+function to_voxel_space(self::BoundingBox, voxelSize::Union{Tuple, Vector})
+    minCorner = map(/, self.minCorner, voxelSize)
+    maxCorner = map(/, self.maxCorner, voxelSize)
+    BoundingBox(minCorner, maxCorner)
 end 
 
 """

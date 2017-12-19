@@ -10,9 +10,10 @@ using RealNeuralNetworks.SWCs
     branchNet = BranchNet( swc )
     
     BranchNets.save(branchNet, "/tmp/branchNet.swc")
-    branchNet2 = BranchNets.resample(branchNet, Float32(10))
+    branchNet2 = BranchNets.resample(branchNet, Float32(40))
     BranchNets.save_swc(branchNet2, "/tmp/branchNet2.swc")
-    #rm("/tmp/branchNet.swc")
+    rm("/tmp/branchNet.swc")
+    rm("/tmp/branchNet2.swc")
 end 
 
 @testset "test BranchNets" begin
