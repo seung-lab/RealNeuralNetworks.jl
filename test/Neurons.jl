@@ -71,14 +71,14 @@ end
     @test length( segmentPathLengthList ) == Neurons.get_num_segmentes(neuron)
 
     println("get terminal segment index list...")
-    @time terminalBranchIndexList = Neurons.get_terminal_segment_index_list( neuron )
-    @test !isempty( terminalBranchIndexList )
+    @time terminalSegmentIndexList = Neurons.get_terminal_segment_index_list( neuron )
+    @test !isempty( terminalSegmentIndexList )
     println("get terminal node list ...")
     @time terminalNodeList = Neurons.get_terminal_node_list( neuron )
     @test !isempty( terminalNodeList )
 
     println("test split a tree...")
-    @time tree1, tree2 = split(neuron, 4; nodeIndexInBranch = 5)
+    @time tree1, tree2 = split(neuron, 4; nodeIndexInSegment = 5)
     @test !isempty(tree1)
     @test !isempty(tree2)
 end 

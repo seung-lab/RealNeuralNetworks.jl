@@ -10,7 +10,7 @@ using HDF5
 
 function main()
     args = parse_commandline()
-    numBranchingPointsList = Vector{Int}()
+    numSegmentingPointsList = Vector{Int}()
     totalPathLengthList = Vector{Float64}()
     @sync begin
         for fileName in readdir( args["swcdir"] )
@@ -23,15 +23,15 @@ function main()
                     push!(totalPathLengthList, totalPathLength)
 
                     neuron = Neuron(swc)
-                    numBranchingPoints = Neurons.get_num_segmenting_points(neuron)
-                    println("number of segmenting points of cell $(fileName): $numBranchingPoints")
-                    push!(numBranchingPointsList, numBranchingPoints)
+                    numSegmentingPoints = Neurons.get_num_segmenting_points(neuron)
+                    println("number of segmenting points of cell $(fileName): $numSegmentingPoints")
+                    push!(numSegmentingPointsList, numSegmentingPoints)
                 end
             end 
         end 
     end
     h5write("statistics.h5",    "totalPathLengthList",      totalPathLengthList)
-    h5write("statistics.h5",    "numBranchingPointsList",   numBranchingPointsList)
+    h5write("statistics.h5",    "numSegmentingPointsList",   numSegmentingPointsList)
     #p = histogram( lengthList )    
     # display(p)
 end

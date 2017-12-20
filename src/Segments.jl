@@ -8,16 +8,16 @@ const Node = NTuple{4,Float32}
 const CLASS = UInt8(0)
 const ZERO_FLOAT32 = Float32(0)
 
-export Branch 
-mutable struct Branch 
+export Segment 
+mutable struct Segment 
     # x,y,z,r
     nodeList    ::Vector{Node}
     class       ::UInt8
     boundingBox ::BoundingBox
 end 
 
-function Branch(nodeList::Vector; class=CLASS)
-    Branch(nodeList, class, BoundingBox(nodeList))
+function Segment(nodeList::Vector; class=CLASS)
+    Segment(nodeList, class, BoundingBox(nodeList))
 end 
 
 ###################### properties ###################
@@ -28,21 +28,21 @@ compute the euclidean distance between two nodes
 @inline function get_nodes_distance(self::Union{Vector,Tuple}, other::Union{Vector,Tuple})
     norm( [map((x,y)->x-y, self[1:3], other[1:3]) ...])
 end 
-function get_node_list(self::Branch) self.nodeList end 
-function get_connectivity_matrix( self::Branch ) self.connectivityMatrix end 
-function get_bounding_box( self::Branch ) self.boundingBox end 
-function get_class( self::Branch ) self.class end 
+function get_node_list(self::Segment) self.nodeList end 
+function get_connectivity_matrix( self::Segment ) self.connectivityMatrix end 
+function get_bounding_box( self::Segment ) self.boundingBox end 
+function get_class( self::Segment ) self.class end 
 
-function get_bounding_box_distance(self::Branch, point::Union{Tuple, Vector})
+function get_bounding_box_distance(self::Segment, point::Union{Tuple, Vector})
     @assert length(point) >= 3
     BoundingBoxes.distance_from(self.boundingBox, point)
 end 
 
 """
-    get_path_length(self::Branch)
+    get_path_length(self::Segment)
 accumulate the euclidean distance between neighboring nodes 
 """
-function get_path_length(self::Branch)
+function get_path_length(self::Segment)
     ret = 0.0
     for i in 2:length(self)
         ret += norm( [map((x,y)-> x-y, self[i][1:3], self[i-1][1:3] )...] )
@@ -50,15 +50,15 @@ function get_path_length(self::Branch)
     ret
 end
 
-function get_radius_list( self::Branch ) map(n->n[4], self) end 
+function get_radius_list( self::Segment ) map(n->n[4], self) end 
 
 """
-    get_tail_head_radius_ratio( self::Branch )
+    get_tail_head_radius_ratio( self::Segment )
 the spine is normally thick in tail, and thin in the head. 
 ratio = max_tail / mean_head
 The head should point to dendrite. This is a very good feature to identify spine.
 """
-function get_tail_head_radius_ratio( self::Branch )
+function get_tail_head_radius_ratio( self::Segment )
     radiusList = get_radius_list( self )
     N = length(self)
     headRadiusList = radiusList[1:cld(N,2)]
@@ -67,10 +67,10 @@ function get_tail_head_radius_ratio( self::Branch )
 end 
 
 """
-    get_tortuosity( self::Branch )
+    get_tortuosity( self::Segment )
 the ratio of the actual path length to the euclidean distance between head and tail node 
 """
-function get_tortuosity(self::Branch)
+function get_tortuosity(self::Segment)
     if length(self) == 1 
         return 1.0
     end 
@@ -82,63 +82,63 @@ function get_tortuosity(self::Branch)
 end 
 
 ###################### Base functions ################
-function Base.start( self::Branch ) 1 end 
-function Base.next( self::Branch, state::Integer ) get_node_list(self)[state], state+1 end 
-function Base.done( self::Branch, state::Integer ) state > length(self) end 
+function Base.start( self::Segment ) 1 end 
+function Base.next( self::Segment, state::Integer ) get_node_list(self)[state], state+1 end 
+function Base.done( self::Segment, state::Integer ) state > length(self) end 
 
-function Base.endof(self::Branch) length(self) end
-function Base.isempty(self::Branch) isempty(self.nodeList) end 
+function Base.endof(self::Segment) length(self) end
+function Base.isempty(self::Segment) isempty(self.nodeList) end 
 
 """
-    Base.length(self::Branch)
+    Base.length(self::Segment)
 
 the number of nodes contained in this segment 
 """
-function Base.length(self::Branch)
+function Base.length(self::Segment)
     length(self.nodeList) 
 end 
 
 """
-    Base.merge(self::Branch, other::Branch)
+    Base.merge(self::Segment, other::Segment)
 merge two segmentes  
 """
-function Base.merge(self::Branch, other::Branch)
+function Base.merge(self::Segment, other::Segment)
     nodeList1 = get_node_list(self)
     nodeList2 = get_node_list(other)
     mergedNodeList = vcat( nodeList1, nodeList2 )
     # winner taks all!
     class = length(nodeList1)>length(nodeList2) ? get_class(self) : get_class(other)
     boundingBox = union( get_bounding_box(self), get_bounding_box(other) )
-    Branch(mergedNodeList, class, boundingBox)
+    Segment(mergedNodeList, class, boundingBox)
 end 
 
 """
 split the segment from the node list index to two segmentes
 the indexed node will be included in the second segment 
 """
-function Base.split(self::Branch, index::Integer)
+function Base.split(self::Segment, index::Integer)
     @assert index >=1 && index<=length(self)
     nodeList1 = self.nodeList[1:index-1]     
     nodeList2 = self.nodeList[index:end]
-    segment1 = Branch(nodeList1; class=self.class)
-    segment2 = Branch(nodeList2; class=self.class)
+    segment1 = Segment(nodeList1; class=self.class)
+    segment2 = Segment(nodeList2; class=self.class)
     return segment1, segment2
 end
 
 """
-    Base.getindex(self::Branch, index::Integer)
+    Base.getindex(self::Segment, index::Integer)
 """
-function Base.getindex(self::Branch, index::Integer)
+function Base.getindex(self::Segment, index::Integer)
     get_node_list(self)[ index ]
 end 
 
 """
 distance from a point 
 """
-function distance_from(self::Branch, point::Tuple)
+function distance_from(self::Segment, point::Tuple)
     distance_from(self, [point[1:3]...])
 end 
-function distance_from(self::Branch, point::Vector)
+function distance_from(self::Segment, point::Vector)
     @assert !isempty(self)
     ret = (0,0)
     nodeList = get_node_list(self)
@@ -157,27 +157,27 @@ function distance_from(self::Branch, point::Vector)
     ret 
 end 
 
-function add_offset(self::Branch, offset::Union{Tuple, Vector})
+function add_offset(self::Segment, offset::Union{Tuple, Vector})
     @assert length(offset) == 3
     nodeList = Vector{NTuple{4,Float32}}()
     for node in self.nodeList
         newNode = map(+, node, [offset..., ZERO_FLOAT32])
         push!(nodeList, newNode)
     end
-    Branch(nodeList, self.class, self.boundingBox)    
+    Segment(nodeList, self.class, self.boundingBox)    
 end 
 
-function remove_node(self::Branch, removeNodeIndex::Integer)
+function remove_node(self::Segment, removeNodeIndex::Integer)
     newNodeList = Vector{NTuple{4, Float32}}()
     for (index,node) in enumerate(get_node_list(self))
         if index != removeNodeIndex 
             push!(newNodeList, node)
         end 
     end 
-    Branch(newNodeList; class = get_class(self))
+    Segment(newNodeList; class = get_class(self))
 end 
 
-function remove_redundent_nodes!(self::Branch)
+function remove_redundent_nodes!(self::Segment)
     nodeList = get_node_list(self)
     newNodeList = Vector{NTuple{4, Float32}}()
     for index in 1:length(nodeList)-1
