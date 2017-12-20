@@ -6,5 +6,5 @@ include("Manifests.jl")
 
 
 include("BoundingBoxes.jl")
-include("Branches.jl")
-include("BranchNets.jl")
+include("Segments.jl")
+include("Neurons.jl")

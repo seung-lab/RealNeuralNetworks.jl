@@ -9,7 +9,7 @@ using .Common
 @everywhere using RealNeuralNetworks.NodeNets
 @everywhere using RealNeuralNetworks.Manifests
 @everywhere using RealNeuralNetworks.SWCs
-@everywhere using RealNeuralNetworks.BranchNets
+@everywhere using RealNeuralNetworks.Neurons
 
 @everywhere function trace(cellId::Integer; swcDir      ::AbstractString = "/tmp/", 
                                 mip         ::Integer        = MIP, 
@@ -27,11 +27,11 @@ using .Common
     NodeNets.stretch_coordinates!( nodeNet, voxelSize)
  
     # reconnect the broken pieces and reset root to the soma center
-    branchNet = BranchNet( nodeNet )
-    #branchNet = BranchNets.remove_subtree_in_soma(branchNet)
-    #branchNet = BranchNets.remove_hair( branchNet )
+    neuron = Neuron( nodeNet )
+    #neuron = Neurons.remove_subtree_in_soma(neuron)
+    #neuron = Neurons.remove_hair( neuron )
 
-    swc = SWCs.SWC( branchNet )
+    swc = SWCs.SWC( neuron )
     SWCs.save(swc, joinpath(swcDir, "$(cellId).swc"))
     
     # save to neuroglancer

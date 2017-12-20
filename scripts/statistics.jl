@@ -2,7 +2,7 @@
 include("Common.jl")
 using Common
 using RealNeuralNetworks.SWCs 
-using RealNeuralNetworks.BranchNets
+using RealNeuralNetworks.Neurons
 using HDF5
 #using Plots
 # use pyplot backend for vectorized output
@@ -22,9 +22,9 @@ function main()
                             "$(totalPathLength/1000) micron")
                     push!(totalPathLengthList, totalPathLength)
 
-                    branchNet = BranchNet(swc)
-                    numBranchingPoints = BranchNets.get_num_branching_points(branchNet)
-                    println("number of branching points of cell $(fileName): $numBranchingPoints")
+                    neuron = Neuron(swc)
+                    numBranchingPoints = Neurons.get_num_segmenting_points(neuron)
+                    println("number of segmenting points of cell $(fileName): $numBranchingPoints")
                     push!(numBranchingPointsList, numBranchingPoints)
                 end
             end 

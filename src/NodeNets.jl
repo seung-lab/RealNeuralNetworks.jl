@@ -220,26 +220,26 @@ function get_edges(self::NodeNet)
 end 
 
 """
-    get_branch_point_num(self::NodeNet)
+    get_segment_point_num(self::NodeNet)
 
-get number of branching points 
+get number of segmenting points 
 """
-function get_num_branch_point(self::NodeNet)
+function get_num_segment_point(self::NodeNet)
     conn = get_connectivity_matrix(self)
-    num_branch_point = 0
+    num_segment_point = 0
     for col in size(conn, 2)
         if nnz(conn[:,col]) > 2
-            num_branch_point += 1
+            num_segment_point += 1
         end
     end 
-    return num_branch_point 
+    return num_segment_point 
 end
 
 """
 assume that the graph is acyclic, no loop.
 """
-function get_num_branches(self::NodeNet)
-    get_num_branch_point(self) + 2
+function get_num_segmentes(self::NodeNet)
+    get_num_segment_point(self) + 2
 end
 
 """
@@ -247,7 +247,7 @@ end
 get the number of points which is in neurite and incounters with a sphere centered on root node 
 """
 function get_sholl_number(self::NodeNet, radius::AbstractFloat; rootNodeIndex::Integer=1)
-    error("depracated, use the function in BranchNets.")
+    error("depracated, use the function in Neurons.")
     shollNum = 0
     nodeList = get_node_list(self)
     rootNode = nodeList[ rootNodeIndex ]

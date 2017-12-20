@@ -1,4 +1,4 @@
-module Branches
+module Segments
 
 include("BoundingBoxes.jl")
 using .BoundingBoxes 
@@ -76,7 +76,7 @@ function get_tortuosity(self::Branch)
     end 
     pathLength = get_path_length(self)
     euclideanLength = get_nodes_distance( self[1], self[end] )
-    @assert self[1]!=self[end] "branch start is the same with the end: $(self)"
+    @assert self[1]!=self[end] "segment start is the same with the end: $(self)"
     @assert euclideanLength != 0.0
     pathLength / euclideanLength 
 end 
@@ -92,7 +92,7 @@ function Base.isempty(self::Branch) isempty(self.nodeList) end
 """
     Base.length(self::Branch)
 
-the number of nodes contained in this branch 
+the number of nodes contained in this segment 
 """
 function Base.length(self::Branch)
     length(self.nodeList) 
@@ -100,7 +100,7 @@ end
 
 """
     Base.merge(self::Branch, other::Branch)
-merge two branches  
+merge two segmentes  
 """
 function Base.merge(self::Branch, other::Branch)
     nodeList1 = get_node_list(self)
@@ -113,16 +113,16 @@ function Base.merge(self::Branch, other::Branch)
 end 
 
 """
-split the branch from the node list index to two branches
-the indexed node will be included in the second branch 
+split the segment from the node list index to two segmentes
+the indexed node will be included in the second segment 
 """
 function Base.split(self::Branch, index::Integer)
     @assert index >=1 && index<=length(self)
     nodeList1 = self.nodeList[1:index-1]     
     nodeList2 = self.nodeList[index:end]
-    branch1 = Branch(nodeList1; class=self.class)
-    branch2 = Branch(nodeList2; class=self.class)
-    return branch1, branch2
+    segment1 = Branch(nodeList1; class=self.class)
+    segment2 = Branch(nodeList2; class=self.class)
+    return segment1, segment2
 end
 
 """

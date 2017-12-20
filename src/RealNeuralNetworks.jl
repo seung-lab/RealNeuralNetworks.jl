@@ -5,11 +5,11 @@ include("FakeSegmentations.jl")
 include("SWCs.jl");  
 include("NodeNets.jl"); 
 include("Manifests.jl"); 
-include("BranchNets.jl")
+include("Neurons.jl")
 
 using .SWCs
 using .NodeNets 
 using .Manifests
-using .BranchNets
+using .Neurons
 
 end # end of module

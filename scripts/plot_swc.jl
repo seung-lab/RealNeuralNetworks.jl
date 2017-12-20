@@ -2,16 +2,16 @@
 using Plots
 pyplot()
 
-using RealNeuralNetworks.BranchNets
-import RealNeuralNetworks.BranchNets.Branches
+using RealNeuralNetworks.Neurons
+import RealNeuralNetworks.Neurons.Segments
 
 
-branchNet = BranchNets.load_swc("/tmp/76391.swc")
-branchList = BranchNets.get_branch_list(branchNet)
+neuron = Neurons.load_swc("/tmp/76391.swc")
+segmentList = Neurons.get_segment_list(neuron)
 global x,y,z
 
-for branch in branchList
-    nodeList = Branches.get_node_list(branch)
+for segment in segmentList
+    nodeList = Segments.get_node_list(segment)
     #@show length(nodeList)
     #@show nodeList
     x = map(n->n[1], nodeList)
@@ -20,7 +20,7 @@ for branch in branchList
     plot!(x,y,z) #color=rand(Colors.RGB))
 end
 
-root = BranchNets.get_root_node( branchNet )
+root = Neurons.get_root_node( neuron )
 display(plot!([root[1]],[root[2]],[root[3]], m=(8,:auto), leg=true))
 
 println("start sleeping ...")
