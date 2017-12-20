@@ -1,15 +1,11 @@
 module SWCs
 include("PointObjs.jl")
 using .PointObjs 
-using Blosc
 const ONE_UINT32 = UInt32(1)
 export SWC
 
 const SWC = Vector{PointObj}
 
-function __init__()
-    Blosc.set_num_threads( Sys.CPU_CORES )
-end 
 
 function SWC( swcString::AbstractString )
     swc = SWC()
@@ -144,7 +140,6 @@ function serialize(self::SWC)
         write(io, PointObjs.serialize(pointObj))
     end
     data = take!(io)   
-    Blosc.compress(data)
 end 
 
 """
@@ -157,7 +152,6 @@ function save_swc_bin( self::SWC, fileName::AbstractString )
 end 
 
 function deserialize(data::Vector{UInt8})
-    data = Blosc.decompress(UInt8, data)
     # a pointObj is 21 byte
     @assert mod(length(data), 21) == 0 "the binary file do not match the byte layout of pointObj."
     nodeNum = div(length(data), 21) 

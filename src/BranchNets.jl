@@ -4,8 +4,8 @@ using .Branches
 using ..RealNeuralNetworks.NodeNets
 using ..RealNeuralNetworks.SWCs
 using LsqFit
-#using JLD2
 using ImageFiltering
+using OffsetArrays
 
 const ONE_UINT32 = UInt32(1)
 const ZERO_FLOAT32 = Float32(0)
@@ -339,6 +339,10 @@ function get_branch_path_length_list( self::BranchNet )
     ret 
 end 
 
+function get_total_path_length(self::BranchNet)
+    get_branch_path_length_list(self) |> sum
+end 
+
 """
     get_branch_end_node_index_list( self::BranchNet )
 
@@ -624,30 +628,33 @@ function get_fractal_dimension( self::BranchNet )
     # fit the curve and get slop as fractal dimension
     model(x,p) = p[1]*x + p[2]
     p0 = [1.0, 0]
-    fit = curve_fit(model, log(radiusList), log(averageMassList), p0)
+    fit = curve_fit(model, log(radiusList), log.(averageMassList), p0)
     fractalDimension = fit.param[1]
     return fractalDimension, radiusList, averageMassList 
 end 
 
-function Base.BitArray(self::BranchNet, voxelSize::Union{Tuple, Vector})
+
+"""
+"""
+function get_mask(self::BranchNet, voxelSize::Union{Tuple, Vector})
     nodeList = get_node_list(self)
-    voxelList = Vector{NTuple{3, Float32}}()
+    voxelList = Vector{NTuple{3, Int}}()
     for node in nodeList 
-        voxelCoordinate = map(/, node[1:3], voxelSize)
+        voxelCoordinate = map((x,y)->round(Int, x/y), node[1:3], voxelSize)
         push!(voxelList, (voxelCoordinate...))
     end 
     boundingBox = Branches.BoundingBox( voxelList )
-    @show boundingBox 
+    range = Branches.BoundingBoxes.get_unit_range(boundingBox)
     sz = size(boundingBox)
     # initialize the map 
-    bitMask = falses(map(x->x+1, sz))
-    @inbounds for voxel in voxelList
+    mask = zeros(Float64, sz)
+    mask = OffsetArray(mask, range...)
+
+    @unsafe for voxel in voxelList
         # add a small number to make sure that there is no 0
-        idx = [voxel...] .- boundingBox.minCorner + 0.0000001
-        idx = map(x->ceil(Int, x), idx)
-        bitMask[idx...] = true 
+        mask[voxel...] = true 
     end 
-    bitMask
+    mask
 end 
 
 """
@@ -657,15 +664,18 @@ end
 compute the arbor density map
 
 Return:
-    * densityMap::Array{Float64, 3} 
+    * densityMap::OffsetArray 
 """
 function get_arbor_density_map(self::BranchNet, voxelSize::Union{Tuple, Vector},
                                             gaussianFilterStd::AbstractFloat)
-    bitMask = BitArray(self, voxelSize)
-    densityMap = Array{Float64,3}(bitMask)
+    densityMap = get_mask(self, voxelSize)
     # gaussion convolution
     kernel = fill(gaussianFilterStd, 3) |> Kernel.gaussian
     @time densityMap = imfilter(densityMap, kernel)
+    # normalize by total path length of the neuron
+    totalPathLength = get_total_path_length(self)
+    const scale = totalPathLength / norm(densityMap[:]) 
+    densityMap .*= scale 
     densityMap
 end 
 

@@ -23,8 +23,8 @@ end
 get bounding box from a node list 
 """
 function BoundingBox(nodeList::Vector)
-    minCorner = [Inf32, Inf32, Inf32]
-    maxCorner = [ZERO_FLOAT32, ZERO_FLOAT32, ZERO_FLOAT32]
+    minCorner = fill(Inf32,3)
+    maxCorner = fill(ZERO_FLOAT32, 3)
     for node in nodeList 
         minCorner = map(min, minCorner, node[1:3])
         maxCorner = map(max, maxCorner, node[1:3])
@@ -32,8 +32,12 @@ function BoundingBox(nodeList::Vector)
     BoundingBox(minCorner, maxCorner)
 end 
 
+function get_unit_range(self::BoundingBox)
+    map((i,a)->floor(Int,i):ceil(Int, a), self.minCorner, self.maxCorner) |> x->[x...]
+end 
+
 function Base.size(self::BoundingBox)
-    map((x,y)->ceil(Int, x-y), self.maxCorner, self.minCorner)
+    map(length, get_unit_range(self)) |> x->(x...)
 end 
 
 function Base.isequal(self::BoundingBox, other::BoundingBox)

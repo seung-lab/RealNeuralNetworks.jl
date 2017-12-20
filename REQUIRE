@@ -2,4 +2,4 @@ julia 0.6
 LightGraphs
 BigArrays
 LsqFit
-Blosc
+OffsetArrays

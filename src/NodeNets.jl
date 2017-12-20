@@ -2,17 +2,25 @@ module NodeNets
 include("DBFs.jl"); using .DBFs;
 include("PointArrays.jl"); using .PointArrays;
 using ..RealNeuralNetworks.SWCs
+using Base.Cartesian
+
+export NodeNet 
 
 import LightGraphs
-using Base.Cartesian
 import BigArrays
 
 const ZERO_UINT32 = convert(UInt32, 0)
 const ONE_UINT32  = convert(UInt32, 1)
 const OFFSET = (ZERO_UINT32, ZERO_UINT32, ZERO_UINT32)
+
+# rescale the skeleton
 const EXPANSION = (ONE_UINT32, ONE_UINT32, ONE_UINT32)
 
-export NodeNet 
+# control the removing points around path based on DBF
+const REMOVE_PATH_SCALE = 3 
+const REMOVE_PATH_CONST = 4
+
+
 
 mutable struct NodeNet 
     # x,y,z,r
@@ -620,7 +628,7 @@ end
 """
 function remove_path_from_rns( reachable_nodes::Vector, path::Vector,
   points, ind2node, dbf, max_dims, inspected_nodes,
-  scale_param::Int=2, const_param::Int=4 );
+  scale_param::Int=REMOVE_PATH_SCALE, const_param::Int=REMOVE_PATH_CONST );
 
   r = dbf[path]*scale_param + const_param;
 
