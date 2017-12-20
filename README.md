@@ -42,7 +42,7 @@ SWCs.save(swc, tempname()*".swc")
 - [ ] arbor density
 - [x] total path length 
 - [x] number of segment points c78104a2841e51e0d9973e4cefa0631a519616a4
-- [x] Median segment length is the median dendritic segment length of all the segments starting and ending at irreducible nodes (in μm). Irreducible nodes are the points of the dendritic arbor corresponding to soma, segmenting points or terminal points.
+- [x] Median segment length is the median dendritic segment length of all the segments starting and ending at irreducible nodes (in μm). Irreducible nodes are the points of the dendritic arbor corresponding to soma, branching points or terminal points.
 - [x] 3D sholl analysis. c4934114c8eedbbfd5402fed6f3a1ca0f6475ad4
 - [ ] Hull area is the area of the tightest convex hull containing the z-projection of the dendritic arbor (in μm2). 
 - [ ] volume of the convex hull around all neurites
@@ -61,7 +61,7 @@ SWCs.save(swc, tempname()*".swc")
 - [x] ratio of tail diameter to head. could be useful to identify spines. 8af50c09fc396489c8f10e5c205fa7ef1903b36c
 - [x] segment order
 - [x] segment length
-- [x] segmenting angle. 3f11d24e5ea3874d294031604fa7f6d7f0986cf3 [computation using dot product](https://stackoverflow.com/questions/19729831/angle-between-3-points-in-3d-space)
+- [x] branching angle. 3f11d24e5ea3874d294031604fa7f6d7f0986cf3 [computation using dot product](https://stackoverflow.com/questions/19729831/angle-between-3-points-in-3d-space)
 - [x] tortuosity / curvature. caa4486b501f936743f781782e6561833da7e413
 - [x] distance to root path length
 - [ ] [segment asymmetry](http://www.treestoolbox.org/manual/asym_tree.html)

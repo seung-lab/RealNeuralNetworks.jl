@@ -102,7 +102,7 @@ function Neuron!(seedNodeIndex::Integer, nodeNet::NodeNet,
                 push!(nodeListInSegment, nodes[ connectedNodeIndexList[1] ])
                 push!(seedNodeIndexList, connectedNodeIndexList[1])
             else
-                # terminal segmenting point or multiple segmenting points
+                # terminal branching point or multiple branching points
                 # finish constructing this segment
                 segment = Segment(nodeListInSegment)
                 push!(segmentList, segment)
@@ -199,9 +199,9 @@ end
 function get_num_segmentes(self::Neuron) length(self.segmentList) end
 
 """
-    get_num_segmenting_points(self::Neuron)
+    get_num_branching_points(self::Neuron)
 """
-function get_num_segmenting_points(self::Neuron)
+function get_num_branching_points(self::Neuron)
     numSegmentingPoint = 0
     for index in 1:get_num_segmentes(self)
         childrenSegmentIndexList = get_children_segment_index_list(self, index)
@@ -454,11 +454,11 @@ function get_terminal_node_list( self::Neuron; startSegmentIndex::Integer = 1 )
 end 
 
 """
-    get_segmenting_angle( self::Neuron, segmentIndex::Integer; nodeDistance::AbstractFloat  )
+    get_branching_angle( self::Neuron, segmentIndex::Integer; nodeDistance::AbstractFloat  )
 if the node is too close the angle might not be accurate. For example, if they are voxel neighbors, the angle will alwasys be 90 or 45 degree. Thus, we have nodeDistance here to help make the nodes farther away.
 Note that the acos returns angle in the format of radiens.
 """
-function get_segmenting_angle( self::Neuron, segmentIndex::Integer; nodeDistance::Real = 5000.0 )
+function get_branching_angle( self::Neuron, segmentIndex::Integer; nodeDistance::Real = 5000.0 )
     segment = self[segmentIndex]
     parentSegmentIndex = get_parent_segment_index(self, segmentIndex)
     if parentSegmentIndex < 1
@@ -469,41 +469,41 @@ function get_segmenting_angle( self::Neuron, segmentIndex::Integer; nodeDistance
     if length(parentSegment) == 1 || length(segment) == 1
         return 0.0
     end 
-    segmentingNode = parentSegment[end]
+    branchingNode = parentSegment[end]
     parentNode = parentSegment[end-1]
     for node in parentSegment 
-        if Segments.get_nodes_distance(node, segmentingNode) < nodeDistance
+        if Segments.get_nodes_distance(node, branchingNode) < nodeDistance
             parentNode = node 
             break 
         end 
     end
-    if parentNode == segmentingNode
-        warn("parent node is the same with segmenting node: $(segmentingNode)")
+    if parentNode == branchingNode
+        warn("parent node is the same with branching node: $(branchingNode)")
         return 0.0
     end 
 
     childNode = segment[1]
     for index in length(segment):1
         node = segment[index]
-        if Segments.get_nodes_distance(node, segmentingNode) < nodeDistance 
+        if Segments.get_nodes_distance(node, branchingNode) < nodeDistance 
             childNode = node 
             break 
         end 
     end 
-    if childNode == segmentingNode 
-        warn("child node is the same with segmenting node: $(segmentingNode)")
+    if childNode == branchingNode 
+        warn("child node is the same with branching node: $(branchingNode)")
         return 0.0 
     end 
 
     # compute the angle among the three nodes using the definition of dot product
     # get the two vectors
-    v1 = map(-, parentNode[1:3], segmentingNode[1:3] )
-    v2 = map(-, segmentingNode[1:3], childNode[1:3] )
+    v1 = map(-, parentNode[1:3], branchingNode[1:3] )
+    v2 = map(-, branchingNode[1:3], childNode[1:3] )
     # normalize the vector
     nv1 = normalize([v1...]) 
     nv2 = normalize([v2...])
     #@show nv1, nv2
-    #@show childNode, segmentingNode, parentNode
+    #@show childNode, branchingNode, parentNode
     dotProduct = dot(nv1, nv2)
     # tolerate some numerical varition. the dot product could go greater than 1.
     @assert dotProduct < 1.001 "impossible dotProduct: $(dotProduct)"
@@ -1102,7 +1102,8 @@ end
     resample!( self::Neuron, resampleDistance::Float32 )
 resampling the segmentes by a fixed point distance 
 """
-function resample(self::Neuron, resampleDistance::Float32)
+function resample(self::Neuron, resampleDistance::Number)
+    resampleDistance = Float32(resampleDistance)
     newSegmentList = Vector{Segment}()
     segmentList = get_segment_list(self)
     local nodeList::Vector 

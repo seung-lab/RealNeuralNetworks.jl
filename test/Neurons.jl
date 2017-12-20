@@ -54,8 +54,8 @@ end
     println("get mass center ...")
     @show Neurons.get_mass_center( neuron )
 
-    println("get segmenting angle ...")
-    @time angle = Neurons.get_segmenting_angle( neuron, 5 )
+    println("get branching angle ...")
+    @time angle = Neurons.get_branching_angle( neuron, 5 )
 
     println("get path to root length ...")
     @time path2RootLength = Neurons.get_path_to_root_length( neuron, 5 )

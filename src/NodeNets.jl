@@ -222,7 +222,7 @@ end
 """
     get_segment_point_num(self::NodeNet)
 
-get number of segmenting points 
+get number of branching points 
 """
 function get_num_segment_point(self::NodeNet)
     conn = get_connectivity_matrix(self)

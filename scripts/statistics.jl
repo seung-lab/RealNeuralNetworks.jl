@@ -23,8 +23,8 @@ function main()
                     push!(totalPathLengthList, totalPathLength)
 
                     neuron = Neuron(swc)
-                    numSegmentingPoints = Neurons.get_num_segmenting_points(neuron)
-                    println("number of segmenting points of cell $(fileName): $numSegmentingPoints")
+                    numSegmentingPoints = Neurons.get_num_branching_points(neuron)
+                    println("number of branching points of cell $(fileName): $numSegmentingPoints")
                     push!(numSegmentingPointsList, numSegmentingPoints)
                 end
             end 
