@@ -8,13 +8,17 @@ RUN apt-get install -qq --no-install-recommends build-essential unzip wget \
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so 
 
 RUN julia -e 'Pkg.update()'
+RUN julia -e 'Pkg.clone("https://github.com/JuliaWeb/HTTP.jl.git")'
 RUN julia -e 'Pkg.add("LightGraphs")'
 RUN julia -e 'Pkg.add("ArgParse")'
 RUN julia -e 'Pkg.add("LsqFit")'
 RUN julia -e 'Pkg.add("AWSSQS")'
+RUN julia -e 'Pkg.add("ImageFiltering")'
+RUN julia -e 'Pkg.add("OffsetArrays")'
 RUN julia -e 'Pkg.clone("https://github.com/seung-lab/EMIRT.jl.git")'
 RUN julia -e 'Pkg.clone("https://github.com/seung-lab/BigArrays.jl.git")'
 RUN julia -e 'Pkg.clone("https://github.com/seung-lab/GSDicts.jl.git")'
+RUN julia -e 'Pkg.clone("https://github.com/seung-lab/S3Dicts.jl.git")'
 
 WORKDIR /root/.julia/v0.6/
 RUN mkdir RealNeuralNetworks 
