@@ -693,6 +693,7 @@ function Base.merge(self::Neuron, other::Neuron,
                     nearestSegmentIndex::Integer, nearestNodeIndexInSegment::Integer)
     @assert !isempty(self)
     @assert !isempty(other)
+    @assert nearestSegmentIndex > 0
     segmentList1 = get_segment_list( self  )
     segmentList2 = get_segment_list( other )
     num_segmentes1 = get_num_segmentes(self)
@@ -764,6 +765,8 @@ function Base.merge(self::Neuron, other::Neuron,
         # need to break the segment and then stitch the new segmentes
         segmentPart1, segmentPart2 = split(segmentList1[nearestSegmentIndex], 
                                                     nearestNodeIndexInSegment)
+        @show length(segmentPart1)
+        @show length(segmentPart2)
         mergedSegmentList[nearestSegmentIndex] = segmentPart1 
         mergedConnectivityMatrix[1:size(self.connectivityMatrix,1), 
                                  1:size(self.connectivityMatrix,2)] = 
@@ -771,6 +774,13 @@ function Base.merge(self::Neuron, other::Neuron,
         # reconnect the breaked two segmentes
         push!(mergedSegmentList, segmentPart2)
         mergedConnectivityMatrix[nearestSegmentIndex, num_segmentes1+1] = true 
+        @show nearestSegmentIndex
+        @show length(mergedSegmentList)
+        @show length(mergedSegmentList[nearestSegmentIndex])
+        @show length(mergedSegmentList[num_segmentes1+1])
+        #n1 = mergedSegmentList[nearestSegmentIndex][end]
+        #n2 = mergedSegmentList[num_segmentes1+1][1]
+        #@assert Segments.get_nodes_distance(n1,n2) < 10000
 
         # redirect the children segmentes to segmentPart2
         childrenSegmentIndexList = get_children_segment_index_list(self, nearestSegmentIndex)

@@ -118,10 +118,24 @@ the indexed node will be included in the second segment
 """
 function Base.split(self::Segment, index::Integer)
     @assert index >=1 && index<=length(self)
-    nodeList1 = self.nodeList[1:index-1]     
-    nodeList2 = self.nodeList[index:end]
+    local nodeList1::Vector{NTuple{4, Float32}}
+    local nodeList2::Vector{NTuple{4, Float32}}
+    if index==1
+        if length(self)==1
+            nodeList1 = self.nodeList[1]
+            nodeList2 = self.nodeList[1]
+        else 
+            nodeList1 = self.nodeList[1:index]     
+            nodeList2 = self.nodeList[index+1:end]
+        end 
+    else 
+        nodeList1 = self.nodeList[1:index-1]     
+        nodeList2 = self.nodeList[index:end]
+    end 
     segment1 = Segment(nodeList1; class=self.class)
     segment2 = Segment(nodeList2; class=self.class)
+    @assert length(nodeList1) > 0
+    @assert length(nodeList2) > 0
     return segment1, segment2
 end
 
