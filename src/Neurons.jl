@@ -671,14 +671,47 @@ function get_arbor_density_map(self::Neuron, voxelSize::Union{Tuple, Vector},
     densityMap = get_mask(self, voxelSize)
     # gaussion convolution
     kernel = fill(gaussianFilterStd, 3) |> Kernel.gaussian
+    println("convolution of gaussian kernel...")
     @time densityMap = imfilter(densityMap, kernel)
     # normalize by total path length of the neuron
     totalPathLength = get_total_path_length(self)
-    const scale = totalPathLength / norm(densityMap[:]) 
-    densityMap .*= scale 
+    #densityMap .*= totalPathLength / norm(densityMap[:]) 
+    densityMap ./= norm(densityMap[:]) 
     densityMap
+end
+
+"""
+    translate_soma_to_coordinate_origin(self::Neuron, densityMap::OffsetArray)
+translate the soma to coordinate (0,0,0)
+"""
+function translate_soma_to_coordinate_origin(self::Neuron, densityMap::OffsetArray, 
+                                             voxelSize::Tuple)
+    # assume that the first node is the soma node with largest radius
+    somaCorrdinate = get_root_node(self)[1:3]
+    newRange = map((x,y,s)->(x-round(Int,y/s)), 
+                   indices(densityMap), somaCorrdinate, voxelSize)
+    OffsetArray(parent(densityMap), newRange...)
 end 
 
+"""
+    get_arbor_density_map_distance(self::OffsetArray, other::OffsetArray)
+compute the arbor density map distance. Note that the two density maps should both be 
+translated to make the soma located in (0,0,0).
+"""
+function get_arbor_density_map_distance(self::OffsetArray{T,N,Array{T,N}}, 
+                                        other::OffsetArray{T,N,Array{T,N}}) where {T,N}
+    # find the intersection of two offset arrays
+    intersectIndices = map(intersect, indices(self), indices(other))
+    d = 0.0
+    # add the distance of intersection
+    d += sum(abs2.(self[intersectIndices...] .- other[intersectIndices...])) 
+    # add the distance of self from non-intersect regions
+    selfDiff  = map(setdiff, indices(self),  intersectIndices)
+    otherDiff = map(setdiff, indices(other), intersectIndices)
+    d += sum(abs2.(self[selfDiff...]))
+    d += sum(abs2.(other[otherDiff...]))
+    d
+end 
 
 ############################### Base functions ###################################
 function Base.getindex(self::Neuron, index::Integer)
@@ -774,13 +807,6 @@ function Base.merge(self::Neuron, other::Neuron,
         # reconnect the breaked two segmentes
         push!(mergedSegmentList, segmentPart2)
         mergedConnectivityMatrix[nearestSegmentIndex, num_segmentes1+1] = true 
-        @show nearestSegmentIndex
-        @show length(mergedSegmentList)
-        @show length(mergedSegmentList[nearestSegmentIndex])
-        @show length(mergedSegmentList[num_segmentes1+1])
-        #n1 = mergedSegmentList[nearestSegmentIndex][end]
-        #n2 = mergedSegmentList[num_segmentes1+1][1]
-        #@assert Segments.get_nodes_distance(n1,n2) < 10000
 
         # redirect the children segmentes to segmentPart2
         childrenSegmentIndexList = get_children_segment_index_list(self, nearestSegmentIndex)

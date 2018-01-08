@@ -11,11 +11,11 @@ run this inside julia REPL:
 you must have google secret json file in `/secrets/google-secret.json`, same with configuration of [GSDicts.jl](https://github.com/seung-lab/GSDicts.jl) or [cloudvolume](https://github.com/seung-lab/cloud-volume)
 
 ## commandline
-`julia ~/julia/v0.5/RealNeuralNetworks/scripts/skeletonize.jl -h`
+`julia ~/julia/v0.6/RealNeuralNetworks/scripts/skeletonize.jl -h`
 
 ## Docker (recommanded)
 ### build docker image
-    cd ~/julia/v0.5/RealNeuralNetworks
+    cd ~/julia/v0.6/RealNeuralNetworks
     sudo docker build . -t realneuralnetworks
 
 ```
@@ -39,29 +39,29 @@ SWCs.save(swc, tempname()*".swc")
 
 ## features represent a whole neuron
 
-- [ ] arbor density
+- [x] arbor density
 - [x] total path length 
-- [x] number of segment points c78104a2841e51e0d9973e4cefa0631a519616a4
+- [x] number of segment points 
 - [x] Median segment length is the median dendritic segment length of all the segments starting and ending at irreducible nodes (in μm). Irreducible nodes are the points of the dendritic arbor corresponding to soma, branching points or terminal points.
-- [x] 3D sholl analysis. c4934114c8eedbbfd5402fed6f3a1ca0f6475ad4
+- [x] 3D sholl analysis. 
 - [ ] Hull area is the area of the tightest convex hull containing the z-projection of the dendritic arbor (in μm2). 
 - [ ] volume of the convex hull around all neurites
-- [x] Average angle is the mean of the positive angle between (parent node, node) and (node, child node) vectors, where node, parent node and child node are irreducible nodes (in radians).  3f11d24e5ea3874d294031604fa7f6d7f0986cf3
-- [x] Average tortuosity is the average value of the ratio of the actual dendritic length to the Euclidean distance between irreducible nodes. caa4486b501f936743f781782e6561833da7e413
-- [x] Asymmetry is the distance of the soma node to the dendritic arbor (skeleton) centre of mass (in nm). 6991059640f2508664616e406950c50ccbd40a79
-- [ ] Typical radius (λ) is the root-mean-square distance of dendritic arbor points to the centre of mass (in nm). 
-- [ ] fractal dimension.
-- [x] longest neurite length. 903fedfd73fbc78eb3798fc080c826910df22f57
+- [x] Average angle is the mean of the positive angle between (parent node, node) and (node, child node) vectors, where node, parent node and child node are irreducible nodes (in radians).  
+- [x] Average tortuosity is the average value of the ratio of the actual dendritic length to the Euclidean distance between irreducible nodes. 
+- [x] Asymmetry is the distance of the soma node to the dendritic arbor (skeleton) centre of mass (in nm). 
+- [x] Typical radius (λ) is the root-mean-square distance of dendritic arbor points to the centre of mass (in nm). 
+- [x] fractal dimension.
+- [x] longest neurite length. 
 - [ ] distribution of Euclidian distance of segmentes from soma (third principal component)
 - [ ] distribution of Euclidian distance of segmentes from soma as a function of segment order (third principal component)
 - [ ] number of segmentes per segment order (second principal component)
 - [ ] distribution of morphological distance of segmentes from soma along the skeleton as a function of segment order (first principal component)
 
 ## features represent segmentes in a neuron
-- [x] ratio of tail diameter to head. could be useful to identify spines. 8af50c09fc396489c8f10e5c205fa7ef1903b36c
+- [x] ratio of tail diameter to head. could be useful to identify spines. 
 - [x] segment order
 - [x] segment length
-- [x] branching angle. 3f11d24e5ea3874d294031604fa7f6d7f0986cf3 [computation using dot product](https://stackoverflow.com/questions/19729831/angle-between-3-points-in-3d-space)
+- [x] branching angle. [computation using dot product](https://stackoverflow.com/questions/19729831/angle-between-3-points-in-3d-space)
 - [x] tortuosity / curvature. caa4486b501f936743f781782e6561833da7e413
 - [x] distance to root path length
 - [ ] [segment asymmetry](http://www.treestoolbox.org/manual/asym_tree.html)

@@ -5,17 +5,40 @@ using RealNeuralNetworks.NodeNets
 using RealNeuralNetworks.SWCs
 
 const SWC_BIN_PATH = joinpath(@__DIR__, "../assert/78058.swc.bin") 
+const ARBOR_DENSITY_MAP_VOXEL_SIZE = (500,500,500)
 
 @testset "test Neuron IO and resampling " begin 
     println("load swc of a real neuron...")
     @time swc = SWCs.load_swc_bin( SWC_BIN_PATH )
     neuron = Neuron( swc )
-    
-    arborDensityMap = Neurons.get_arbor_density_map(neuron, (360,360,360), 8.0)
-    @test norm(arborDensityMap[:]) ≈ Neurons.get_total_path_length(neuron)
-    
+    neuron1 = neuron
+
+    println("compute arbor density map...")
+    @time arborDensityMap = Neurons.get_arbor_density_map(neuron, 
+                                                ARBOR_DENSITY_MAP_VOXEL_SIZE, 8.0)
+    #@test norm(arborDensityMap[:]) ≈ Neurons.get_total_path_length(neuron)
+    @test norm(arborDensityMap[:]) ≈ 1.0
+    densityMap1 = Neurons.translate_soma_to_coordinate_origin(neuron1, arborDensityMap, 
+                                                             ARBOR_DENSITY_MAP_VOXEL_SIZE)
+    @show indices(densityMap1)
+    println("compute arbor density map distance...")
+    @time d = Neurons.get_arbor_density_map_distance(densityMap1, densityMap1)
+    @test d == 0.0
+
+    fileName = joinpath(dirname(SWC_BIN_PATH), "76918.swc.bin")
+    neuron2 = Neuron( SWCs.load_swc_bin(fileName) )
+    densityMap2 = Neurons.get_arbor_density_map(neuron, ARBOR_DENSITY_MAP_VOXEL_SIZE, 8.0)
+    @test norm(densityMap2[:]) ≈ 1.0                                               
+    densityMap2 = Neurons.translate_soma_to_coordinate_origin(neuron2, densityMap2, 
+                                                              ARBOR_DENSITY_MAP_VOXEL_SIZE)
+    @show indices(densityMap2) 
+    println("compute arbor density map distance...")                          
+    @time d = Neurons.get_arbor_density_map_distance(densityMap1, densityMap2)
+    println("arbor density map distance: $d")
+    @test d > 0.0 && d < 2.0
+
     Neurons.save(neuron, "/tmp/neuron.swc")
-    neuron2 = Neurons.resample(neuron, Float32(40))
+    neuron3 = Neurons.resample(neuron, Float32(40))
     #Neurons.save_swc(neuron2, "/tmp/neuron2.swc")
     rm("/tmp/neuron.swc")
     #rm("/tmp/neuron2.swc")
