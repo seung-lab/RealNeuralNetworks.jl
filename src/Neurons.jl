@@ -194,16 +194,16 @@ function get_root_node( self::Neuron )
 end 
 
 """
-    get_num_segmentes(self::Neuron)
+    get_num_segments(self::Neuron)
 """
-function get_num_segmentes(self::Neuron) length(self.segmentList) end
+function get_num_segments(self::Neuron) length(self.segmentList) end
 
 """
     get_num_branching_points(self::Neuron)
 """
 function get_num_branching_points(self::Neuron)
     numSegmentingPoint = 0
-    for index in 1:get_num_segmentes(self)
+    for index in 1:get_num_segments(self)
         childrenSegmentIndexList = get_children_segment_index_list(self, index)
         if length(childrenSegmentIndexList) > 0
             numSegmentingPoint += 1
@@ -221,7 +221,7 @@ following the Julia indexing style, the root segment order is 1.
 """
 function get_segment_order_list(self::Neuron)
     segmentOrderList = Vector{Int}()
-    sizehint!(segmentOrderList, get_num_segmentes(self))
+    sizehint!(segmentOrderList, get_num_segments(self))
     
     index2order = Dict{Int,Int}()
     # the first one is segment index, the second one is segment order 
@@ -235,7 +235,7 @@ function get_segment_order_list(self::Neuron)
         end 
     end 
     
-    for index in 1:get_num_segmentes( self )
+    for index in 1:get_num_segments( self )
         push!(segmentOrderList, index2order[index])
     end 
     segmentOrderList
@@ -420,7 +420,7 @@ end
 get the segment index list of subtree 
 """
 function get_subtree_segment_index_list( self::Neuron, segmentIndex::Integer )
-    @assert segmentIndex > 0 && segmentIndex <= get_num_segmentes(self)
+    @assert segmentIndex > 0 && segmentIndex <= get_num_segments(self)
     subtreeSegmentIndexList = Vector{Integer}()
     seedSegmentIndexList = [segmentIndex]
     while !isempty( seedSegmentIndexList )
@@ -729,8 +729,8 @@ function Base.merge(self::Neuron, other::Neuron,
     @assert nearestSegmentIndex > 0
     segmentList1 = get_segment_list( self  )
     segmentList2 = get_segment_list( other )
-    num_segmentes1 = get_num_segmentes(self)
-    num_segmentes2 = get_num_segmentes(other)
+    num_segmentes1 = get_num_segments(self)
+    num_segmentes2 = get_num_segments(other)
     
     if nearestNodeIndexInSegment == length(segmentList1[nearestSegmentIndex])
         println("connecting to a segment end...")
@@ -1037,7 +1037,7 @@ if neighboring node is the same, remove one of them
 """
 function remove_redundent_nodes(self::Neuron)
     newSegmentList = Vector{Segment}()
-    sizehint!(newSegmentList, get_num_segmentes(self))
+    sizehint!(newSegmentList, get_num_segments(self))
     removeSegmentIndexList = Vector{Int}()
     segmentList = get_segment_list(self)
     for (segmentIndex, segment) in enumerate( segmentList )
