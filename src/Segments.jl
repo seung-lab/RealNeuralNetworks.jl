@@ -10,7 +10,7 @@ const ZERO_FLOAT32 = Float32(0)
 
 export Segment 
 mutable struct Segment 
-    # x,y,z,r
+    # list of tuple (x,y,z,r)
     nodeList    ::Vector{Node}
     class       ::UInt8
     boundingBox ::BoundingBox

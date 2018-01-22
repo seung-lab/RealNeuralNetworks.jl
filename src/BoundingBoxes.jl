@@ -22,7 +22,7 @@ end
 """
 get bounding box from a node list 
 """
-function BoundingBox(nodeList::Vector)
+function BoundingBox(nodeList::Union{Vector, Set})
     minCorner = fill(Inf32,3)
     maxCorner = fill(ZERO_FLOAT32, 3)
     for node in nodeList 

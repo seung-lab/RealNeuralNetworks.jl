@@ -10,6 +10,7 @@ using OffsetArrays
 const ONE_UINT32 = UInt32(1)
 const ZERO_FLOAT32 = Float32(0)
 const EXPANSION = (ONE_UINT32, ONE_UINT32, ONE_UINT32)
+const VOXEL_SIZE = (1000, 1000, 1000)
 
 export Neuron
 
@@ -635,24 +636,47 @@ end
 
 
 """
+	get_mask(self::Neuron, voxelSize::Union{Tuple, Vector}) 
+compute binary representation of the neuron skeleton
 """
 function get_mask(self::Neuron, voxelSize::Union{Tuple, Vector})
     nodeList = get_node_list(self)
-    voxelList = Vector{NTuple{3, Int}}()
+    voxelSet = Set{NTuple{3, Int}}()
     for node in nodeList 
         voxelCoordinate = map((x,y)->round(Int, x/y), node[1:3], voxelSize)
-        push!(voxelList, (voxelCoordinate...))
+        push!(voxelSet, (voxelCoordinate...))
     end 
-    boundingBox = Segments.BoundingBox( voxelList )
+    boundingBox = Segments.BoundingBox( voxelSet )
     range = Segments.BoundingBoxes.get_unit_range(boundingBox)
     sz = size(boundingBox)
     # initialize the map 
-    mask = zeros(Float64, sz)
+    mask = zeros(Bool, sz)
     mask = OffsetArray(mask, range...)
 
-    @unsafe for voxel in voxelList
+    @unsafe for voxel in voxelSet
         # add a small number to make sure that there is no 0
         mask[voxel...] = true 
+    end 
+    mask
+end 
+
+function get_2d_binary_projection(self::Neuron; axis=3, voxelSize=VOXEL_SIZE)
+    nodeList = get_node_list(self)
+    voxelSet = Set{NTuple{3, Int}}()
+    for node in nodeList 
+        voxelCoordinate = map((x,y)->round(Int, x/y), node[1:3], voxelSize)
+        push!(voxelSet, (voxelCoordinate...))
+    end 
+    boundingBox = Segments.BoundingBox( voxelSet ) 
+    range = Segments.BoundingBoxes.get_unit_range(boundingBox)[1:2]
+    sz = size(boundingBox)[1:2]
+    # initialize the map                                                   
+    mask = zeros(Bool, sz)
+    mask = OffsetArray(mask, range...)
+
+    @unsafe for voxel in voxelSet 
+        # add a small number to make sure that there is no 0 
+        mask[voxel[1:2]...] = true 
     end 
     mask
 end 
@@ -674,9 +698,9 @@ function get_arbor_density_map(self::Neuron, voxelSize::Union{Tuple, Vector},
     println("convolution of gaussian kernel...")
     @time densityMap = imfilter(densityMap, kernel)
     # normalize by total path length of the neuron
-    totalPathLength = get_total_path_length(self)
+    #totalPathLength = get_total_path_length(self)
     #densityMap .*= totalPathLength / norm(densityMap[:]) 
-    densityMap ./= norm(densityMap[:]) 
+    # densityMap ./= norm(densityMap[:]) 
     densityMap
 end
 
@@ -711,6 +735,47 @@ function get_arbor_density_map_distance(self::OffsetArray{T,N,Array{T,N}},
     d += sum(abs2.(self[selfDiff...]))
     d += sum(abs2.(other[otherDiff...]))
     d
+end 
+
+
+function _correlate_image(img::Array{T,2}, template::Array{T,2}) where {T}
+    z = imfilter(Float64, img, centered(template), Algorithm.FIR())
+    q = sqrt.(imfilter(Float64, img.^2, centered(ones(size(template))),
+                       Algorithm.FIR()))
+    m = sqrt(sum(template.^2))
+    corr = z ./ (m * max.(eps(), q))
+    return corr
+end 
+
+function _cross_correlation_along_axis(self::Array, other::Array, axis::Int)
+    projection1 = maximum(self,  axis)
+    projection2 = maximum(other, axis)
+	projection1 = squeeze(projection1, axis)
+	projection2 = squeeze(projection2, axis)
+
+    if length(projection1) > length(projection2)
+        projection1, projection2 = projection2, projection1
+    end
+    return _correlate_image(projection2, projection1)
+end 
+
+function _find_correlation_peak_along_axis(self::Array, other::Array, axis::Int)
+	crossCorrelation = _cross_correlation_along_axis(self, other, axis)
+   	maximum(crossCorrelation)    
+end 
+
+"""                                                                                                                                            
+    get_arbor_density_map_overlap_min_distance(self ::OffsetArray, other::OffsetArray)                                                         
+                                                                                                                                               
+translate the density map and find the place with minimum distance in overlapping region.                                                      
+use cross correlation in 2D to find the position with maximum value as approximated location.                                                  
+""" 
+function get_arbor_density_map_overlap_min_distance(self ::Array,
+                                                    other::Array)
+    crossCorrelationZ = _find_correlation_peak_along_axis(self, other, 3)
+    crossCorrelationY = _find_correlation_peak_along_axis(self, other, 2)
+    crossCorrelationX = _find_correlation_peak_along_axis(self, other, 1)
+    1. - mean([crossCorrelationX, crossCorrelationY, crossCorrelationZ]) 
 end 
 
 ############################### Base functions ###################################
