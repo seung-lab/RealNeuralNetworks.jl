@@ -83,7 +83,8 @@ function NodeNet(point_array::Array{T,2}, path_nodes::Vector{Int},
     # build new nodes and the id map
     for i in 1:numNodes 
         coordinate = (point_array[path_nodes[i], :]...)
-        set_props!(nodeNet, i, Dict(:coordinate=>coordinate, :radius=>node_radii[i]))
+        set_props!(nodeNet, i, Dict(:coordinate => Float32.(coordinate), 
+                                    :radius     => Float32(node_radii[i])))
         id_map[path_nodes[i]] = i
     end 
 
@@ -183,8 +184,9 @@ function NodeNet(swc::SWC)
     numNodes = length(swc)
     nodeNet = NodeNet(numNodes) 
     for (index, point) in enumerate(swc)
-        set_props!(nodeNet, index, Dict(:coordinate => (point.x, point.y, point.z), 
-                                        :radius     => point.radius))
+        set_props!(nodeNet, index, 
+                        Dict(:coordinate => (point.x, point.y, point.z), 
+                             :radius     => point.radius))
         if point.parent != -1
             add_edge!(nodeNet, (index, point.parent))
         end 
@@ -212,7 +214,7 @@ end
 ##################### properties ###############################
 function get_node_list(self::NodeNet) 
     N = get_node_num(self)
-    nodeList = Vector{NTuple{3, Int64}}()
+    nodeList = Vector{NTuple{3, Float32}}()
     sizehint!(nodeList, N)
     for v in vertices(self)
         coordinate = get_prop(self, v, :coordinate)
@@ -280,7 +282,7 @@ end
     @assert length(offset) == 3
     for v in vertices(self)
         coordinate = get_prop(self, v, :coordinate)
-        coordinate = map(+, coordinate, offset)
+        coordinate = map(+, coordinate, Float32.(offset))
         set_prop!(self, v, :coordinate, coordinate)
     end
     nothing
@@ -294,7 +296,7 @@ end
     @assert length(expansion) == 3
     for v in vertices(self)
         coordinate = get_prop(self, v, :coordinate)
-        coordinate = map(*, coordinate, expansion)
+        coordinate = map(*, coordinate, Float32.(expansion))
         set_prop!(self, v, :coordinate, coordinate)
     end       
     nothing

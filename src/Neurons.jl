@@ -72,7 +72,8 @@ function Neuron!(seedNodeIndex::Integer, nodeNet::NodeNet,
     parentSegmentIndexList = Vector{Int}()
     childSegmentIndexList  = Vector{Int}()
 
-    nodes = NodeNets.get_node_list(nodeNet)
+    nodes = NodeNets.get_node_list( nodeNet )
+    radii = NodeNets.get_radii( nodeNet )
     nodesConnectivityMatrix = NodeNets.get_connectivity_matrix( nodeNet )
     
     # the seed of segment should record both seed node index 
@@ -89,7 +90,8 @@ function Neuron!(seedNodeIndex::Integer, nodeNet::NodeNet,
             # construct this segment
             seedNodeIndex = pop!(seedNodeIndexList)
             # push the seed node
-            push!(nodeListInSegment, nodes[seedNodeIndex])
+            push!(nodeListInSegment, (nodes[ seedNodeIndex ]...,
+                                      radii[ seedNodeIndex ]))
             # label this node index as collected
             collectedFlagVec[ seedNodeIndex ] = true 
 
@@ -100,7 +102,8 @@ function Neuron!(seedNodeIndex::Integer, nodeNet::NodeNet,
 
             if length(connectedNodeIndexList) == 1
                 # belong to the same segment
-                push!(nodeListInSegment, nodes[ connectedNodeIndexList[1] ])
+                push!(nodeListInSegment, (nodes[ connectedNodeIndexList[1] ]..., 
+                                          radii[ connectedNodeIndexList[1] ]))
                 push!(seedNodeIndexList, connectedNodeIndexList[1])
             else
                 # terminal branching point or multiple branching points
@@ -1255,12 +1258,12 @@ function resample(nodeList::Vector{NTuple{4,Float32}}, resampleDistance::Float32
 end 
 
 """
-    find_nearest_node_index(segmentList::Vector{Segment}, nodes::Vector{NTuple{4,Float32}})
+    find_nearest_node_index(segmentList::Vector{Segment}, nodes::Vector{NTuple{3,Float32}})
 
 find the uncollected node which is nearest to the segment list 
 """
 function find_nearest_node_index(segmentList::Vector{Segment}, 
-                                 nodes::Vector{NTuple{4,Float32}},
+                                 nodes::Vector{NTuple{3,Float32}},
                                  collectedFlagVec ::Vector{Bool})
     # initialization 
     nearestNodeIndex = 0
@@ -1292,13 +1295,6 @@ function find_nearest_node_index(segmentList::Vector{Segment},
             end
         end 
     end
-    # the segmentIndex should be inside the segmentList
-    #@assert nearestSegmentIndex > 0
-    #@assert nearestSegmentIndex <= length(segmentList)
-    #@show distance
-    #if distance > 1000 
-    #    @show nearestNodeIndex, nearestSegmentIndex, nearestNodeIndexInSegment
-    #end 
     return nearestNodeIndex, nearestSegmentIndex, nearestNodeIndexInSegment 
 end 
 
