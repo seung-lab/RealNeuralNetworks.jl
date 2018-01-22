@@ -93,7 +93,7 @@ function Base.next(self::Manifest, i )
     # example: [2456:2968, 1776:2288, 16400:16912]
     ranges = self.rangeList[i]
     offset = (map(x-> UInt32(start(x)-1), ranges)...)
-    seg = self.ba[ranges...]
+    seg = self.ba[ranges...] |> parent
     bin_im = DBFs.create_binary_image( seg; obj_id = self.obj_id )
     @assert any(bin_im)
     point_cloud = PointArrays.from_binary_image( bin_im )
