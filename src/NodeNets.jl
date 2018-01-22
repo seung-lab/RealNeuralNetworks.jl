@@ -514,7 +514,7 @@ end
   Returns a version of the edge weights, modified by the DBF-based
   teasar penalty:
 
-  w = w * 5000 .* (1 - dbf/maxDBF).^(0.5)
+  w = w * 5000 .* (1 - dbf/maxDBF).^(16)
 
   The factor of 5000 shouldn't make a difference, but I've
   left it here
@@ -524,7 +524,7 @@ function alexs_penalty( weights, dbf, G, mult=true )
   # *1.01 ensures later quotient is >0
   M = maximum(dbf,1)*1.01
 
-  p_v = (1 - dbf./M ).^(0.5);
+  p_v = (1 - dbf./M ).^(16);
 
   #DBF penalty is defined by the destination node, only need js
   is,js = findn(weights);
