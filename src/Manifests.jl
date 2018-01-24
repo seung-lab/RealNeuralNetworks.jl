@@ -6,6 +6,7 @@ using GSDicts, BigArrays
 using ..RealNeuralNetworks.NodeNets
 #import ..RealNeuralNetworks.NodeNets.DBFs
 #import ..RealNeuralNetworks.NodeNets.PointArrays
+using OffsetArrays
 
 const MIP_LEVEL = 4
 

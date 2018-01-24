@@ -78,7 +78,7 @@ function NodeNet( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
                          expansion::NTuple{3, UInt32} = EXPANSION) where T
 
     println("total number of points: $(size(points,1))")
-    points, bbox_offset = shift_points_to_bbox( points );
+    points, bbox_offset = translate_to_origin!( points );
   ind2node, max_dims = create_node_lookup( points );
   max_dims_arr = [max_dims...];#use this for rm_nodes, but ideally wouldn't
   sub2node = x -> ind2node[ sub2ind(max_dims, x[1],x[2],x[3]) ];#currently only used in line 48
@@ -353,7 +353,7 @@ function save_edges(self::NodeNet, fileName::String)
 end 
 
 ##################### manipulate ############################
-function add_offset!(self::NodeNet, offset::Union{Vector,Tuple} )
+@inline function add_offset!(self::NodeNet, offset::Union{Vector,Tuple} )
     @assert length(offset) == 3
     for i in 1:get_node_num(self)
         xyz = map((x,y)->x+y, self.nodeList[i][1:3],offset)
@@ -361,11 +361,11 @@ function add_offset!(self::NodeNet, offset::Union{Vector,Tuple} )
     end 
 end
 
-function stretch_coordinates!(self::NodeNet, mip::Real)
+@inline function stretch_coordinates!(self::NodeNet, mip::Real)
     expansion = (2^mip, 2^mip, 1) 
     stretch_coordinates!(self, expansion)
 end 
-function stretch_coordinates!(self::NodeNet, expansion::Union{Vector, Tuple})
+@inline function stretch_coordinates!(self::NodeNet, expansion::Union{Vector, Tuple})
     @assert length(expansion) == 3
     nodeList = get_node_list(self)
     for (nodeIndex, node) in enumerate(nodeList)
@@ -379,18 +379,17 @@ end
 
 """
 
-    shift_points_to_bbox( points )
+    translate_to_origin!( points )
 
   Normalize the point dimensions by subtracting the min
   across each dimension. This step isn't extremely necessary,
   but might be useful for compatibility with the MATLAB code.
   record the offset and add it back after building the nodeNet
 """
-function shift_points_to_bbox( points )
+function translate_to_origin!( points )
   offset = minimum( points, 1 ) -1 ;
   # transform to 1d vector
   offset = vec( offset )
-  @assert ndims(offset) == 1
   @assert length(offset) == 3
   @assert offset[3] < 20000
   points[:,1] .-= offset[1]

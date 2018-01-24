@@ -22,7 +22,7 @@ end
 
 """
     Neuron
-a neuron modeled by interconnected segmentes 
+a neuron modeled by interconnected segments 
 """
 function Neuron(nodeNet::NodeNet)
 #    @save "nodenet.jld2" nodeNet 
@@ -112,7 +112,7 @@ function Neuron!(seedNodeIndex::Integer, nodeNet::NodeNet,
                     push!(parentSegmentIndexList, segmentParentIndex)
                     push!(childSegmentIndexList,  length(segmentList))
                 end 
-                # seed new segmentes
+                # seed new segments
                 # if this is terminal segment, no seed will be pushed
                 for index in connectedNodeIndexList 
                     push!(segmentSeedList, (index, length(segmentList)))
@@ -794,30 +794,30 @@ function Base.merge(self::Neuron, other::Neuron,
     @assert nearestSegmentIndex > 0
     segmentList1 = get_segment_list( self  )
     segmentList2 = get_segment_list( other )
-    num_segmentes1 = get_num_segments(self)
-    num_segmentes2 = get_num_segments(other)
+    num_segments1 = get_num_segments(self)
+    num_segments2 = get_num_segments(other)
     
     if nearestNodeIndexInSegment == length(segmentList1[nearestSegmentIndex])
         println("connecting to a segment end...")
         childrenSegmentIndexList = get_children_segment_index_list(self, nearestSegmentIndex)
         if length(childrenSegmentIndexList) > 0
             println("the nearest segment have children, do not merge the root segment")
-            total_num_segmentes = num_segmentes1 + num_segmentes2 
+            total_num_segments = num_segments1 + num_segments2 
             mergedSegmentList = vcat(segmentList1, segmentList2)
-            @assert length(mergedSegmentList) == total_num_segmentes 
+            @assert length(mergedSegmentList) == total_num_segments 
             mergedConnectivityMatrix = 
-                        spzeros(Bool, total_num_segmentes, total_num_segmentes)
+                        spzeros(Bool, total_num_segments, total_num_segments)
             mergedConnectivityMatrix[   1:size(self.connectivityMatrix,1), 
                                         1:size(self.connectivityMatrix,2)] = 
                                                                 self.connectivityMatrix 
             # do not include the connection of root in net2
-            mergedConnectivityMatrix[num_segmentes1+1 : end, 
-                                     num_segmentes1+1 : end] = other.connectivityMatrix 
-            mergedConnectivityMatrix[nearestSegmentIndex, num_segmentes1+1] = true
+            mergedConnectivityMatrix[num_segments1+1 : end, 
+                                     num_segments1+1 : end] = other.connectivityMatrix 
+            mergedConnectivityMatrix[nearestSegmentIndex, num_segments1+1] = true
             return Neuron(mergedSegmentList, mergedConnectivityMatrix)
         else 
             println("the nearest segment is a terminal segment, merge the root segment of 'other'")
-            if num_segmentes2 == 1
+            if num_segments2 == 1
                 #  only one segment of the other net
                 mergedSegmentList = copy(segmentList1)
                 mergedSegmentList[nearestSegmentIndex] = 
@@ -831,36 +831,36 @@ function Base.merge(self::Neuron, other::Neuron,
                 mergedSegmentList[nearestSegmentIndex] = 
                             merge(mergedSegmentList[nearestSegmentIndex], segmentList2[1])
 
-                # total number of segmentes
-                total_num_segmentes = num_segmentes1 + num_segmentes2 - 1 
-                @assert length(mergedSegmentList) == total_num_segmentes 
+                # total number of segments
+                total_num_segments = num_segments1 + num_segments2 - 1 
+                @assert length(mergedSegmentList) == total_num_segments 
                 
                 mergedConnectivityMatrix = 
-                                spzeros(Bool, total_num_segmentes, total_num_segmentes)
+                                spzeros(Bool, total_num_segments, total_num_segments)
                 mergedConnectivityMatrix[
                                     1:size(self.connectivityMatrix,1), 
                                     1:size(self.connectivityMatrix,2)] = 
                                                         self.connectivityMatrix 
                 # do not include the connection of root in net2
-                mergedConnectivityMatrix[num_segmentes1+1 : end, 
-                                         num_segmentes1+1 : end] = 
+                mergedConnectivityMatrix[num_segments1+1 : end, 
+                                         num_segments1+1 : end] = 
                                                 other.connectivityMatrix[2:end, 2:end]
                 # reestablish the connection of root2
                 childrenSegmentIndexList2 = get_children_segment_index_list(other, 1)
                 for childSegmentIndex2 in childrenSegmentIndexList2
                     mergedConnectivityMatrix[ nearestSegmentIndex, 
-                                              num_segmentes1+childSegmentIndex2-1 ] = true 
+                                              num_segments1+childSegmentIndex2-1 ] = true 
                 end
                 return Neuron(mergedSegmentList, mergedConnectivityMatrix)
             end 
         end 
     else 
         #println("need to break the nearest segment and rebuild connectivity matrix")
-        total_num_segmentes = num_segmentes1 + 1 + num_segmentes2 
+        total_num_segments = num_segments1 + 1 + num_segments2 
         mergedSegmentList = segmentList1 
-        mergedConnectivityMatrix = spzeros(Bool, total_num_segmentes, total_num_segmentes)
+        mergedConnectivityMatrix = spzeros(Bool, total_num_segments, total_num_segments)
         
-        # need to break the segment and then stitch the new segmentes
+        # need to break the segment and then stitch the new segments
         segmentPart1, segmentPart2 = split(segmentList1[nearestSegmentIndex], 
                                                     nearestNodeIndexInSegment)
         @show length(segmentPart1)
@@ -869,28 +869,28 @@ function Base.merge(self::Neuron, other::Neuron,
         mergedConnectivityMatrix[1:size(self.connectivityMatrix,1), 
                                  1:size(self.connectivityMatrix,2)] = 
                                                         self.connectivityMatrix 
-        # reconnect the breaked two segmentes
+        # reconnect the breaked two segments
         push!(mergedSegmentList, segmentPart2)
-        mergedConnectivityMatrix[nearestSegmentIndex, num_segmentes1+1] = true 
+        mergedConnectivityMatrix[nearestSegmentIndex, num_segments1+1] = true 
 
-        # redirect the children segmentes to segmentPart2
+        # redirect the children segments to segmentPart2
         childrenSegmentIndexList = get_children_segment_index_list(self, nearestSegmentIndex)
         for childSegmentIndex in childrenSegmentIndexList
             # remove old connection
             mergedConnectivityMatrix[nearestSegmentIndex, childSegmentIndex] = false
             # build new connection
-            mergedConnectivityMatrix[num_segmentes1+1, childSegmentIndex] = true 
+            mergedConnectivityMatrix[num_segments1+1, childSegmentIndex] = true 
         end 
 
         # merge the other net
         mergedSegmentList = vcat(mergedSegmentList, segmentList2)
         mergedConnectivityMatrix[
-                num_segmentes1+2 : num_segmentes1+2+size(other.connectivityMatrix,1)-1, 
-                num_segmentes1+2 : num_segmentes1+2+size(other.connectivityMatrix,2)-1] = 
+                num_segments1+2 : num_segments1+2+size(other.connectivityMatrix,1)-1, 
+                num_segments1+2 : num_segments1+2+size(other.connectivityMatrix,2)-1] = 
                                                                 other.connectivityMatrix
 
         # establish the connection between two nets
-        mergedConnectivityMatrix[nearestSegmentIndex, num_segmentes1+2] = true
+        mergedConnectivityMatrix[nearestSegmentIndex, num_segments1+2] = true
 
         # create new merged net
         return Neuron(mergedSegmentList, mergedConnectivityMatrix)
@@ -985,15 +985,15 @@ function Base.split(self::Neuron, splitSegmentIndex::Integer; nodeIndexInSegment
 end
 
 
-function remove_segmentes!(self::Neuron, removeSegmentIndexList::Union{Vector,Set})
-    self = remove_segmentes( self, removeSegmentIndexList )
+function remove_segments!(self::Neuron, removeSegmentIndexList::Union{Vector,Set})
+    self = remove_segments( self, removeSegmentIndexList )
 end 
 
-function remove_segmentes(self::Neuron, removeSegmentIndexList::Vector{Int})
-    remove_segmentes(self, Set{Int}( removeSegmentIndexList ))
+function remove_segments(self::Neuron, removeSegmentIndexList::Vector{Int})
+    remove_segments(self, Set{Int}( removeSegmentIndexList ))
 end 
 
-function remove_segmentes(self::Neuron, removeSegmentIndexList::Set{Int})
+function remove_segments(self::Neuron, removeSegmentIndexList::Set{Int})
     @assert !(1 in removeSegmentIndexList) "should not contain the root segment!"
 
     segmentList = get_segment_list(self)
@@ -1050,7 +1050,7 @@ function remove_subtree_in_soma( self::Neuron )
             push!(removeSegmentIndexList, segmentIndex)
         end 
     end
-    return remove_segmentes( self, removeSegmentIndexList )
+    return remove_segments( self, removeSegmentIndexList )
 end
 
 function remove_hair( self::Neuron )
@@ -1066,7 +1066,7 @@ function remove_hair( self::Neuron )
             push!(removeSegmentIndexList, terminalSegmentIndex)
         end 
     end 
-    return remove_segmentes(self, removeSegmentIndexList)
+    return remove_segments(self, removeSegmentIndexList)
 end
 
 """
@@ -1093,7 +1093,7 @@ function remove_terminal_blobs( self::Neuron )
             push!(blobTerminalSegmentIndexList, index)
         end 
     end 
-    return remove_segmentes( self, blobTerminalSegmentIndexList )
+    return remove_segments( self, blobTerminalSegmentIndexList )
 end
 
 """
@@ -1121,7 +1121,7 @@ function remove_redundent_nodes(self::Neuron)
         end 
     end 
     newNeuron = Neuron( newSegmentList, get_connectivity_matrix(self) )
-    return remove_segmentes(newNeuron, removeSegmentIndexList)
+    return remove_segments(newNeuron, removeSegmentIndexList)
 end 
 ########################## type convertion ####################
 """
@@ -1139,7 +1139,7 @@ function SWCs.SWC(self::Neuron)
     swc = SWCs.SWC()
     # the node index of each segment, will be used for connecting the child segment
     segmentEndNodeIndexList = get_segment_end_node_index_list(self)
-    # connectivity matrix of segmentes
+    # connectivity matrix of segments
     segmentConnectivityMatrix = get_connectivity_matrix(self)
 
     for (segmentIndex, segment) in enumerate( get_segment_list(self) )
@@ -1201,7 +1201,7 @@ end
 ############################### manipulations ##########################################
 """
     resample!( self::Neuron, resampleDistance::Float32 )
-resampling the segmentes by a fixed point distance 
+resampling the segments by a fixed point distance 
 """
 function resample(self::Neuron, resampleDistance::Number)
     resampleDistance = Float32(resampleDistance)
@@ -1276,7 +1276,7 @@ function find_nearest_node_index(segmentList::Vector{Segment},
         if !collectedFlagVec[nodeIndex]
             for (segmentIndex, segment) in enumerate(segmentList)
                 # distance from bounding box give the maximum bound of nearest distance
-                # this was used to filter out far away segmentes quickly
+                # this was used to filter out far away segments quickly
                 # no need to compute all the distances between nodes
                 # this is the lower bound of the distance
                 bbox_distance = Segments.get_bounding_box_distance(segment, node)
