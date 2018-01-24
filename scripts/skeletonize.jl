@@ -2,7 +2,7 @@
 include("Common.jl")
 using .Common 
 
-@everywhere using AWSSQS 
+@everywhere using AWSSDK.SQS 
 @everywhere using GSDicts
 
 @everywhere using RealNeuralNetworks
@@ -73,9 +73,11 @@ function main()
                          segmentationLayer=args["segmentationlayer"]), 
                                                                                         idList)
     elseif args["sqsqueue"] != nothing 
-        q = sqs_get_queue(args["sqsqueue"])
-        for m in AWSSQS.sqs_messages(q)
-            id = parse(m[:message])
+        queuUrl = SQS.get_queue(args["sqsqueue"])["QueueUrl"]
+        while true 
+            message = SQS.receive_messages(QueueUrl=queueUrl)["messages"][1]
+            receiptHandle = message["ReceiptHandle"]
+            id = parse(message[:Body])
             println("tracing cell: $(id)")
             try 
                 trace(id; swcDir=args["swcdir"], mip=args["mip"], 
@@ -88,7 +90,7 @@ function main()
                     rethrow() 
                 end 
             end
-            sqs_delete_message(q, m)
+            SQS.delete_message(QueueUrl=queueUrl, ReceiptHandle=receiptHandle)
         end 
     else 
         trace(args["neuronid"]; swcDir = args["swcdir"],  
