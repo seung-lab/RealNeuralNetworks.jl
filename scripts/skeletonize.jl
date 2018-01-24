@@ -73,11 +73,11 @@ function main()
                          segmentationLayer=args["segmentationlayer"]), 
                                                                                         idList)
     elseif args["sqsqueue"] != nothing 
-        queuUrl = SQS.get_queue(args["sqsqueue"])["QueueUrl"]
+        queueUrl = SQS.get_queue_url(QueueName=args["sqsqueue"])["QueueUrl"]
         while true 
-            message = SQS.receive_messages(QueueUrl=queueUrl)["messages"][1]
+            message = SQS.receive_message(QueueUrl=queueUrl)["messages"][1]
             receiptHandle = message["ReceiptHandle"]
-            id = parse(message[:Body])
+            id = parse(message["Body"])
             println("tracing cell: $(id)")
             try 
                 trace(id; swcDir=args["swcdir"], mip=args["mip"], 
