@@ -9,7 +9,6 @@ ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so
 
 RUN julia -e 'Pkg.update()'
 RUN julia -e 'Pkg.clone("https://github.com/JuliaWeb/HTTP.jl.git")'
-RUN julia -e 'Pkg.add("FFTW")'
 RUN julia -e 'Pkg.add("LightGraphs")'
 RUN julia -e 'Pkg.add("MetaGraphs")'
 RUN julia -e 'Pkg.add("ArgParse")'

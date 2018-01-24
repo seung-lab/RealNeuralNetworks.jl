@@ -70,8 +70,7 @@ function main()
         idList = read_cell_id_list(args["idlistfile"])
         pmap(id -> trace(id; swcDir=args["swcdir"], mip=args["mip"], 
                          voxelSize = args["voxelsize"],
-                         segmentationLayer=args["segmentationlayer"]), 
-                                                                                        idList)
+                         segmentationLayer=args["segmentationlayer"]), idList)
     elseif args["sqsqueue"] != nothing 
         queueUrl = SQS.get_queue_url(QueueName=args["sqsqueue"])["QueueUrl"]
         while true 
