@@ -52,7 +52,7 @@ Parameters:
 Return:
     nodeNet object
 """
-function NodeNet(bin_im::Array{Bool,3}; offset::NTuple{3, UInt32} = OFFSET,
+function NodeNet(bin_im::Union{BitArray, Array{Bool,3}}; offset::NTuple{3, UInt32} = OFFSET,
                     expansion::NTuple{3, UInt32} = EXPANSION,
                     penalty_fn::Function = alexs_penalty)
         # transform segmentation to points

@@ -29,7 +29,7 @@ end
 """
     compute_DBF( bin_im )
 """
-function compute_DBF( point_cloud::Array{T,2}, bin_im::Array{Bool, 3} ) where T
+function compute_DBF( point_cloud::Array{T,2}, bin_im::Union{BitArray, Array{Bool, 3}} ) where T
     dbf_im = distance_transform( bin_im );
     return extract_dbf_values( dbf_im, point_cloud );
 end 
@@ -239,8 +239,8 @@ end
 function create_binary_image( point_cloud::Array{T,2} ) where T;
 
   max_dims = maximum( point_cloud, 1 );
-
-  bin_im = ones(Bool, max_dims...);
+    bin_im = BitArray(max_dims...)
+    fill!(bin_im, false)
 
   for p in 1:size( point_cloud, 1 )
     bin_im[ point_cloud[p,:]... ] = false;
