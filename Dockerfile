@@ -4,7 +4,7 @@ LABEL   maintainer="Jingpeng Wu <jingpeng@princeton.edu>" \
 
 RUN apt-get update
 RUN apt-get install -qq --no-install-recommends build-essential unzip wget \
-                libjemalloc-dev libhdf5-dev libxml2
+                libjemalloc-dev libhdf5-dev libxml2 libmagickwand-dev
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so 
 
 RUN julia -e 'Pkg.update()'
@@ -16,7 +16,7 @@ RUN julia -e 'Pkg.add("LsqFit")'
 RUN julia -e 'Pkg.add("DataFrames")'
 RUN julia -e 'Pkg.add("ImageFiltering")'
 RUN julia -e 'Pkg.add("OffsetArrays")'
-RUN julia -e 'Pkg.clone("https://github.com/JuliaCloud/AWSCore.jl.git")'
+RUN julia -e 'Pkg.clone("https://github.com/jingpengw/AWSCore.jl.git")'
 RUN julia -e 'Pkg.clone("https://github.com/JuliaCloud/AWSSDK.jl.git")'
 RUN julia -e 'Pkg.clone("https://github.com/samoconnor/AWSS3.jl.git")'
 RUN julia -e 'Pkg.clone("https://github.com/seung-lab/EMIRT.jl.git")'

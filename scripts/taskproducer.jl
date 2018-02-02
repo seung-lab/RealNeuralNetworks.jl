@@ -16,8 +16,7 @@ function main()
     idList = map( parse, split( readstring(args["idlistfile"]), "\n" ) )
     messageList = Vector{String}()
     for id in idList 
-        args["id"] = id 
-        push!(messageList, JSON.json(args))
+        push!(messageList, string(id))
     end
 
     # put to AWS SQS queue
