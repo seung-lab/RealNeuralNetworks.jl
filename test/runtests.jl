@@ -5,6 +5,7 @@ include("NodeNets.jl")
 include("Manifests.jl")
 
 
-include("BoundingBoxes.jl")
+include("Utils/include.jl")
 include("Segments.jl")
 include("Neurons.jl")
+include("SynapseTables.jl")

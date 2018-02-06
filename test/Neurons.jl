@@ -1,5 +1,5 @@
 using Base.Test
-using RealNeuralNetworks.FakeSegmentations 
+using RealNeuralNetworks.Utils.FakeSegmentations 
 using RealNeuralNetworks.Neurons
 using RealNeuralNetworks.NodeNets
 using RealNeuralNetworks.SWCs

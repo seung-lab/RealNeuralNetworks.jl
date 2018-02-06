@@ -8,9 +8,13 @@ using ..Neurons
 export NeuralNet 
 const NeuralNet = MetaDiGraph 
 
-function NeuralNet( neuronDict::Dict{Int, Neuron}, syn::DataFrame )
+function get_cell_id_list(syn::DataFrame)
     cellIdSet = Set(syn[:presyn_seg]) ∪ Set(syn[:postsyn_seg]) 
-    cellIdList = [map(x->round(Int, x), cellIdSet)...]
+    return [map(x->round(Int, x), cellIdSet)...]
+end 
+
+function NeuralNet( neuronDict::Dict{Int, Neuron}, syn::DataFrame; 
+                                        cellIdList=get_cell_id_list(syn) )
     const N = length(cellIdList)
     net = NeuralNet(N)
     # name the vertices

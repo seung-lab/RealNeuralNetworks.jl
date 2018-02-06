@@ -1,6 +1,6 @@
 module BoundingBoxes
 
-const ZERO_FLOAT32 = Float32(0)
+const ZERO_FLOAT32 = zero(Float32)
 
 export BoundingBox 
 
@@ -13,6 +13,11 @@ function BoundingBox()
     minCorner = (Inf32, Inf32, Inf32)
     maxCorner = (ZERO_FLOAT32, ZERO_FLOAT32, ZERO_FLOAT32)
     BoundingBox( minCorner, maxCorner )
+end 
+
+function BoundingBox( minCorner::NTuple{3,Int}, maxCorner::NTuple{3,Int} )
+	BoundingBox( 	map(x->convert(Float32,x), minCorner), 
+					map(x->convert(Float32,x), maxCorner) )
 end 
 
 function BoundingBox( minCorner::Vector{Float32}, maxCorner::Vector{Float32} )

@@ -8,7 +8,6 @@ run this inside julia REPL:
     Pkg.clone("https://github.com/seung-lab/RealNeuralNetworks.jl.git")
 
 # Usage
-you must have google secret json file in `/secrets/google-secret.json`, same with configuration of [GSDicts.jl](https://github.com/seung-lab/GSDicts.jl) or [cloudvolume](https://github.com/seung-lab/cloud-volume)
 
 ## commandline
 `julia ~/julia/v0.6/RealNeuralNetworks/scripts/skeletonize.jl -h`

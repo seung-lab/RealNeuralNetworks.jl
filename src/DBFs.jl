@@ -130,7 +130,8 @@ volume
   h = zeros(Int,    (s1,));
   @nloops $N i j->(j==1 ? 0 : 1:size(arr,j)) begin
 
-    fill!(h,0); fill!(g,0);
+      fill!(h, zero(eltype(h))); 
+      fill!(g, zero(eltype(g)));
     later_indices = (@ntuple $N j->i_j);
     row_voronoi_edt!( arr, later_indices[2:end], g,h, dim ) #F_{d-1}
 
@@ -239,8 +240,7 @@ end
 function create_binary_image( point_cloud::Array{T,2} ) where T;
 
   max_dims = maximum( point_cloud, 1 );
-    bin_im = BitArray(max_dims...)
-    fill!(bin_im, false)
+    bin_im = falses(max_dims...)
 
   for p in 1:size( point_cloud, 1 )
     bin_im[ point_cloud[p,:]... ] = false;
