@@ -6,7 +6,7 @@ using RealNeuralNetworks.SynapseTables
 @testset "synapse tables" begin
     syn = CSV.read(joinpath(@__DIR__, "../assert/syn100.csv"))
     @test 100 == DataFrames.nrow(syn)
-    SynapseTables.preprocessing!(syn)
+    SynapseTables.preprocessing!(syn, (5,5,45))
     @test 100 >= DataFrames.nrow(syn)
 
     syn1 = SynapseTables.get_synapses_of_a_neuron( syn, 76263)
@@ -16,5 +16,11 @@ using RealNeuralNetworks.SynapseTables
     @test DataFrames.nrow(syn2) > 0
     @test DataFrames.nrow(syn3) > 0
 
-    bbox = SynapseTables.BoundingBox( syn )
+    bbox = SynapseTables.BoundingBox( syn, "COM" )
+
+    presynCoordinates = SynapseTables.get_coordinate_array(syn, "presyn")
+    @test !isempty( presynCoordinates )
+
+    mask = SynapseTables.get_mask( syn )
+    @test any(mask .> zero(eltype(mask)) )
 end 

@@ -58,7 +58,7 @@ function plot_arbor_density_map(densityMap::Array)
     colorbar()
 end 
 
-function plot_mask(mask::Array)
+function plot_mask(mask::Array{T,3}) where T
     fig = PyPlot.figure()
     fig[:add_subplot](2,2,1)
     xy = maximum(mask, 3)[:,:,1]
