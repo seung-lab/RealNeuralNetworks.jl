@@ -14,6 +14,12 @@ function preprocessing!(self::SynapseTable, voxelSize::NTuple{3,Int})
 			self[key] = round.(Int, value)
 		end
     end
+    
+    DataFrames.rename!(self, [  :COM_x => :psd_x, 
+                                :COM_y => :psd_y,
+                                :COM_z => :psd_z,
+                                :presyn_seg     => :presyn_segid,
+                                :postsyn_seg    => :postsyn_segid])
 
     # transform to physical coordinate
     self[:BBOX_bx] .*= voxelSize[1]
@@ -22,9 +28,9 @@ function preprocessing!(self::SynapseTable, voxelSize::NTuple{3,Int})
     self[:BBOX_ex] .*= voxelSize[1]
     self[:BBOX_ey] .*= voxelSize[2]
     self[:BBOX_ez] .*= voxelSize[3]
-    self[:COM_x]   .*= voxelSize[1]
-    self[:COM_y]   .*= voxelSize[2]
-    self[:COM_z]   .*= voxelSize[3]
+    self[:psd_x]   .*= voxelSize[1]
+    self[:psd_y]   .*= voxelSize[2]
+    self[:psd_z]   .*= voxelSize[3]
     self[:presyn_x].*= voxelSize[1]
     self[:presyn_y].*= voxelSize[2]
     self[:presyn_z].*= voxelSize[3]
@@ -32,6 +38,25 @@ function preprocessing!(self::SynapseTable, voxelSize::NTuple{3,Int})
     self[:postsyn_y].*= voxelSize[2]
     self[:postsyn_z].*= voxelSize[3]
 	nothing
+end
+
+function postprocessing!(self::SynapseTable, voxelSize::NTuple{3,Int})
+    # transform to physical coordinate
+    self[:BBOX_bx] ./= voxelSize[1]
+    self[:BBOX_by] ./= voxelSize[2]
+    self[:BBOX_bz] ./= voxelSize[3]
+    self[:BBOX_ex] ./= voxelSize[1]
+    self[:BBOX_ey] ./= voxelSize[2]
+    self[:BBOX_ez] ./= voxelSize[3]
+    self[:psd_x]   ./= voxelSize[1]
+    self[:psd_y]   ./= voxelSize[2]
+    self[:psd_z]   ./= voxelSize[3]
+    self[:presyn_x]./= voxelSize[1]
+    self[:presyn_y]./= voxelSize[2]
+    self[:presyn_z]./= voxelSize[3]
+    self[:postsyn_x]./= voxelSize[1]
+    self[:postsyn_y]./= voxelSize[2]
+    self[:postsyn_z]./= voxelSize[3]
 end 
 
 function get_coordinate_array(self::SynapseTable, prefix::String)
@@ -72,8 +97,8 @@ end
     map(x->Symbol(prefix*"_"*x), ("x", "y", "z"))
 end 
 
-function initialize_mask(self::SynapseTable, voxelSize::NTuple{3,Int}; 
-                        coordinatePrefixList = ["presyn", "postsyn"], T::DataType = Bool)
+function initialize_mask(self::SynapseTable, voxelSize::NTuple{3,Int};
+                coordinatePrefixList = ["presyn", "postsyn"], T::DataType = Bool)
 	@assert !isempty(self)
     range = mapreduce(x->BoundingBox(self,x), union, coordinatePrefixList) |> UnitRange
     range = map((r,s)->fld(r.start, s):cld(r.stop, s), range, voxelSize)
@@ -86,7 +111,7 @@ function get_mask(self::SynapseTable;
                 voxelSize::NTuple{3,Int} = (1000, 1000, 1000) #=nm=#,
                 coordinatePrefixList::Vector{String} = ["presyn", "postsyn"],
                 mask::OffsetArray{T,3,Array{T,3}} = initialize_mask(self, voxelSize; 
-                coordinatePrefixList = coordinatePrefixList, T=Float32)) where T
+                    coordinatePrefixList = coordinatePrefixList, T=Float32)) where T
     @assert !isempty(self)
 	for coordinatePrefix in coordinatePrefixList 
 		coordinateNames = SynapseTables.get_coordinate_names( coordinatePrefix )
