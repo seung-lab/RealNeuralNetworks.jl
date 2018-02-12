@@ -340,6 +340,18 @@ function get_segment_path_length_list( self::Neuron )
     ret 
 end 
 
+function get_node_distance_list(neuron::Neuron)
+    nodeList = Neurons.get_node_list(neuron)
+    edgeList = Neurons.get_edge_list(neuron)
+    nodeDistanceList = Vector{Float32}()
+    sizehint!(nodeDistanceList, length(edgeList))
+    for (src, dst) in edgeList
+        d = norm( [map(-, nodeList[src][1:3], nodeList[dst][1:3])...] )
+        push!(nodeDistanceList, d)
+    end 
+    nodeDistanceList
+end 
+
 function get_total_path_length(self::Neuron)
     get_segment_path_length_list(self) |> sum
 end 
@@ -1053,7 +1065,8 @@ function remove_subtree_in_soma( self::Neuron )
     return remove_segments( self, removeSegmentIndexList )
 end
 
-function remove_hair( self::Neuron )
+function remove_hair( self::Neuron; radiiScale::Float32 = Float32(2),
+                                    minDistance::Float32 = Float32(2000) )
     segmentList = get_segment_list(self)
     removeSegmentIndexList = Vector{Int}()
     for terminalSegmentIndex in get_terminal_segment_index_list(self)
@@ -1061,7 +1074,7 @@ function remove_hair( self::Neuron )
         terminalNode = segmentList[ terminalSegmentIndex ][end]
         parentNode = segmentList[ parentSegmentIndex ][end]
         distance = Segments.get_nodes_distance(terminalNode, parentNode)
-        if distance < 2*parentNode[4] || distance < 2000
+        if distance < radiiScale*parentNode[4] || distance < minDistance
             println("remove segment $(terminalSegmentIndex) with distance of $(distance) and radius of $(parentNode[4])")
             push!(removeSegmentIndexList, terminalSegmentIndex)
         end 
@@ -1199,12 +1212,31 @@ function get_neuroglancer_precomputed(self::Neuron)
 end 
 
 ############################### manipulations ##########################################
+
+function downsample_nodes(self::Neuron, nodeNumStep::Int) 
+	@assert nodeNumStep > 1
+    segmentList = get_segment_list(self)
+    newSegmentList = Vector{Segment}()
+    sizehint!(newSegmentList, length(segmentList) )
+    for segment in segmentList 
+        nodeList = Segments.get_node_list(segment)
+        newNodeList = Vector{Segments.Node}()
+        for i in 1:nodeNumStep:length(nodeList)
+            center = Segments.get_center(segment, 
+                                            i: min(i+nodeNumStep-1,length(nodeList)))
+            push!(newNodeList, center)
+        end 
+        newSegment = Segment(newNodeList, class=Segments.get_class(segment))
+        push!(newSegmentList, newSegment)
+    end
+    Neuron(newSegmentList, get_connectivity_matrix(self))
+end
+
 """
     resample!( self::Neuron, resampleDistance::Float32 )
 resampling the segments by a fixed point distance 
 """
-function resample(self::Neuron, resampleDistance::Number)
-    resampleDistance = Float32(resampleDistance)
+function resample(self::Neuron, resampleDistance::Float32)
     newSegmentList = Vector{Segment}()
     segmentList = get_segment_list(self)
     local nodeList::Vector 

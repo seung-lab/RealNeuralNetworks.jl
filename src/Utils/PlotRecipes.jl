@@ -26,16 +26,16 @@ function coloring(dm)
     img
 end 
 
-function plot(neuron::Neuron)
+function plot(neuron::Neuron; nodeStep = 10)
     segmentList = neuron.segmentList
     plotly()
     for branch in segmentList
         nodeList = Neurons.Segments.get_node_list(branch)
         #@show length(nodeList)
         #@show nodeList
-        x = map(n->n[1], nodeList[1:10:end])
-        y = map(n->n[2], nodeList[1:10:end])
-        z = map(n->n[3], nodeList[1:10:end])
+        x = map(n->n[1], nodeList[1:nodeStep:end])
+        y = map(n->n[2], nodeList[1:nodeStep:end])
+        z = map(n->n[3], nodeList[1:nodeStep:end])
         plot!(x,y,z) #color=rand(Colors.RGB))
     end 
 

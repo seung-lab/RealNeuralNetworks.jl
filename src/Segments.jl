@@ -27,12 +27,12 @@ compute the euclidean distance between two nodes
 @inline function get_nodes_distance(self::Union{Vector,Tuple}, other::Union{Vector,Tuple})
     norm( [map((x,y)->x-y, self[1:3], other[1:3]) ...])
 end 
-function get_node_list(self::Segment) self.nodeList end 
-function get_connectivity_matrix( self::Segment ) self.connectivityMatrix end 
-function get_bounding_box( self::Segment ) self.boundingBox end 
-function get_class( self::Segment ) self.class end 
+@inline function get_node_list(self::Segment) self.nodeList end 
+@inline function get_connectivity_matrix( self::Segment ) self.connectivityMatrix end 
+@inline function get_bounding_box( self::Segment ) self.boundingBox end 
+@inline function get_class( self::Segment ) self.class end 
 
-function get_bounding_box_distance(self::Segment, point::Union{Tuple, Vector})
+@inline function get_bounding_box_distance(self::Segment, point::Union{Tuple, Vector})
     @assert length(point) >= 3
     BoundingBoxes.distance_from(self.boundingBox, point)
 end 
@@ -41,7 +41,7 @@ end
     get_path_length(self::Segment)
 accumulate the euclidean distance between neighboring nodes 
 """
-function get_path_length(self::Segment)
+@inline function get_path_length(self::Segment)
     ret = 0.0
     for i in 2:length(self)
         ret += norm( [map((x,y)-> x-y, self[i][1:3], self[i-1][1:3] )...] )
@@ -49,7 +49,7 @@ function get_path_length(self::Segment)
     ret
 end
 
-function get_radius_list( self::Segment ) map(n->n[4], self) end 
+@inline function get_radius_list( self::Segment ) map(n->n[4], self) end 
 
 """
     get_tail_head_radius_ratio( self::Segment )
@@ -57,7 +57,7 @@ the spine is normally thick in tail, and thin in the head.
 ratio = max_tail / mean_head
 The head should point to dendrite. This is a very good feature to identify spine.
 """
-function get_tail_head_radius_ratio( self::Segment )
+@inline function get_tail_head_radius_ratio( self::Segment )
     radiusList = get_radius_list( self )
     N = length(self)
     headRadiusList = radiusList[1:cld(N,2)]
@@ -69,7 +69,7 @@ end
     get_tortuosity( self::Segment )
 the ratio of the actual path length to the euclidean distance between head and tail node 
 """
-function get_tortuosity(self::Segment)
+@inline function get_tortuosity(self::Segment)
     if length(self) == 1 
         return 1.0
     end 
@@ -78,6 +78,14 @@ function get_tortuosity(self::Segment)
     @assert self[1]!=self[end] "segment start is the same with the end: $(self)"
     @assert euclideanLength != 0.0
     pathLength / euclideanLength 
+end 
+
+@inline function get_center(nodeList::Vector{Node})
+    (map(i->mean(y->y[i], nodeList), 1:4)...)
+end
+
+@inline function get_center(self::Segment, range::UnitRange)
+    center = get_center( self[range] )
 end 
 
 ###################### Base functions ################
@@ -141,8 +149,12 @@ end
 """
     Base.getindex(self::Segment, index::Integer)
 """
-function Base.getindex(self::Segment, index::Integer)
+@inline function Base.getindex(self::Segment, index::Integer)
     get_node_list(self)[ index ]
+end
+
+@inline function Base.getindex(self::Segment, range::UnitRange)
+    get_node_list(self)[range]
 end 
 
 """
