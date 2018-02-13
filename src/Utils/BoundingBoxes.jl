@@ -37,12 +37,12 @@ function BoundingBox(nodeList::Union{Vector, Set})
     BoundingBox(minCorner, maxCorner)
 end 
 
-function Base.UnitRange( self::BoundingBox )
+function get_unit_range( self::BoundingBox )
     map((x,y)->floor(Int,x):ceil(Int,y), self.minCorner, self.maxCorner) 
 end 
 
 function Base.size(self::BoundingBox)
-    map(length, UnitRange(self))
+    map(length, get_unit_range(self))
 end 
 
 function Base.isequal(self::BoundingBox, other::BoundingBox)

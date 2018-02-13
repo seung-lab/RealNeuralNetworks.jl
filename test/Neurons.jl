@@ -11,13 +11,16 @@ const ARBOR_DENSITY_MAP_VOXEL_SIZE = (2000,2000,2000)
     println("load swc of a real neuron...")
     @time swc = SWCs.load_swc_bin( SWC_BIN_PATH )
     neuron = Neuron( swc )
-    neuron1 = neuron
+
+    println("downsample node number...")
+    Neurons.downsample_nodes(neuron)
 
     println("compute arbor density map...")
     @time arborDensityMap = Neurons.get_arbor_density_map(neuron, 
                                                 ARBOR_DENSITY_MAP_VOXEL_SIZE, 8.0)
     #@test norm(arborDensityMap[:]) ≈ Neurons.get_total_path_length(neuron)
     #@test norm(arborDensityMap[:]) ≈ 1.0
+    neuron1 = neuron
     densityMap1 = Neurons.translate_soma_to_coordinate_origin(neuron1, arborDensityMap, 
                                                              ARBOR_DENSITY_MAP_VOXEL_SIZE)
     @show indices(densityMap1)

@@ -1,8 +1,9 @@
 module Neurons
 include("Segments.jl")
 using .Segments
-using ..RealNeuralNetworks.NodeNets
-using ..RealNeuralNetworks.SWCs
+using ..NodeNets
+using ..SWCs
+using ..Utils.BoundingBoxes 
 using LsqFit
 using ImageFiltering
 using OffsetArrays
@@ -11,6 +12,8 @@ const ONE_UINT32 = UInt32(1)
 const ZERO_FLOAT32 = Float32(0)
 const EXPANSION = (ONE_UINT32, ONE_UINT32, ONE_UINT32)
 const VOXEL_SIZE = (1000, 1000, 1000)
+
+const DOWNSAMPLE_NODE_NUM_STEP = 24
 
 export Neuron
 
@@ -25,7 +28,6 @@ end
 a neuron modeled by interconnected segments 
 """
 function Neuron(nodeNet::NodeNet)
-#    @save "nodenet.jld2" nodeNet 
     # the properties from nodeNet
     nodes = NodeNets.get_node_list(nodeNet)
     radii = NodeNets.get_radii(nodeNet)
@@ -515,8 +517,6 @@ function get_branching_angle( self::Neuron, segmentIndex::Integer; nodeDistance:
     # normalize the vector
     nv1 = normalize([v1...]) 
     nv2 = normalize([v2...])
-    #@show nv1, nv2
-    #@show childNode, branchingNode, parentNode
     dotProduct = dot(nv1, nv2)
     # tolerate some numerical varition. the dot product could go greater than 1.
     @assert dotProduct < 1.001 "impossible dotProduct: $(dotProduct)"
@@ -659,7 +659,7 @@ function get_mask(self::Neuron, voxelSize::Union{Tuple, Vector})
         push!(voxelSet, (voxelCoordinate...))
     end 
     boundingBox = Segments.BoundingBox( voxelSet )
-    range = Segments.BoundingBoxes.get_unit_range(boundingBox)
+    range = BoundingBoxes.get_unit_range(boundingBox)
     sz = size(boundingBox)
     # initialize the map 
     mask = zeros(Bool, sz)
@@ -875,8 +875,6 @@ function Base.merge(self::Neuron, other::Neuron,
         # need to break the segment and then stitch the new segments
         segmentPart1, segmentPart2 = split(segmentList1[nearestSegmentIndex], 
                                                     nearestNodeIndexInSegment)
-        @show length(segmentPart1)
-        @show length(segmentPart2)
         mergedSegmentList[nearestSegmentIndex] = segmentPart1 
         mergedConnectivityMatrix[1:size(self.connectivityMatrix,1), 
                                  1:size(self.connectivityMatrix,2)] = 
@@ -1213,7 +1211,7 @@ end
 
 ############################### manipulations ##########################################
 
-function downsample_nodes(self::Neuron, nodeNumStep::Int) 
+function downsample_nodes(self::Neuron; nodeNumStep::Int=DOWNSAMPLE_NODE_NUM_STEP) 
 	@assert nodeNumStep > 1
     segmentList = get_segment_list(self)
     newSegmentList = Vector{Segment}()
