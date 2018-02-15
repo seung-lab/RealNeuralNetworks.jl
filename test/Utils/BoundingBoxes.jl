@@ -10,7 +10,7 @@ end
     d = BoundingBoxes.distance_from(bbox, (3,4,4))
     @test d ≈ sqrt(2)
     range = BoundingBoxes.get_unit_range(bbox)
-    @test range == [1:2, 2:3, 3:4]
+    @test range == (1:2, 2:3, 3:4)
     @test size(bbox) == (2,2,2)
 
 

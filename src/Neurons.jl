@@ -7,6 +7,8 @@ using ..Utils.BoundingBoxes
 using LsqFit
 using ImageFiltering
 using OffsetArrays
+using DataFrames
+using .Segments.Synapses 
 
 const ONE_UINT32 = UInt32(1)
 const ZERO_FLOAT32 = Float32(0)
@@ -1210,6 +1212,45 @@ function get_neuroglancer_precomputed(self::Neuron)
 end 
 
 ############################### manipulations ##########################################
+"""
+    attach_pre_synapses!(self::Neuron, synapseTable::DataFrame)
+make sure that the synapse table contains *only* the presynapses of this neuron 
+"""
+function attach_pre_synapses!(self::Neuron, synapseTable::DataFrame)
+    for row in DataFrames.eachrow( synapseTable )
+        synapse = Synapse(row)
+        attach_pre_synapse!(self, synapse)
+    end 
+end 
+
+"""
+    attach_post_synapses!(self::Neuron, synapseTable::DataFrame)
+make sure that the synapse table contains *only* the postsynapses of this neuron 
+"""
+function attach_post_synapses!(self::Neuron, synapseTable::DataFrame)
+    for row in DataFrames.eachrow( synapseTable )
+        synapse = Synapse(row)
+        attach_post_synapse!(self, synapse)
+    end 
+end 
+
+
+function attach_pre_synapse!(self::Neuron, synapse::Segments.Synapse)
+    preSynapticCoordinate = Synapses.get_pre_synaptic_coordinate( synapse )
+    segmentIndex, nodeIndexInSegment = find_nearest_node_index( self, 
+                                                                    preSynapticCoordinate )
+    segmentList = get_segment_list(self)
+    Segments.attach_pre_synapse!(segmentList[segmentIndex], nodeIndexInSegment, synapse) 
+end 
+
+function attach_post_synapse!(self::Neuron, synapse::Segments.Synapse)
+    postSynapticCoordinate = Synapses.get_post_synaptic_coordinate( synapse )
+    segmentIndex, nodeIndexInSegment = find_nearest_node_index( self, 
+                                                                postSynapticCoordinate )
+    segmentList = get_segment_list(self)
+    Segments.attach_post_synapse!(segmentList[segmentIndex], nodeIndexInSegment, synapse) 
+end 
+
 
 function downsample_nodes(self::Neuron; nodeNumStep::Int=DOWNSAMPLE_NODE_NUM_STEP) 
 	@assert nodeNumStep > 1
@@ -1282,6 +1323,34 @@ function resample(nodeList::Vector{NTuple{4,Float32}}, resampleDistance::Float32
         requiredDistance = resampleDistance - remainingDistance 
     end 
     ret 
+end
+
+function find_nearest_node_index(self::Neuron, coordinate::NTuple{3,Float32})
+    segmentList = get_segment_list(self)
+    
+    # initialization 
+    nearestSegmentIndex = 0
+    nearestNodeIndexInSegment = 0
+    distance = typemax(Float32)
+    
+    @assert !isempty(segmentList)
+    
+    for (segmentIndex, segment) in enumerate(segmentList)
+        # distance from bounding box give the maximum bound of nearest distance
+        # this was used to filter out far away segments quickly
+        # no need to compute all the distances between nodes
+        # this is the lower bound of the distance
+        bbox_distance = Segments.get_bounding_box_distance(segment, coordinate)
+        if bbox_distance < distance 
+            d, nodeIndexInSegment = Segments.distance_from(segment, coordinate )
+            if d < distance 
+                distance = d
+                nearestSegmentIndex = segmentIndex 
+                nearestNodeIndexInSegment = nodeIndexInSegment 
+            end 
+        end 
+    end
+    nearestSegmentIndex, nearestNodeIndexInSegment 
 end 
 
 """
@@ -1325,10 +1394,6 @@ function find_nearest_node_index(segmentList::Vector{Segment},
     # the segmentIndex should be inside the segmentList
     #@assert nearestSegmentIndex > 0
     #@assert nearestSegmentIndex <= length(segmentList)
-    #@show distance
-    #if distance > 1000 
-    #    @show nearestNodeIndex, nearestSegmentIndex, nearestNodeIndexInSegment
-    #end 
     return nearestNodeIndex, nearestSegmentIndex, nearestNodeIndexInSegment 
 end 
 

@@ -1,22 +1,28 @@
 module Segments
 
-using RealNeuralNetworks.Utils.BoundingBoxes 
+using RealNeuralNetworks.Utils.BoundingBoxes
+include("Synapses.jl")
+using .Synapses
 
 const Node = NTuple{4,Float32}
+const SynapseList = SparseVector{Synapse, Int}
 
 const CLASS = zero(UInt8)
-const ZERO_FLOAT32 = zero(Float32)
 
 export Segment 
 mutable struct Segment 
     # list of tuple (x,y,z,r)
-    nodeList    ::Vector{Node}
-    class       ::UInt8
-    boundingBox ::BoundingBox
+    nodeList        ::Vector{Node}
+    class           ::UInt8
+    boundingBox     ::BoundingBox
+    preSynapseList  ::SynapseList 
+    postSynapseList ::SynapseList 
 end 
 
-function Segment(nodeList::Vector; class=CLASS)
-    Segment(nodeList, class, BoundingBox(nodeList))
+function Segment(nodeList::Vector; class::UInt8=CLASS, 
+                    preSynapseList::SynapseList  = spzeros(Synapse, length(nodeList)),
+                    postSynapseList::SynapseList = spzeros(Synapse, length(nodeList)))
+    Segment(nodeList, class, BoundingBox(nodeList), preSynapseList, postSynapseList)
 end 
 
 ###################### properties ###################
@@ -31,6 +37,11 @@ end
 @inline function get_connectivity_matrix( self::Segment ) self.connectivityMatrix end 
 @inline function get_bounding_box( self::Segment ) self.boundingBox end 
 @inline function get_class( self::Segment ) self.class end 
+@inline function get_presynapse_list( self::Segment ) self.preSynapseList end 
+@inline function get_postsynapse_list( self::Segment ) self.postSynapseList end
+@inline function get_presynapse( self::Segment, index::Int ) self.preSynapseList[index] end
+@inline function get_postsynapse( self::Segment, index::Int ) 
+                                        self.postSynapseList[index] end
 
 @inline function get_bounding_box_distance(self::Segment, point::Union{Tuple, Vector})
     @assert length(point) >= 3
@@ -182,11 +193,21 @@ function distance_from(self::Segment, point::Vector)
     ret 
 end 
 
+################## manipulation ###############################
+
+function attach_pre_synapse!(self::Segment, nodeIndex::Int, synapse::Synapse)
+    self.preSynapseList[ nodeIndex ] = synapse 
+end 
+
+function attach_post_synapse!(self::Segment, nodeIndex::Int, synapse::Synapse)
+    self.postSynapseList[ nodeIndex ] = synapse
+end 
+
 function add_offset(self::Segment, offset::Union{Tuple, Vector})
     @assert length(offset) == 3
     nodeList = Vector{NTuple{4,Float32}}()
     for node in self.nodeList
-        newNode = map(+, node, [offset..., ZERO_FLOAT32])
+        newNode = map(+, node, [offset..., zero(Float32)])
         push!(nodeList, newNode)
     end
     Segment(nodeList, self.class, self.boundingBox)    
