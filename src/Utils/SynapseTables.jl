@@ -66,27 +66,34 @@ function get_coordinate_array(self::SynapseTable, prefix::String)
 			self[coordinateNames[3]])
 end 
 
-function get_synaptic_boutons_of_a_neuron(self::SynapseTable, neuronId::Int)
+function get_coordinate(self::DataFrameRow, prefix::String)
+	coordinateNames = get_coordinate_names(prefix)
+    map(x->self[x], coordinateNames)
+end 
+
+
+function get_pre_synapses_of_a_neuron(self::SynapseTable, neuronId::Int)
     ret =  @from i in self begin                                         
-        @where i.presyn_seg == neuronId 
+        @where i.presyn_segid == neuronId 
         @select i                                                      
         @collect DataFrame                                             
     end                                                                
     ret
 end 
 
-function get_postsynaptic_density_of_a_neuron(self::SynapseTable, neuronId::Int)
+function get_post_synapses_of_a_neuron(self::SynapseTable, neuronId::Int)
     ret =  @from i in self begin                                         
-        @where i.postsyn_seg == neuronId
+        @where i.postsyn_segid == neuronId 
         @select i                                                      
         @collect DataFrame                                             
     end                                                                
     ret
 end 
+
 
 function get_synapses_of_a_neuron(self::SynapseTable, neuronId::Int)
 	ret =  @from i in self begin                                         
-        @where i.postsyn_seg == neuronId || i.presyn_seg == neuronId
+        @where i.postsyn_segid == neuronId || i.presyn_segid == neuronId
         @select i                                                      
         @collect DataFrame                                             
     end                                                                
@@ -94,13 +101,13 @@ function get_synapses_of_a_neuron(self::SynapseTable, neuronId::Int)
 end 
 
 @inline function get_coordinate_names( prefix::String )
-    map(x->Symbol(prefix*"_"*x), ("x", "y", "z"))
+    map(x->Symbol(prefix*x), ("x", "y", "z"))
 end 
 
 function initialize_mask(self::SynapseTable, voxelSize::NTuple{3,Int};
-                coordinatePrefixList = ["presyn", "postsyn"], T::DataType = Bool)
+                coordinatePrefixList = ["presyn_", "postsyn_"], T::DataType = Bool)
 	@assert !isempty(self)
-    range = mapreduce(x->BoundingBox(self,x), union, coordinatePrefixList) |> UnitRange
+    range = mapreduce(x->BoundingBox(self,x), union, coordinatePrefixList) |> BoundingBoxes.get_unit_range
     range = map((r,s)->fld(r.start, s):cld(r.stop, s), range, voxelSize)
     mask = OffsetArray{T}(range...)
     fill!(mask, zero(T))
@@ -109,7 +116,7 @@ end
 
 function get_mask(self::SynapseTable; 
                 voxelSize::NTuple{3,Int} = (1000, 1000, 1000) #=nm=#,
-                coordinatePrefixList::Vector{String} = ["presyn", "postsyn"],
+                coordinatePrefixList::Vector{String} = ["presyn_", "postsyn_"],
                 mask::OffsetArray{T,3,Array{T,3}} = initialize_mask(self, voxelSize; 
                     coordinatePrefixList = coordinatePrefixList, T=Float32)) where T
     @assert !isempty(self)

@@ -3,7 +3,7 @@ using RealNeuralNetworks.Neurons
 using RealNeuralNetworks.Neurons.Segments
 using Base.Test
 
-const SWC_BIN_PATH = joinpath(@__DIR__, "../assert/78058.swc.bin")
+const SWC_BIN_PATH = joinpath(@__DIR__, "../assert/77625.swc.bin")
 
 @testset "test Segments" begin
     # construct a segment
