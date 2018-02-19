@@ -25,6 +25,11 @@ const ARBOR_DENSITY_MAP_VOXEL_SIZE = (2000,2000,2000)
     println("attaching postsynapses...")
     postSynapses = CSV.read( joinpath(ASSERT_DIR, "$(NEURON_ID).post.synapses.csv") ) 
     Neurons.attach_post_synapses!(neuron, postSynapses)
+
+    preSynapseToSomaPathLengthList  = Neurons.get_pre_synapse_to_soma_path_length_list( neuron )
+    postSynapseToSomaPathLengthList = Neurons.get_post_synapse_to_soma_path_length_list( neuron )
+    @test !isempty(preSynapseToSomaPathLengthList)
+    @test !isempty(postSynapseToSomaPathLengthList)
 end 
 
 @testset "test Neuron IO and resampling " begin 
@@ -104,7 +109,7 @@ end
     @time angle = Neurons.get_branching_angle( neuron, 5 )
 
     println("get path to root length ...")
-    @time path2RootLength = Neurons.get_path_to_root_length( neuron, 5 )
+    @time path2RootLength = Neurons.get_path_to_soma_length( neuron, 5; nodeIndex=4 )
 
     println("sholl analysis ...")
     @time shollNumList = Neurons.get_sholl_number_list(neuron, 10000 )

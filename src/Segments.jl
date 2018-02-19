@@ -37,10 +37,10 @@ end
 @inline function get_connectivity_matrix( self::Segment ) self.connectivityMatrix end 
 @inline function get_bounding_box( self::Segment ) self.boundingBox end 
 @inline function get_class( self::Segment ) self.class end 
-@inline function get_presynapse_list( self::Segment ) self.preSynapseList end 
-@inline function get_postsynapse_list( self::Segment ) self.postSynapseList end
-@inline function get_presynapse( self::Segment, index::Int ) self.preSynapseList[index] end
-@inline function get_postsynapse( self::Segment, index::Int ) 
+@inline function get_pre_synapse_list( self::Segment ) self.preSynapseList end 
+@inline function get_post_synapse_list( self::Segment ) self.postSynapseList end
+@inline function get_pre_synapse( self::Segment, index::Int ) self.preSynapseList[index] end
+@inline function get_post_synapse( self::Segment, index::Int ) 
                                         self.postSynapseList[index] end
 
 @inline function get_bounding_box_distance(self::Segment, point::Union{Tuple, Vector})
@@ -176,8 +176,9 @@ function distance_from(self::Segment, point::Tuple)
 end 
 function distance_from(self::Segment, point::Vector)
     @assert !isempty(self)
-    ret = (0,0)
+    ret = (zero(Float32), zero(Int))
     nodeList = get_node_list(self)
+    @assert !isempty(nodeList)
     @assert length(point) == 3 || length(point) == 4
     distance = typemax(Float32)
     for (index, node) in enumerate(nodeList)
@@ -187,9 +188,7 @@ function distance_from(self::Segment, point::Vector)
             ret = (d, index)
         end 
     end
-    @assert ret[1] > 0
     @assert ret[2] <= length(self)
-    @assert ret!=(0,0)
     ret 
 end 
 

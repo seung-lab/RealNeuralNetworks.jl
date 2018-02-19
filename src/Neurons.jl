@@ -131,7 +131,10 @@ function Neuron!(seedNodeIndex::Integer, nodeNet::NodeNet,
     tempConnectivityMatrix = sparse(parentSegmentIndexList, childSegmentIndexList, 
                                 ones(Bool,length(childSegmentIndexList)))
     connectivityMatrix[1:size(tempConnectivityMatrix,1), 
-                       1:size(tempConnectivityMatrix,2)] = tempConnectivityMatrix 
+                       1:size(tempConnectivityMatrix,2)] = tempConnectivityMatrix
+    for segment in segmentList 
+        @assert !isempty(segment)
+    end
     Neuron(segmentList, connectivityMatrix)
 end 
 
@@ -305,24 +308,25 @@ function get_edge_list( self::Neuron )
     edgeList 
 end 
 
-function get_path_to_root_length(self::Neuron, synapse::Synapse)
+function get_path_to_soma_length(self::Neuron, synapse::Synapse)
     closestSegmentIndex, closestNodeIndex = find_closest_node_index( self, synapse )
-    get_path_to_root_length( self, closestSegmentIndex; nodeIndex=closestNodeIndex )
+    get_path_to_soma_length( self, closestSegmentIndex; nodeIndex=closestNodeIndex )
 end 
 
-function get_path_to_root_length(self::Neuron, segmentIndex::Integer; 
-                            nodeIndex::Int=length(), segmentPathLengthList::Vector = [])
+function get_path_to_soma_length(self::Neuron, segmentIndex::Integer; 
+                        nodeIndex::Int=length(), 
+                        segmentPathLengthList::Vector = get_segment_path_length_list(self))
     segmentList = get_segment_list(self)
-    get_path_to_root_length( segmentList, segmentIndex; 
+    get_path_to_soma_length( segmentList, segmentIndex; 
                         nodeIndex=nodeIndex, segmentPathLengthList=segmentPathLengthList )
 end 
-function get_path_to_root_length(segmentList::Vector{Segment}, segmentIndex::Integer; 
-                                    nodeIndex::Int                  = length(segmentList[segmentIndex]), 
-                                    segmentPathLengthList::Vector   = [])
-    path2RootLength = Segments.get_path_length( segmentList[segmentIndex]; nodeIndex=nodeIndex )
-    if isempty(segmentPathLengthList)
-        segmentPathLengthList = get_segment_path_length_list( self )
-    end 
+
+function get_path_to_soma_length(self::Neuron, segmentIndex::Integer; 
+                        segmentList::Vector{Segment}=get_segment_list(self), 
+                        nodeIndex::Int = length(segmentList[segmentIndex]), 
+                        segmentPathLengthList::Vector = get_segment_path_length_list(self))
+    path2RootLength = Segments.get_path_length( segmentList[segmentIndex]; 
+                                                        nodeIndex=nodeIndex )
     while true 
         parentSegmentIndex = get_parent_segment_index(self, segmentIndex )
         if parentSegmentIndex < 1 
@@ -336,18 +340,51 @@ function get_path_to_root_length(segmentList::Vector{Segment}, segmentIndex::Int
     path2RootLength 
 end
 
+function get_pre_synapse_to_soma_path_length_list(self::Neuron; 
+                        segmentList::Vector=get_segment_list(self),
+                        segmentPathLengthList::Vector=get_segment_path_length_list(self))
+    preSynapseToSomaPathLengthList = Vector{Float32}()
+    for (segmentIndex, segment) in enumerate( segmentList )
+        preSynapseList = Segments.get_pre_synapse_list( segment )
+        nodeIndexList, _ = findnz( preSynapseList )
+        pathToSomaLengthList = map(nodeIndex->get_path_to_soma_length(self, segmentIndex; 
+                                    segmentList=segmentList,
+                                    segmentPathLengthList=segmentPathLengthList,
+                                    nodeIndex=nodeIndex), nodeIndexList)
+        append!(preSynapseToSomaPathLengthList, pathToSomaLengthList)
+    end
+    preSynapseToSomaPathLengthList 
+end 
+
+function get_post_synapse_to_soma_path_length_list(self::Neuron; 
+                        segmentList::Vector=get_segment_list(self),
+                        segmentPathLengthList::Vector=get_segment_path_length_list(self))
+    postSynapseToSomaPathLengthList = Vector{Float32}()
+    for (segmentIndex, segment) in enumerate( segmentList )
+        postSynapseList = Segments.get_post_synapse_list( segment )
+        nodeIndexList, _ = findnz( postSynapseList )
+        pathToSomaLengthList = map(nodeIndex->get_path_to_soma_length(self, segmentIndex; 
+                                    segmentList=segmentList,
+                                    segmentPathLengthList=segmentPathLengthList,
+                                    nodeIndex=nodeIndex), nodeIndexList)
+        append!(postSynapseToSomaPathLengthList, pathToSomaLengthList)
+    end
+    postSynapseToSomaPathLengthList 
+end 
+
+
 """
     get_segment_path_length_list(self::Neuron)
 get euclidean path length of each segment 
 """
-function get_segment_path_length_list( self::Neuron )
+function get_segment_path_length_list( self::Neuron; segmentList = get_segment_list(self) )
     ret = Vector{Float64}()
-    for (index, segment) in enumerate( get_segment_list(self) )
+    for (index, segment) in enumerate( segmentList )
         segmentPathLength = Segments.get_path_length( segment )
         # add the edge length to parent node
         parentSegmentIndex = get_parent_segment_index(self, index)
         if parentSegmentIndex > 0
-            parentSegment = get_segment_list(self)[ parentSegmentIndex ]
+            parentSegment = segmentList[ parentSegmentIndex ]
             parentNode = parentSegment[ end ]
             node = segment[1]
             segmentPathLength += norm( [map((x,y)->x-y, node[1:3], parentNode[1:3])...] )
