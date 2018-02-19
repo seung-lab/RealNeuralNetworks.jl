@@ -49,12 +49,12 @@ end
 end 
 
 """
-    get_path_length(self::Segment)
+    get_path_length(self::Segment; nodeIndex::Int=length(self))
 accumulate the euclidean distance between neighboring nodes 
 """
-@inline function get_path_length(self::Segment)
+@inline function get_path_length(self::Segment; nodeIndex::Int=length(self))
     ret = 0.0
-    for i in 2:length(self)
+    for i in 2:nodeIndex
         ret += norm( [map((x,y)-> x-y, self[i][1:3], self[i-1][1:3] )...] )
     end
     ret
