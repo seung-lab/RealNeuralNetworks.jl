@@ -3,9 +3,34 @@ using RealNeuralNetworks.Utils.FakeSegmentations
 using RealNeuralNetworks.Neurons
 using RealNeuralNetworks.NodeNets
 using RealNeuralNetworks.SWCs
+using CSV
 
-const SWC_BIN_PATH = joinpath(@__DIR__, "../assert/78058.swc.bin") 
+const NEURON_ID = 77625
+const ASSERT_DIR = joinpath(@__DIR__, "../assert")
+const SWC_BIN_PATH = joinpath(ASSERT_DIR, "$(NEURON_ID).swc.bin") 
 const ARBOR_DENSITY_MAP_VOXEL_SIZE = (2000,2000,2000)
+
+@testset "test synapse attaching functions" begin
+    println("load swc of a real neuron...")
+    @time swc = SWCs.load_swc_bin( SWC_BIN_PATH )
+    neuron = Neuron( swc )
+
+    println("downsample node number...")
+    Neurons.downsample_nodes(neuron)
+
+    println("attaching presynapses...")
+    preSynapses = CSV.read( joinpath(ASSERT_DIR, "$(NEURON_ID).pre.synapses.csv") )
+    Neurons.attach_pre_synapses!(neuron, preSynapses)
+    
+    println("attaching postsynapses...")
+    postSynapses = CSV.read( joinpath(ASSERT_DIR, "$(NEURON_ID).post.synapses.csv") ) 
+    Neurons.attach_post_synapses!(neuron, postSynapses)
+
+    preSynapseToSomaPathLengthList  = Neurons.get_pre_synapse_to_soma_path_length_list( neuron )
+    postSynapseToSomaPathLengthList = Neurons.get_post_synapse_to_soma_path_length_list( neuron )
+    @test !isempty(preSynapseToSomaPathLengthList)
+    @test !isempty(postSynapseToSomaPathLengthList)
+end 
 
 @testset "test Neuron IO and resampling " begin 
     println("load swc of a real neuron...")
@@ -28,7 +53,7 @@ const ARBOR_DENSITY_MAP_VOXEL_SIZE = (2000,2000,2000)
     @time d = Neurons.get_arbor_density_map_distance(densityMap1, densityMap1)
     @test d == 0.0
 
-    fileName = joinpath(dirname(SWC_BIN_PATH), "76918.swc.bin")
+    fileName = joinpath(dirname(SWC_BIN_PATH), "$(NEURON_ID).swc.bin")
     neuron2 = Neuron( SWCs.load_swc_bin(fileName) )
     densityMap2 = Neurons.get_arbor_density_map(neuron, ARBOR_DENSITY_MAP_VOXEL_SIZE, 8.0)
     #@test norm(densityMap2[:]) ≈ 1.0                                               
@@ -84,7 +109,7 @@ end
     @time angle = Neurons.get_branching_angle( neuron, 5 )
 
     println("get path to root length ...")
-    @time path2RootLength = Neurons.get_path_to_root_length( neuron, 5 )
+    @time path2RootLength = Neurons.get_path_to_soma_length( neuron, 5; nodeIndex=4 )
 
     println("sholl analysis ...")
     @time shollNumList = Neurons.get_sholl_number_list(neuron, 10000 )

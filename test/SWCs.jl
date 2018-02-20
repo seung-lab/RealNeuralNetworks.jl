@@ -3,7 +3,7 @@ using Base.Test
 
 @testset "test SWC" begin 
     # read swc
-    exampleFile = joinpath(dirname(@__FILE__), "../assert/example.swc")
+    exampleFile = joinpath(@__DIR__, "../assert/example.swc")
     println("load plain text swc ...")
     @time swc = SWCs.load( exampleFile )
     str = String(swc)
