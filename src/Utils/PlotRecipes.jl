@@ -2,10 +2,31 @@ module PlotRecipes
 using RealNeuralNetworks.Neurons
 using Colors, ColorSchemes, Clustering
 using Plots
-using PyPlot
+
+import PyPlot
+PyPlot.svg(true)
 
 @everywhere const VOXEL_SIZE = (400,400,400)
 @everywhere const GAUSSIAN_FILTER_STD = 8.0
+
+function plot_synapse_distributions( cellList;  
+        synapseDistribution = map(get_synapse_to_soma_path_length_lists, cellList),
+        saveName = joinpath(homedir(), "synapse_distribution.svg"),
+        prerange=(0,50), postrange=(0,100), bins=30)
+    fig = PyPlot.figure()
+    for (i,cellId) in enumerate(cellList)
+        @show i
+        fig[:add_subplot](4,2,(i-1)*2+1)
+        PyPlot.plt[:hist](synapseDistribution[i][1]./1000; range=prerange, bins=bins)
+        PyPlot.plt[:xlabel]("distrance from presynapse to soma ($cellId)")
+
+        fig[:add_subplot](4,2,(i-1)*2+2)
+        PyPlot.plt[:hist](synapseDistribution[i][2]./1000; range=postrange, bins=bins)
+        PyPlot.plt[:xlabel]("distrance from postsynapse to soma ($cellId)")
+        
+    end 
+    PyPlot.savefig(saveName)
+end
 
 function reorder_distance_matrix(distanceMatrix::Array, clust::Hclust)
 	# rearrange distance matrix according to order
