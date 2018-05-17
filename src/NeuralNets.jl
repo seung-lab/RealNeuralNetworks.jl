@@ -4,35 +4,37 @@ using LightGraphs
 using MetaGraphs
 #using Query
 using ..Neurons 
+using Query
 
 export NeuralNet 
 const NeuralNet = MetaDiGraph 
 
 function get_cell_id_list(syn::DataFrame)
-    cellIdSet = Set(syn[:presyn_seg]) ∪ Set(syn[:postsyn_seg]) 
+    cellIdSet = Set(syn[:presyn_segid]) ∪ Set(syn[:postsyn_segid]) 
     return [map(x->round(Int, x), cellIdSet)...]
 end 
 
-function NeuralNet( neuronDict::Dict{Int, Neuron}, syn::DataFrame; 
-                                        cellIdList=get_cell_id_list(syn) )
+function NeuralNet( syn::DataFrame; neuronDict::Dict{Int, Neuron}=Dict{Int,Neuron}(), 
+                                    cellIdList=get_cell_id_list(syn) )
     const N = length(cellIdList)
     net = NeuralNet(N)
     # name the vertices
-    for (i,cellId) in enumerate(cellIdList) 
-        set_props!(net, i, Dict(:id=>cellId, :skeleton=>neuronDict[cellId]))
+    for (i,cellId) in enumerate(cellIdList)
+        if haskey(neuronDict, cellId)
+            set_props!(net, i, Dict(:id=>cellId, :skeleton=>neuronDict[cellId]))
+        else 
+            warn("no skeleton attatched: ", cellId)
+        end 
     end 
 
-#    # filter out the valid set 
-#	syn =  @from i in syn begin
-#        @where 	i.presyn_seg  <=maximum(cellIdList) && 
-#                i.presyn_seg  >=minimum(cellIdList) && 
-#				i.postsyn_seg <=maximum(cellIdList) && 
-#                i.postsyn_seg >=minimum(cellIdList) &&
-#           	    round(Int,i.presyn_seg.value) in cellIdSet && 
-#                round(Int,i.postsyn_seg.value) in cellIdSet
-#        @select i 
-#        @collect DataFrame
-#    end
+    # filter out the valid set
+    cellIdSet = Set(cellIdList)
+	syn =  @from i in syn begin
+        @where 	i.presyn_segid in cellIdSet && 
+                i.postsyn_segid in cellIdSet
+        @select i 
+        @collect DataFrame
+    end
     # construct a look up table
     cellId2vertexIdMap = Dict{Int, Int}()
     for (i,cellId) in enumerate(cellIdList)
@@ -41,11 +43,11 @@ function NeuralNet( neuronDict::Dict{Int, Neuron}, syn::DataFrame;
     # add edges
     numSelfConnection = 0
     for row in eachrow(syn)
-        preId  = round(Int, row[:presyn_seg])
-        postId = round(Int, row[:postsyn_seg])
+        preId  = round(Int, row[:presyn_segid])
+        postId = round(Int, row[:postsyn_segid])
         if preId == postId 
             numSelfConnection += 1
-            println("self connection synapse on neuron: $(preId), skipping the connection")
+            warn("self connection synapse on neuron: $(preId), skipping the connection")
             continue
         end 
         edge = ( cellId2vertexIdMap[preId], cellId2vertexIdMap[postId] )

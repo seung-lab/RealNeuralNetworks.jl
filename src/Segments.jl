@@ -19,10 +19,11 @@ mutable struct Segment
     postSynapseList ::SynapseList 
 end 
 
-function Segment(nodeList::Vector; class::UInt8=CLASS, 
-                    preSynapseList::SynapseList  = spzeros(Synapse, length(nodeList)),
-                    postSynapseList::SynapseList = spzeros(Synapse, length(nodeList)))
-    Segment(nodeList, class, BoundingBox(nodeList), preSynapseList, postSynapseList)
+function Segment(nodeList::Vector{Node}; 
+                 class::UInt8=CLASS, boundingBox=BoundingBox(nodeList),
+                 preSynapseList::SynapseList  = spzeros(Synapse, length(nodeList)),
+                 postSynapseList::SynapseList = spzeros(Synapse, length(nodeList)))
+    Segment(nodeList, class, boundingBox, preSynapseList, postSynapseList)
 end 
 
 ###################### properties ###################
@@ -127,7 +128,7 @@ function Base.merge(self::Segment, other::Segment)
     # winner taks all!
     class = length(nodeList1)>length(nodeList2) ? get_class(self) : get_class(other)
     boundingBox = union( get_bounding_box(self), get_bounding_box(other) )
-    Segment(mergedNodeList, class, boundingBox)
+    Segment(mergedNodeList; class=class, boundingBox=boundingBox)
 end 
 
 """

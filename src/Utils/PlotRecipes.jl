@@ -76,7 +76,7 @@ function plot_arbor_density_map(densityMap::Array)
     fig[:add_subplot](2,2,3)
     yz = maximum(densityMap, 1)[1,:,:] |> rotl90
     PyPlot.imshow(yz, "jet")
-    colorbar()
+    PyPlot.colorbar()
 end 
 
 function plot_mask(mask::Array{T,3}) where T

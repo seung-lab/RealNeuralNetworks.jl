@@ -21,7 +21,6 @@ const REMOVE_PATH_SCALE = 3
 const REMOVE_PATH_CONST = 4
 
 
-
 mutable struct NodeNet 
     # x,y,z,r
     nodeList               :: Vector{NTuple{4,Float32}}
@@ -52,9 +51,10 @@ Parameters:
 Return:
     nodeNet object
 """
-function NodeNet(bin_im::Union{BitArray, Array{Bool,3}}; offset::NTuple{3, UInt32} = OFFSET,
-                    expansion::NTuple{3, UInt32} = EXPANSION,
-                    penalty_fn::Function = alexs_penalty)
+function NodeNet(bin_im::Union{BitArray, Array{Bool,3}}; 
+                 offset::NTuple{3, UInt32} = OFFSET,
+                 expansion::NTuple{3, UInt32} = EXPANSION,
+                 penalty_fn::Function = alexs_penalty)
         # transform segmentation to points
     points = PointArrays.from_binary_image(bin_im)
     
@@ -217,6 +217,12 @@ function get_edges(self::NodeNet)
         end 
     end 
     edges
+end 
+
+function is_terminal_node(self::NodeNet, i::Integer)
+    connectivityMatrix = get_connectivity_matrix(self)
+    dropzeros!(connectivityMatrix)
+    return nnz(connectivityMatrix[i,:]) < 2
 end 
 
 """

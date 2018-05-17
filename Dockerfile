@@ -21,8 +21,6 @@ RUN julia -e 'Pkg.clone("https://github.com/JuliaCloud/AWSSDK.jl.git")'
 RUN julia -e 'Pkg.clone("https://github.com/samoconnor/AWSS3.jl.git")'
 RUN julia -e 'Pkg.clone("https://github.com/seung-lab/EMIRT.jl.git")'
 RUN julia -e 'Pkg.clone("https://github.com/seung-lab/BigArrays.jl.git")'
-RUN julia -e 'Pkg.clone("https://github.com/seung-lab/GSDicts.jl.git")'
-RUN julia -e 'Pkg.clone("https://github.com/seung-lab/S3Dicts.jl.git")'
 
 WORKDIR /root/.julia/v0.6/
 RUN mkdir RealNeuralNetworks 

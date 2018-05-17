@@ -9,6 +9,8 @@ using ImageFiltering
 using OffsetArrays
 using DataFrames
 using .Segments.Synapses 
+using Alembic
+
 
 const ONE_UINT32 = UInt32(1)
 const ZERO_FLOAT32 = Float32(0)
@@ -47,18 +49,23 @@ function Neuron(nodeNet::NodeNet)
 
     while !all(collectedFlagVec)
         # there exist some uncollected nodes 
-        # find the uncollected node that is closest to the segment list as seed
-        segmentList = get_segment_list( neuron )
-        
-        # there still exist uncollected nodes
-        seedNodeIndex, closestSegmentIndex, closestNodeIndexInSegment = 
-                    find_closest_node_index(segmentList, nodes, collectedFlagVec)
-        @assert closestSegmentIndex <= length(segmentList) 
+        # find the uncollected node that is closest to the terminal nodes as seed
+        seedNodeIndex, closestTerminalSegmentIndex = 
+            find_closest_terminal_node_index(neuron, 
+                                             nodeNet, collectedFlagVec)
+
+        # get the terminal node index of the terminal segment
+        segmentList = get_segment_list(neuron)
+        @assert closestTerminalSegmentIndex <= length(segmentList)
+        closestTerminalSegment = segmentList[closestTerminalSegmentIndex]
+        # the last node should be the terminal node
+        closestTerminalNodeIndexInSegment = length(closestTerminalSegment)
+
         # grow a new net from seed, and mark the collected nodes 
         subnet = Neuron!(seedNodeIndex, nodeNet, collectedFlagVec) 
         # merge the subnet to main net 
         neuron = merge( neuron, subnet, 
-                                closestSegmentIndex, closestNodeIndexInSegment)
+                        closestTerminalSegmentIndex, closestTerminalNodeIndexInSegment)
     end 
     neuron     
 end 
@@ -502,8 +509,7 @@ end
 function get_terminal_segment_index_list( self::Neuron; startSegmentIndex::Integer = 1 )
     terminalSegmentIndexList = Vector{Int}()
     segmentIndexList = [ startSegmentIndex ]
-    while !isempty( segmentIndexList )
-        segmentIndex = pop!( segmentIndexList )
+    for segmentIndex in segmentIndexList 
         childrenSegmentIndexList = get_children_segment_index_list( self, segmentIndex )
         if isempty( childrenSegmentIndexList ) 
             # this is a terminal segment
@@ -802,28 +808,35 @@ function get_arbor_density_map_distance(self::OffsetArray{T,N,Array{T,N}},
 end 
 
 
-function _correlate_image(img::Array{T,2}, template::Array{T,2}) where {T}
-    z = imfilter(Float64, img, centered(template), Algorithm.FIR())
-    q = sqrt.(imfilter(Float64, img.^2, centered(ones(size(template))),
-                       Algorithm.FIR()))
-    m = sqrt(sum(template.^2))
-    corr = z ./ (m * max.(eps(), q))
-    return corr
-end 
-
-function _cross_correlation_along_axis(self::Array, other::Array, axis::Int)
+function _cross_correlation_along_axis(self::Array{T,3}, other::Array{T,3}, 
+                                                                axis::Int) where {T}
     projection1 = maximum(self,  axis)
     projection2 = maximum(other, axis)
 	projection1 = squeeze(projection1, axis)
 	projection2 = squeeze(projection2, axis)
-
-    if length(projection1) > length(projection2)
-        projection1, projection2 = projection2, projection1
+    
+    
+    template = projection2 
+    image = projection1  
+    if length(template) > length(image)
+        image, template = template, image 
     end
-    return _correlate_image(projection2, projection1)
+    
+    # pad the image with mean value to make sure that the template is smaller than image
+    if size(image, 1) < size(template, 1)
+        padSize = size(template,1) - size(image,1)
+        image = ImageFiltering.padarray( image, Fill(mean(image), (padSize,0), (0,0)) )
+    elseif size(image,2) < size(template,2)
+        padSize = size(template,2) - size(image,2)
+        image = ImageFiltering.padarray( image, Fill(mean(image), (0,padSize), (0,0)))
+    end 
+    
+    # projection1 is template, and projection2 is the image
+    return Alembic.normxcorr2_preallocated(template|>parent, image|>parent; shape="same")
 end 
 
-function _find_correlation_peak_along_axis(self::Array, other::Array, axis::Int)
+function _find_correlation_peak_along_axis(self::Array{T,3}, other::Array{T,3}, 
+                                                                    axis::Int) where {T}
 	crossCorrelation = _cross_correlation_along_axis(self, other, axis)
    	maximum(crossCorrelation)    
 end 
@@ -834,12 +847,12 @@ end
 translate the density map and find the place with minimum distance in overlapping region.                                                      
 use cross correlation in 2D to find the position with maximum value as approximated location.                                                  
 """ 
-function get_arbor_density_map_overlap_min_distance(self ::Array,
-                                                    other::Array)
+function get_arbor_density_map_overlap_min_distance(self ::Array{T,3},
+                                                    other::Array{T,3}) where {T}
     crossCorrelationZ = _find_correlation_peak_along_axis(self, other, 3)
     crossCorrelationY = _find_correlation_peak_along_axis(self, other, 2)
     crossCorrelationX = _find_correlation_peak_along_axis(self, other, 1)
-    1. - mean([crossCorrelationX, crossCorrelationY, crossCorrelationZ]) 
+    one(typeof(crossCorrelationX)) - mean([crossCorrelationX, crossCorrelationY, crossCorrelationZ]) 
 end 
 
 ############################### Base functions ###################################
@@ -880,7 +893,7 @@ function Base.merge(self::Neuron, other::Neuron,
             mergedConnectivityMatrix[closestSegmentIndex, num_segments1+1] = true
             return Neuron(mergedSegmentList, mergedConnectivityMatrix)
         else 
-            println("the closest segment is a terminal segment, merge the root segment of 'other'")
+            println("the closest segment is a terminal segment, merge the root segment of the other net")
             if num_segments2 == 1
                 #  only one segment of the other net
                 mergedSegmentList = copy(segmentList1)
@@ -1401,6 +1414,43 @@ function find_closest_node_index(self::Neuron, coordinate::NTuple{3,Float32})
         end 
     end
     closestSegmentIndex, closestNodeIndexInSegment 
+end 
+
+function find_closest_terminal_node_index(self::Neuron, 
+                                          nodeNet::NodeNet, 
+                                          collectedFlagVec::Vector{Bool})
+    # initialization 
+    closestNodeIndex = 0
+    closestTerminalSegmentIndex = 0
+    closestDistance = typemax(Float32)
+
+    terminalSegmentIndexList = get_terminal_segment_index_list(self)
+    segmentList = get_segment_list(self)
+
+    nodeList = NodeNets.get_node_list(nodeNet)
+    connectivityMatrix = NodeNets.get_connectivity_matrix(nodeNet)
+    @assert length(nodeList) == length(collectedFlagVec)
+
+    for nodeIndex in 1:length(nodeList)
+        # check all the uncollected terminal nodes 
+        if !collectedFlagVec[nodeIndex] && NodeNets.is_terminal_node(nodeNet, nodeIndex)
+            node = nodeList[nodeIndex]
+            for terminalSegmentIndex in terminalSegmentIndexList
+                terminalSegment = segmentList[terminalSegmentIndex]
+                terminalNode = terminalSegment[end]
+                # euclidean distance 
+                distance = norm([map(-, terminalNode[1:3], node[1:3])...])
+                if distance < closestDistance
+                    closestDistance = distance
+                    closestNodeIndex = nodeIndex
+                    closestTerminalSegmentIndex = terminalSegmentIndex
+                end
+            end
+        end
+    end
+    @assert closestNodeIndex > 0
+    @assert closestDistance < typemax(Float32)
+    return closestNodeIndex, closestTerminalSegmentIndex 
 end 
 
 """

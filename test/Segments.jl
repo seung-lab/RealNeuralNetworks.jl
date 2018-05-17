@@ -15,4 +15,8 @@ const SWC_BIN_PATH = joinpath(@__DIR__, "../assert/77625.swc.bin")
     @show Segments.get_tortuosity( segment )
     println("get tail head radius ratio ...")
     @show Segments.get_tail_head_radius_ratio( segment )
+
+    segment2 = neuron[6]
+    merged_segment = merge(segment, segment2)
+    @test length(segment) + length(segment2) == length(merged_segment)
 end 
