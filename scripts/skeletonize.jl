@@ -13,10 +13,11 @@ using .Common
 
 @everywhere function trace(cellId::Integer; swcDir      ::AbstractString = "/tmp/", 
                                 mip         ::Integer        = MIP, 
+                                meshName    ::String = "mesh_mip_$MIP",
                                 voxelSize   ::Union{Tuple,Vector} = VOXEL_SIZE,
                                 segmentationLayer::AbstractString = SEGMENTATION_LAYER)
 
-    manifest = Manifest(joinpath(segmentationLayer, "mesh_mip_$(mip)"), "$(cellId):0", 
+    manifest = Manifest(joinpath(segmentationLayer, meshName), "$(cellId):0", 
                         joinpath(segmentationLayer, 
                             "$(2^mip*voxelSize[1])_$(2^mip*voxelSize[2])_$(voxelSize[3])"))
     
@@ -69,6 +70,7 @@ function main()
     if args["idlistfile"] != nothing
         idList = read_cell_id_list(args["idlistfile"])
         pmap(id -> trace(id; swcDir=args["swcdir"], mip=args["mip"], 
+                         meshName=args["meshname"],
                          voxelSize = args["voxelsize"],
                          segmentationLayer=args["segmentationlayer"]), idList)
     elseif args["sqsqueue"] != nothing 
@@ -80,6 +82,7 @@ function main()
             println("tracing cell: $(id)")
             try 
                 trace(id; swcDir=args["swcdir"], mip=args["mip"], 
+                      meshName=args["meshname"],
                       voxelSize = args["voxelsize"],
                       segmentationLayer = args["segmentationlayer"])
             catch err 

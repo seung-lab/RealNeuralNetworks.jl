@@ -42,6 +42,10 @@ function parse_commandline()
             help = "mip level of the dataset" 
             arg_type = UInt32
             default = MIP 
+        "--meshname", "-e"
+            help = "folder name of mesh files"
+            arg_type = String
+            default = "mesh_mip_4"
         "--idlistfile", "-f"
             help = "the id list in text from google spreasheet"
             arg_type = String
