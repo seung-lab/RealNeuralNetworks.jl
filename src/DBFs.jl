@@ -4,6 +4,10 @@ __precompile__()
 
 module DBFs
 
+const DBF = Vector{Float32}
+
+export DBF 
+
 using Base.Cartesian
 
 """
@@ -42,7 +46,7 @@ WARN: this function do not work correctly!
 function compute_DBF( points::Array{T,2}, boundary_point_indexes::Vector ) where T
     error("this function do not work correctly, have a bug!")
     num = size(points, 1)
-    dbf = Vector{Float32}(num)
+    dbf = DBF(num)
     fill!(dbf, Inf32)
     for i in 1:num
         point = points[i,:]
@@ -67,19 +71,18 @@ end
 #NOTE voxelSize not currently functional
 """
 
-    distance_transform( d::AbstractArray{T,N}, voxelSize::Vector{Float64}=ones(N) )
+    distance_transform( d::AbstractArray{T,N}, voxelSize::Vector{Float32}=ones(Float32, N) )
 
   Returns a euclidean distance transformation of the mask provided by d. The return
   value will be a volume of the same size as d where the value at each index corresponds
   to the distance between that location and the nearest location for which d > 0.
 """
-@generated function distance_transform( d::AbstractArray{T,N},
-  voxelSize::Vector{Float64}=ones(N) ) where {T,N}
+@generated function distance_transform( d::AbstractArray{T,N}, voxelSize::Vector{Float32}=ones(Float32, N) ) where {T,N}
   quote
 
   @assert length(voxelSize) == $N;
 
-  res = zeros(Float64,size(d));
+  res = zeros(Float32,size(d));
 
   fill_f0!(res, d);
 
@@ -101,7 +104,7 @@ end
 Fills an n-dimensional volume with initial states for edt transformation,
 inf for non-feature voxels, and 0 for feature voxels
 """
-@generated function fill_f0!( arr::Array{Float64,N}, fv::AbstractArray{T,N} ) where {T,N}
+@generated function fill_f0!( arr::Array{Float32,N}, fv::AbstractArray{T,N} ) where {T,N}
   quote
 
   #apparently this generates lots of allocations,
@@ -122,11 +125,11 @@ end
 Performs the edt transformation along the first dimension of the N-dimensional
 volume
 """
-@generated function vol_voronoi_edt!( arr::Array{Float64,N}, dim::Float64 ) where N
+@generated function vol_voronoi_edt!( arr::Array{Float32,N}, dim::Float32 ) where N
   quote
 
   s1 = size(arr,1);
-  g = zeros(Float64,(s1,));
+  g = zeros(Float32,(s1,));
   h = zeros(Int,    (s1,));
   @nloops $N i j->(j==1 ? 0 : 1:size(arr,j)) begin
 
@@ -144,8 +147,8 @@ end
 """
 Performs the edt over a specific row in the volume, following the first dimension
 """
-@generated function row_voronoi_edt!( F::Array{Float64,N}, indices::Tuple,
-  g::Vector{Float64}, h::Vector{Int}, dim::Float64 ) where N
+@generated function row_voronoi_edt!( F::Array{Float32,N}, indices::Tuple,
+  g::Vector{Float32}, h::Vector{Int}, dim::Float32 ) where N
   quote
 
   #count of potential feature vectors
@@ -207,14 +210,14 @@ end
 """
 Getting too tired to document these next few, but will be worth it if it works
 """
-function fv_isfurther(g1::Float64 ,h1::Int, g2::Float64, h2::Int, i::Int)
+function fv_isfurther(g1::Float32 ,h1::Int, g2::Float32, h2::Int, i::Int)
   return g1 + (h1 - i)^2 > g2 + (h2 - i)^2;
 end
 
 """
     remove_euclidean_distance_transform 
 """
-function remove_euclidean_distance_transform( g1::Float64, g2::Float64, g3::Float64, h1::Int, h2::Int, h3::Int )
+function remove_euclidean_distance_transform( g1::Float32, g2::Float32, g3::Float32, h1::Int, h2::Int, h3::Int )
   a = h2 - h1;
   b = h3 - h2;
   c = h3 - h1;
@@ -273,11 +276,11 @@ end
   Takes an array where rows indicate subscripts, and extracts the values
   within a volume at those subscripts (in row order)
 """
-@generated function extract_dbf_values( dbf_image::Array{Float64,N}, point_cloud ) where N
+@generated function extract_dbf_values( dbf_image::Array{Float32,N}, point_cloud ) where N
   quote
 
   num_points = size( point_cloud, 1 );
-  dbf_values = zeros(num_points);
+  dbf_values = zeros(Float32, num_points);
 
   for p in 1:num_points 
     dbf_values[p] = (@nref $N dbf_image i->point_cloud[p,i]);

@@ -73,39 +73,44 @@ end
 
   Perform the teasar algorithm on the passed Nxd array of points
 """
-function NodeNet( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
+function NodeNet( points::Array{T,2}; dbf::DBF=DBFs.compute_DBF(points),
                          penalty_fn::Function = alexs_penalty,
                          expansion::NTuple{3, UInt32} = EXPANSION) where T
-
+    @assert length(dbf) == size(points, 1)
     println("total number of points: $(size(points,1))")
     points, bbox_offset = translate_to_origin!( points );
-  ind2node, max_dims = create_node_lookup( points );
-  max_dims_arr = [max_dims...];#use this for rm_nodes, but ideally wouldn't
-  sub2node = x -> ind2node[ sub2ind(max_dims, x[1],x[2],x[3]) ];#currently only used in line 48
+    # ind2node represent points as a sparse vector containing the whole volume
+    # in this way, we can fetch the node directly according to the coordinate.
+    # the coordinate should be transfered to vector index though
+    ind2node, max_dims = create_node_lookup( points );
+    max_dims_arr = [max_dims...];#use this for rm_nodes, but ideally wouldn't
+    # transfer the coordinate to node 
+    sub2node = x -> ind2node[ sub2ind(max_dims, x[1],x[2],x[3]) ];#currently only used in line 48
     
-  println("making graph (2 parts)");
-  @time G, weights = make_neighbor_graph( points, ind2node, max_dims;)
-  println("build dbf weights from penalty function ...")
-  @time dbf_weights = penalty_fn( weights, dbf, G )
+    println("making graph (2 parts)");
+    @time G, weights = make_neighbor_graph( points, ind2node, max_dims;)
+    println("build dbf weights from penalty function ...")
+    @time dbf_weights = penalty_fn( weights, dbf, G )
 
   #init
   #nonzeros SHOULD remove duplicates, but it doesn't so
   # I have to do something a bit more complicated
   _,nonzero_vals = findnz(ind2node);
-  disconnected_nodes = IntSet( nonzero_vals );
+  disconnectedNodeIndexSet = IntSet( nonzero_vals );
   paths = Vector(); #holds array of nodeNet paths
-  root_nodes = Vector{Int}(); #holds root nodes for each path
-  destinations = Vector{Int}(); #host dest node for each path
-  #set of nodes for which we've "inspected" already
+  rootNodeIndexList = Vector{Int}(); #holds root nodes for each path
+  destinationNodeIndexList = Vector{Int}(); #host dest node for each path
+  # set of nodes for which we've "inspected" already
   # removing their neighbors based on DBF
-  inspected_nodes = Set{Int}();
+  inspectedNodeIndexList = Set{Int}();
 
   println("Finding paths")
-  while length(disconnected_nodes) > 0
+  while length(disconnectedNodeIndexSet) > 0
 
-    root_ind = find_new_root_node( points[[disconnected_nodes...],:] );
+      root_ind = find_new_root_node(points[[disconnectedNodeIndexSet...], :],
+                                    dbf[[disconnectedNodeIndexSet...]] );
     root_node = sub2node( root_ind );
-    push!(root_nodes, root_node);
+    push!(rootNodeIndexList, root_node);
     println("root");
     println(root_node);
 
@@ -118,9 +123,9 @@ function NodeNet( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
     #remove reachable nodes from the disconnected ones
     reachable_nodes = find(.!(isinf.(dsp_euclidean.dists)));
     #another necessary precaution for duplicate nodes
-    reachable_nodes = intersect(reachable_nodes, disconnected_nodes);
-    setdiff!(disconnected_nodes, reachable_nodes);
-    empty!(inspected_nodes);
+    reachable_nodes = intersect(reachable_nodes, disconnectedNodeIndexSet);
+    setdiff!(disconnectedNodeIndexSet, reachable_nodes);
+    empty!(inspectedNodeIndexList);
 
     while length(reachable_nodes) > 0
 
@@ -128,7 +133,7 @@ function NodeNet( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
       # by euc distance
       _, farthest_index = findmax( dsp_euclidean.dists[[reachable_nodes...]] );
       farthest_node = reachable_nodes[farthest_index];
-      push!(destinations, farthest_node);
+      push!(destinationNodeIndexList, farthest_node);
       println("dest")
       println(farthest_node)
 
@@ -142,7 +147,7 @@ function NodeNet( points::Array{T,2}; dbf=DBFs.compute_DBF(points),
       @time reachable_nodes = remove_path_from_rns( reachable_nodes, new_path,
                                               points, ind2node,
                                               dbf, max_dims_arr,
-                                              inspected_nodes );
+                                              inspectedNodeIndexList );
 
     end #while reachable nodes from root
   end #while disconnected nodes
@@ -587,15 +592,25 @@ function local_max_multiplicative_penalty( weights, dbf, G )
   sparse( is, js, new_ws, size(weights)... );
 end
 
+"""
+
+    find_new_root_node( dbf )
+
+  Extracts the point with the largest dbf from the 
+  Array of passed points 
+"""
+function find_new_root_node(points::Array{T,2}, dbf::DBF) where T
+    points[indmax(dbf), :]
+end 
 
 """
 
     find_new_root_node( points )
 
   Extracts the point with the lowest linear index from the
-  Array of passed points
+  Array of passed points 
 """
-function find_new_root_node( points )
+function find_new_root_node_V1( points::Array{T,2} ) where T
 
   res = points;
   for i in 3:-1:1
@@ -611,7 +626,7 @@ function filter_rows_by_min( arr::Array{T,2}, dim ) where T
   selected_rows = arr[:,dim] .== minimum(arr,1)[dim];
 
   arr[selected_rows,:];
-end
+end 
 
 function create_dummy_matrix( s )
   points = hcat( findn(ones(s,s,s))... );
@@ -632,7 +647,7 @@ end
   TO OPTIMIZE
 """
 function remove_path_from_rns( reachable_nodes::Vector, path::Vector,
-  points, ind2node, dbf, max_dims, inspected_nodes,
+  points, ind2node, dbf, max_dims, inspectedNodeIndexList,
   scale_param::Int=REMOVE_PATH_SCALE, const_param::Int=REMOVE_PATH_CONST );
 
   r = dbf[path]*scale_param + const_param;
@@ -640,8 +655,8 @@ function remove_path_from_rns( reachable_nodes::Vector, path::Vector,
   to_remove = Set{Int}();
   for i in eachindex(path)
     node = path[i];
-    if !(node in inspected_nodes)
-        push!(inspected_nodes, node);
+    if !(node in inspectedNodeIndexList)
+        push!(inspectedNodeIndexList, node);
 	    union!( to_remove, nodes_within_radius( points[node,:], ind2node, r[i], max_dims ) );
     end
   end
