@@ -16,7 +16,7 @@ using .Common
                                 meshName    ::String = "mesh_mip_$MIP",
                                 voxelSize   ::Union{Tuple,Vector} = VOXEL_SIZE,
                                 segmentationLayer::AbstractString = SEGMENTATION_LAYER)
-
+    
     manifest = Manifest(joinpath(segmentationLayer, meshName), "$(cellId):0", 
                         joinpath(segmentationLayer, 
                             "$(2^mip*voxelSize[1])_$(2^mip*voxelSize[2])_$(voxelSize[3])"))
@@ -96,7 +96,8 @@ function main()
         end 
     else 
         trace(args["neuronid"]; swcDir = args["swcdir"],  
-              mip=args["mip"], voxelSize=args["voxelsize"], 
+              mip=args["mip"], voxelSize=args["voxelsize"],
+              meshName=args["meshname"],
               segmentationLayer=args["segmentationlayer"])
     end 
 end

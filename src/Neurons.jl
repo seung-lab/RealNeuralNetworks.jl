@@ -50,22 +50,28 @@ function Neuron(nodeNet::NodeNet)
     while !all(collectedFlagVec)
         # there exist some uncollected nodes 
         # find the uncollected node that is closest to the terminal nodes as seed
-        seedNodeIndex, closestTerminalSegmentIndex = 
-            find_closest_terminal_node_index(neuron, 
-                                             nodeNet, collectedFlagVec)
+        # terminal node should have high priority than normal nodes. 
+        seedNodeIndex, closestSegmentIndex, closestDistance = 
+            find_closest_terminal_node_index(neuron, nodeNet, collectedFlagVec)
+        if closestDistance > 6000
+            # for some spine like structures, they should connect to nearest node
+            # rather than terminal point 
+            seedNodeIndex, closestSegmentIndex = 
+                find_closest_node_index(neuron, nodeNet, collectedFlagVec)
+        end 
 
         # get the terminal node index of the terminal segment
         segmentList = get_segment_list(neuron)
-        @assert closestTerminalSegmentIndex <= length(segmentList)
-        closestTerminalSegment = segmentList[closestTerminalSegmentIndex]
+        @assert closestSegmentIndex <= length(segmentList)
+        closestSegment = segmentList[closestSegmentIndex]
         # the last node should be the terminal node
-        closestTerminalNodeIndexInSegment = length(closestTerminalSegment)
+        closestNodeIndexInSegment = length(closestSegment)
 
         # grow a new net from seed, and mark the collected nodes 
         subnet = Neuron!(seedNodeIndex, nodeNet, collectedFlagVec) 
         # merge the subnet to main net 
         neuron = merge( neuron, subnet, 
-                        closestTerminalSegmentIndex, closestTerminalNodeIndexInSegment)
+                        closestSegmentIndex, closestNodeIndexInSegment)
     end 
     neuron     
 end 
@@ -318,14 +324,6 @@ end
 function get_path_to_soma_length(self::Neuron, synapse::Synapse)
     closestSegmentIndex, closestNodeIndex = find_closest_node_index( self, synapse )
     get_path_to_soma_length( self, closestSegmentIndex; nodeIndex=closestNodeIndex )
-end 
-
-function get_path_to_soma_length(self::Neuron, segmentIndex::Integer; 
-                        nodeIndex::Int=length(), 
-                        segmentPathLengthList::Vector = get_segment_path_length_list(self))
-    segmentList = get_segment_list(self)
-    get_path_to_soma_length( segmentList, segmentIndex; 
-                        nodeIndex=nodeIndex, segmentPathLengthList=segmentPathLengthList )
 end 
 
 function get_path_to_soma_length(self::Neuron, segmentIndex::Integer; 
@@ -1450,7 +1448,14 @@ function find_closest_terminal_node_index(self::Neuron,
     end
     @assert closestNodeIndex > 0
     @assert closestDistance < typemax(Float32)
-    return closestNodeIndex, closestTerminalSegmentIndex 
+    return closestNodeIndex, closestTerminalSegmentIndex, closestDistance  
+end 
+
+function find_closest_node_index(neuron::Neuron, nodeNet::NodeNet, 
+                                 collectedFlagVec::Vector{Bool})
+    segmentList = get_segment_list(neuron)
+    nodes = NodeNets.get_node_list(nodeNet)
+    find_closest_node_index(segmentList, nodes, collectedFlagVec)
 end 
 
 """

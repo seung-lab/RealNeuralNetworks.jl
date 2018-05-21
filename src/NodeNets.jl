@@ -85,7 +85,7 @@ function NodeNet( points::Array{T,2}; dbf::DBF=DBFs.compute_DBF(points),
     ind2node, max_dims = create_node_lookup( points );
     max_dims_arr = [max_dims...];#use this for rm_nodes, but ideally wouldn't
     # transfer the coordinate to node 
-    sub2node = x -> ind2node[ sub2ind(max_dims, x[1],x[2],x[3]) ];#currently only used in line 48
+    # sub2node = x -> ind2node[ sub2ind(max_dims, x[1],x[2],x[3]) ];#currently only used in line 48
     
     println("making graph (2 parts)");
     @time G, weights = make_neighbor_graph( points, ind2node, max_dims;)
@@ -97,63 +97,56 @@ function NodeNet( points::Array{T,2}; dbf::DBF=DBFs.compute_DBF(points),
   # I have to do something a bit more complicated
   _,nonzero_vals = findnz(ind2node);
   disconnectedNodeIndexSet = IntSet( nonzero_vals );
-  paths = Vector(); #holds array of nodeNet paths
-  rootNodeIndexList = Vector{Int}(); #holds root nodes for each path
+  pathList = Vector(); # holds vector of nodeNet paths
+  # rootNodeIndexList = Vector{Int}(); #holds root nodes for each path
   destinationNodeIndexList = Vector{Int}(); #host dest node for each path
   # set of nodes for which we've "inspected" already
   # removing their neighbors based on DBF
   inspectedNodeIndexList = Set{Int}();
 
   println("Finding paths")
-  while length(disconnectedNodeIndexSet) > 0
+    while length(disconnectedNodeIndexSet) > 0
+        rootNodeIndex = find_new_root_node_index( dbf[[disconnectedNodeIndexSet...]] );
 
-      root_ind = find_new_root_node(points[[disconnectedNodeIndexSet...], :],
-                                    dbf[[disconnectedNodeIndexSet...]] );
-    root_node = sub2node( root_ind );
-    push!(rootNodeIndexList, root_node);
-    println("root");
-    println(root_node);
+        #do a graph traversal to find farthest node and
+        # find reachable nodes
+        dsp_euclidean = LightGraphs.dijkstra_shortest_paths(G, rootNodeIndex, weights);
+        #and another to find the min DBF-weighted paths to all nodes
+        dsp_dbf       = LightGraphs.dijkstra_shortest_paths(G, rootNodeIndex, dbf_weights);
 
-    #do a graph traversal to find farthest node and
-    # find reachable nodes
-    dsp_euclidean = LightGraphs.dijkstra_shortest_paths(G, root_node, weights);
-    #and another to find the min DBF-weighted paths to all nodes
-    dsp_dbf       = LightGraphs.dijkstra_shortest_paths(G, root_node, dbf_weights);
+        #remove reachable nodes from the disconnected ones
+        reachableNodeIndexList = find(.!(isinf.(dsp_euclidean.dists)));
+        #another necessary precaution for duplicate nodes
+        reachableNodeIndexList = intersect(reachableNodeIndexList, disconnectedNodeIndexSet);
+        setdiff!(disconnectedNodeIndexSet, reachableNodeIndexList);
+        empty!(inspectedNodeIndexList);
 
-    #remove reachable nodes from the disconnected ones
-    reachable_nodes = find(.!(isinf.(dsp_euclidean.dists)));
-    #another necessary precaution for duplicate nodes
-    reachable_nodes = intersect(reachable_nodes, disconnectedNodeIndexSet);
-    setdiff!(disconnectedNodeIndexSet, reachable_nodes);
-    empty!(inspectedNodeIndexList);
+        while length(reachableNodeIndexList) > 0
 
-    while length(reachable_nodes) > 0
+          #find the node farthest away from the root
+          # by euc distance
+          _, farthestNodeIndex = findmax( dsp_euclidean.dists[[reachableNodeIndexList...]] );
+          farthestNodeIndex = reachableNodeIndexList[farthestNodeIndex];
+          push!(destinationNodeIndexList, farthestNodeIndex);
+          println("dest node index: $(farthestNodeIndex)")
 
-      #find the node farthest away from the root
-      # by euc distance
-      _, farthest_index = findmax( dsp_euclidean.dists[[reachable_nodes...]] );
-      farthest_node = reachable_nodes[farthest_index];
-      push!(destinationNodeIndexList, farthest_node);
-      println("dest")
-      println(farthest_node)
+          if farthestNodeIndex == rootNodeIndex break end #this can happen apparently
 
-      if farthest_node == root_node break end #this can happen apparently
+          new_path = LightGraphs.enumerate_paths( dsp_dbf, farthestNodeIndex );
 
-      new_path = LightGraphs.enumerate_paths( dsp_dbf,farthest_node );
+          push!(pathList, new_path)
+          #can't do this in-place with arrays
+          #this fn call is getting ridiculous
+          @time reachableNodeIndexList = remove_path_from_rns!( reachableNodeIndexList, 
+                                                        new_path, points, ind2node,
+                                                        dbf, max_dims_arr,
+                                                        inspectedNodeIndexList );
 
-      push!(paths, new_path)
-      #can't do this in-place with arrays
-      #this fn call is getting ridiculous
-      @time reachable_nodes = remove_path_from_rns( reachable_nodes, new_path,
-                                              points, ind2node,
-                                              dbf, max_dims_arr,
-                                              inspectedNodeIndexList );
-
-    end #while reachable nodes from root
-  end #while disconnected nodes
+        end #while reachable nodes from root
+    end #while disconnected nodes
 
   println("Consolidating Paths")
-  path_nodes, path_edges = consolidate_paths( paths );
+  path_nodes, path_edges = consolidate_paths( pathList );
   node_radii = dbf[path_nodes];
   
     # build a new graph containing only the nodeNet nodes and edges
@@ -425,7 +418,7 @@ function create_node_lookup( points::Array{T,2} ) where T
   max_dims = map(Int, max_dims)
   num_points = size(points,1);
   #creating the sparse vector mapping indices -> node ids
-  ind2node = sparsevec( [sub2ind(max_dims, Vector{Int}(points[i,:])... ) for i=1:num_points ],
+  ind2node = sparsevec( [sub2ind(max_dims, Vector{UInt32}(points[i,:])... ) for i=1:num_points ],
   	                    1:num_points,
   	                    prod(max_dims),
   	                    (x,y) -> x #ignore duplicates
@@ -599,8 +592,8 @@ end
   Extracts the point with the largest dbf from the 
   Array of passed points 
 """
-function find_new_root_node(points::Array{T,2}, dbf::DBF) where T
-    points[indmax(dbf), :]
+@inline function find_new_root_node_index(dbf::DBF)
+    indmax(dbf)
 end 
 
 """
@@ -610,7 +603,7 @@ end
   Extracts the point with the lowest linear index from the
   Array of passed points 
 """
-function find_new_root_node_V1( points::Array{T,2} ) where T
+@inline function find_new_root_node_V1( points::Array{T,2} ) where T
 
   res = points;
   for i in 3:-1:1
@@ -639,29 +632,30 @@ end
 
 """
 
-    remove_path_from_rns( reachable_nodes, path, points, sub2node, dbf, max_dims, scale_param, const_param)
+    remove_path_from_rns!( reachableNodeList, path, points, sub2node, dbf, max_dims, scale_param, const_param)
 
   Identifies the nodes to remove from the reachable nodes within the graph.
   Probably the ugliest function here, and should be optimized later
 
   TO OPTIMIZE
 """
-function remove_path_from_rns( reachable_nodes::Vector, path::Vector,
-  points, ind2node, dbf, max_dims, inspectedNodeIndexList,
-  scale_param::Int=REMOVE_PATH_SCALE, const_param::Int=REMOVE_PATH_CONST );
-
-  r = dbf[path]*scale_param + const_param;
+function remove_path_from_rns!( reachableNodeIndexList::Vector, path::Vector{Int},
+                points, ind2node, dbf, max_dims, inspectedNodeIndexList,
+                scale_param::Integer=REMOVE_PATH_SCALE, 
+                const_param::Integer=REMOVE_PATH_CONST )
+  radii = dbf[path].*scale_param .+ const_param;
 
   to_remove = Set{Int}();
   for i in eachindex(path)
-    node = path[i];
-    if !(node in inspectedNodeIndexList)
-        push!(inspectedNodeIndexList, node);
-	    union!( to_remove, nodes_within_radius( points[node,:], ind2node, r[i], max_dims ) );
+    nodeIndex = path[i];
+    if !(nodeIndex in inspectedNodeIndexList)
+        push!(inspectedNodeIndexList, nodeIndex);
+	    union!( to_remove, nodes_within_radius(points[nodeIndex,:], ind2node, 
+                                               radii[i], max_dims ) );
     end
   end
 
-  return setdiff(reachable_nodes, to_remove);
+  return setdiff(reachableNodeIndexList, to_remove);
 end
 
 
@@ -703,8 +697,8 @@ end
 """
 function consolidate_paths( path_list::Vector )
 
-    nodes = Set{Int}();
-    edges = Set{NTuple{2,Int}}();
+    nodes = Set{UInt32}();
+    edges = Set{NTuple{2,UInt32}}();
 
     # estimate the total number of nodes and edges
     num_nodes = 0
@@ -745,7 +739,7 @@ coordinates and let the gc release the point_array.
 the same applys to path_edges 
 """
 function distill!(point_array::Array{T,2}, 
-                  path_nodes::Vector{Int}, path_edges::Vector) where T 
+                  path_nodes::Vector, path_edges::Vector) where T 
     num_nodes = length(path_nodes) 
     num_edges = length(path_edges)
     nodes = Array{T}(num_nodes, 3)
