@@ -51,27 +51,28 @@ function Neuron(nodeNet::NodeNet)
         # there exist some uncollected nodes 
         # find the uncollected node that is closest to the terminal nodes as seed
         # terminal node should have high priority than normal nodes. 
-        seedNodeIndex, closestSegmentIndex, closestDistance = 
-            find_closest_terminal_node_index(neuron, nodeNet, collectedFlagVec)
-        if closestDistance > 6000
+        seedNodeId, mergingSegmentId, mergingDistance = 
+            find_merging_terminal_node_id(neuron, nodeNet, collectedFlagVec)
+        if mergingDistance > 6000
             # for some spine like structures, they should connect to nearest node
-            # rather than terminal point 
-            seedNodeIndex, closestSegmentIndex = 
+            # rather than terminal point. 
+            # Note that only the terminal node in nodeNet were considered as candidates  
+            seedNodeId, mergingSegmentId = 
                 find_closest_node_index(neuron, nodeNet, collectedFlagVec)
         end 
 
         # get the terminal node index of the terminal segment
         segmentList = get_segment_list(neuron)
-        @assert closestSegmentIndex <= length(segmentList)
-        closestSegment = segmentList[closestSegmentIndex]
+        @assert mergingSegmentId <= length(segmentList)
+        mergingSegment = segmentList[mergingSegmentId]
         # the last node should be the terminal node
-        closestNodeIndexInSegment = length(closestSegment)
+        mergingNodeIdInSegment = length(mergingSegment)
 
         # grow a new net from seed, and mark the collected nodes 
-        subnet = Neuron!(seedNodeIndex, nodeNet, collectedFlagVec) 
+        subnet = Neuron!(seedNodeId, nodeNet, collectedFlagVec) 
         # merge the subnet to main net 
         neuron = merge( neuron, subnet, 
-                        closestSegmentIndex, closestNodeIndexInSegment)
+                        mergingSegmentId, mergingNodeIdInSegment)
     end 
     neuron     
 end 
@@ -322,8 +323,8 @@ function get_edge_list( self::Neuron )
 end 
 
 function get_path_to_soma_length(self::Neuron, synapse::Synapse)
-    closestSegmentIndex, closestNodeIndex = find_closest_node_index( self, synapse )
-    get_path_to_soma_length( self, closestSegmentIndex; nodeIndex=closestNodeIndex )
+    mergingSegmentId, closestNodeIndex = find_closest_node_index( self, synapse )
+    get_path_to_soma_length( self, mergingSegmentId; nodeIndex=closestNodeIndex )
 end 
 
 function get_path_to_soma_length(self::Neuron, segmentIndex::Integer; 
@@ -863,18 +864,18 @@ merge two nets at a specific segment location.
 the root node of second net will be connected to the first net
 """
 function Base.merge(self::Neuron, other::Neuron, 
-                    closestSegmentIndex::Integer, closestNodeIndexInSegment::Integer)
+                    mergingSegmentId::Integer, mergingNodeIdInSegment::Integer)
     @assert !isempty(self)
     @assert !isempty(other)
-    @assert closestSegmentIndex > 0
+    @assert mergingSegmentId > 0
     segmentList1 = get_segment_list( self  )
     segmentList2 = get_segment_list( other )
     num_segments1 = get_num_segments(self)
     num_segments2 = get_num_segments(other)
     
-    if closestNodeIndexInSegment == length(segmentList1[closestSegmentIndex])
+    if mergingNodeIdInSegment == length(segmentList1[mergingSegmentId])
         println("connecting to a segment end...")
-        childrenSegmentIndexList = get_children_segment_index_list(self, closestSegmentIndex)
+        childrenSegmentIndexList = get_children_segment_index_list(self, mergingSegmentId)
         if length(childrenSegmentIndexList) > 0
             println("the closest segment have children, do not merge the root segment")
             total_num_segments = num_segments1 + num_segments2 
@@ -888,23 +889,23 @@ function Base.merge(self::Neuron, other::Neuron,
             # do not include the connection of root in net2
             mergedConnectivityMatrix[num_segments1+1 : end, 
                                      num_segments1+1 : end] = other.connectivityMatrix 
-            mergedConnectivityMatrix[closestSegmentIndex, num_segments1+1] = true
+            mergedConnectivityMatrix[mergingSegmentId, num_segments1+1] = true
             return Neuron(mergedSegmentList, mergedConnectivityMatrix)
         else 
             println("the closest segment is a terminal segment, merge the root segment of the other net")
             if num_segments2 == 1
                 #  only one segment of the other net
                 mergedSegmentList = copy(segmentList1)
-                mergedSegmentList[closestSegmentIndex] = 
-                            merge(mergedSegmentList[closestSegmentIndex], segmentList2[1])
+                mergedSegmentList[mergingSegmentId] = 
+                            merge(mergedSegmentList[mergingSegmentId], segmentList2[1])
                 return Neuron(mergedSegmentList, self.connectivityMatrix)
             else 
                 # the connection point is the end of a segment, no need to break segment
                 # merge the root segment of second net to the first net
                 # assume that the first segment is the root segment
                 mergedSegmentList = vcat( segmentList1, segmentList2[2:end] )
-                mergedSegmentList[closestSegmentIndex] = 
-                            merge(mergedSegmentList[closestSegmentIndex], segmentList2[1])
+                mergedSegmentList[mergingSegmentId] = 
+                            merge(mergedSegmentList[mergingSegmentId], segmentList2[1])
 
                 # total number of segments
                 total_num_segments = num_segments1 + num_segments2 - 1 
@@ -923,34 +924,34 @@ function Base.merge(self::Neuron, other::Neuron,
                 # reestablish the connection of root2
                 childrenSegmentIndexList2 = get_children_segment_index_list(other, 1)
                 for childSegmentIndex2 in childrenSegmentIndexList2
-                    mergedConnectivityMatrix[ closestSegmentIndex, 
+                    mergedConnectivityMatrix[ mergingSegmentId, 
                                               num_segments1+childSegmentIndex2-1 ] = true 
                 end
                 return Neuron(mergedSegmentList, mergedConnectivityMatrix)
             end 
         end 
     else 
-        #println("need to break the closest segment and rebuild connectivity matrix")
+        println("need to break the closest segment and rebuild connectivity matrix")
         total_num_segments = num_segments1 + 1 + num_segments2 
         mergedSegmentList = segmentList1 
         mergedConnectivityMatrix = spzeros(Bool, total_num_segments, total_num_segments)
         
         # need to break the segment and then stitch the new segments
-        segmentPart1, segmentPart2 = split(segmentList1[closestSegmentIndex], 
-                                                    closestNodeIndexInSegment)
-        mergedSegmentList[closestSegmentIndex] = segmentPart1 
+        segmentPart1, segmentPart2 = split(segmentList1[mergingSegmentId], 
+                                                    mergingNodeIdInSegment)
+        mergedSegmentList[mergingSegmentId] = segmentPart1 
         mergedConnectivityMatrix[1:size(self.connectivityMatrix,1), 
                                  1:size(self.connectivityMatrix,2)] = 
                                                         self.connectivityMatrix 
         # reconnect the breaked two segments
         push!(mergedSegmentList, segmentPart2)
-        mergedConnectivityMatrix[closestSegmentIndex, num_segments1+1] = true 
+        mergedConnectivityMatrix[mergingSegmentId, num_segments1+1] = true 
 
         # redirect the children segments to segmentPart2
-        childrenSegmentIndexList = get_children_segment_index_list(self, closestSegmentIndex)
+        childrenSegmentIndexList = get_children_segment_index_list(self, mergingSegmentId)
         for childSegmentIndex in childrenSegmentIndexList
             # remove old connection
-            mergedConnectivityMatrix[closestSegmentIndex, childSegmentIndex] = false
+            mergedConnectivityMatrix[mergingSegmentId, childSegmentIndex] = false
             # build new connection
             mergedConnectivityMatrix[num_segments1+1, childSegmentIndex] = true 
         end 
@@ -963,7 +964,7 @@ function Base.merge(self::Neuron, other::Neuron,
                                                                 other.connectivityMatrix
 
         # establish the connection between two nets
-        mergedConnectivityMatrix[closestSegmentIndex, num_segments1+2] = true
+        mergedConnectivityMatrix[mergingSegmentId, num_segments1+2] = true
 
         # create new merged net
         return Neuron(mergedSegmentList, mergedConnectivityMatrix)
@@ -1390,8 +1391,8 @@ function find_closest_node_index(self::Neuron, coordinate::NTuple{3,Float32})
     segmentList = get_segment_list(self)
     
     # initialization 
-    closestSegmentIndex = 0
-    closestNodeIndexInSegment = 0
+    mergingSegmentId = 0
+    mergingNodeIdInSegment = 0
     distance = typemax(Float32)
     
     @assert !isempty(segmentList)
@@ -1406,15 +1407,15 @@ function find_closest_node_index(self::Neuron, coordinate::NTuple{3,Float32})
             d, nodeIndexInSegment = Segments.distance_from(segment, coordinate )
             if d < distance 
                 distance = d
-                closestSegmentIndex = segmentIndex 
-                closestNodeIndexInSegment = nodeIndexInSegment 
+                mergingSegmentId = segmentIndex 
+                mergingNodeIdInSegment = nodeIndexInSegment 
             end 
         end 
     end
-    closestSegmentIndex, closestNodeIndexInSegment 
+    mergingSegmentId, mergingNodeIdInSegment 
 end 
 
-function find_closest_terminal_node_index(self::Neuron, 
+function find_merging_terminal_node_id(self::Neuron, 
                                           nodeNet::NodeNet, 
                                           collectedFlagVec::Vector{Bool})
     # initialization 
@@ -1446,16 +1447,8 @@ function find_closest_terminal_node_index(self::Neuron,
             end
         end
     end
-    @assert closestNodeIndex > 0
     @assert closestDistance < typemax(Float32)
     return closestNodeIndex, closestTerminalSegmentIndex, closestDistance  
-end 
-
-function find_closest_node_index(neuron::Neuron, nodeNet::NodeNet, 
-                                 collectedFlagVec::Vector{Bool})
-    segmentList = get_segment_list(neuron)
-    nodes = NodeNets.get_node_list(nodeNet)
-    find_closest_node_index(segmentList, nodes, collectedFlagVec)
 end 
 
 """
@@ -1463,13 +1456,15 @@ end
 
 find the uncollected node which is closest to the segment list 
 """
-function find_closest_node_index(segmentList::Vector{Segment}, 
-                                 nodes::Vector{NTuple{4,Float32}},
-                                 collectedFlagVec ::Vector{Bool})
+function find_closest_node_index(neuron::Neuron, nodeNet::NodeNet, 
+                                 collectedFlagVec::Vector{Bool})
+    segmentList = get_segment_list(neuron)
+    nodes = NodeNets.get_node_list(nodeNet)
+
     # initialization 
     closestNodeIndex = 0
-    closestSegmentIndex = 0
-    closestNodeIndexInSegment = 0
+    mergingSegmentId = 0
+    mergingNodeIdInSegment = 0
     distance = typemax(Float32)
     
     @assert !isempty(segmentList)
@@ -1477,7 +1472,7 @@ function find_closest_node_index(segmentList::Vector{Segment},
     @assert !all(collectedFlagVec)
     
     for (nodeIndex, node) in enumerate(nodes)
-        if !collectedFlagVec[nodeIndex]
+        if !collectedFlagVec[nodeIndex] && NodeNets.is_terminal_node(nodeNet, nodeIndex)
             for (segmentIndex, segment) in enumerate(segmentList)
                 # distance from bounding box give the maximum bound of closest distance
                 # this was used to filter out far away segments quickly
@@ -1489,17 +1484,17 @@ function find_closest_node_index(segmentList::Vector{Segment},
                     if d < distance 
                         distance = d
                         closestNodeIndex = nodeIndex 
-                        closestSegmentIndex = segmentIndex 
-                        closestNodeIndexInSegment = nodeIndexInSegment 
+                        mergingSegmentId = segmentIndex 
+                        mergingNodeIdInSegment = nodeIndexInSegment 
                     end 
                 end 
             end
         end 
     end
     # the segmentIndex should be inside the segmentList
-    #@assert closestSegmentIndex > 0
-    #@assert closestSegmentIndex <= length(segmentList)
-    return closestNodeIndex, closestSegmentIndex, closestNodeIndexInSegment 
+    #@assert mergingSegmentId > 0
+    #@assert mergingSegmentId <= length(segmentList)
+    return closestNodeIndex, mergingSegmentId, mergingNodeIdInSegment 
 end 
 
 function add_offset(self::Neuron, offset::Union{Vector, Tuple})
