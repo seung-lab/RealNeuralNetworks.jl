@@ -196,11 +196,11 @@ end
 
 
 ##################### properties ###############################
-function get_node_list(self::NodeNet) self.nodeList end 
-function get_connectivity_matrix(self::NodeNet) self.connectivityMatrix end
-function get_xyz(self::NodeNet) map(x->x[1:3], self.nodeList) end
-function get_radii(self::NodeNet) map(x->x[4],  self.nodeList) end 
-function get_node_num(self::NodeNet) length(self.nodeList) end
+@inline function get_node_list(self::NodeNet) self.nodeList end 
+@inline function get_connectivity_matrix(self::NodeNet) self.connectivityMatrix end
+@inline function get_xyz(self::NodeNet) map(x->x[1:3], self.nodeList) end
+@inline function get_radii(self::NodeNet) map(x->x[4],  self.nodeList) end 
+@inline function get_node_num(self::NodeNet) length(self.nodeList) end
 # the connectivity matrix is symmetric, so the connection is undirected
 @inline function get_edge_num(self::NodeNet) div(nnz(self.connectivityMatrix), 2) end
 
@@ -221,6 +221,18 @@ end
     connectivityMatrix = get_connectivity_matrix(self)
     dropzeros!(connectivityMatrix)
     return nnz(connectivityMatrix[i,:]) < 2
+end
+
+function get_terminal_node_id_list(self::NodeNet)
+    terminalNodeIdList = Vector{Int}()
+    connectivityMatrix = get_connectivity_matrix(self)
+    dropzeros!(connectivityMatrix)
+    for i in 1:get_node_num(self)
+        if nnz(connectivityMatrix[i,:]) < 2
+            push!(terminalNodeIdList, i)
+        end 
+    end
+    return terminalNodeIdList
 end 
 
 """
@@ -242,7 +254,7 @@ end
 """
 assume that the graph is acyclic, no loop.
 """
-function get_num_segmentes(self::NodeNet)
+@inline function get_num_segmentes(self::NodeNet)
     get_num_segment_point(self) + 2
 end
 
@@ -265,6 +277,10 @@ function get_sholl_number(self::NodeNet, radius::AbstractFloat; rootNodeIndex::I
         end 
     end 
     shollNum
+end 
+
+@inline function Base.getindex(self::NodeNet, i::Integer)
+    get_node_list(self)[i]
 end 
 
 function Base.UnitRange(self::NodeNet)
@@ -320,7 +336,7 @@ end
 
 construct sparse connectivity matrix accordint to the edges 
 """
-function get_connectivity_matrix(edges::Vector)
+@inline function get_connectivity_matrix(edges::Vector)
     I = [e[1] for e in edges]
     J = [e[2] for e in edges]
     return sparse([I...,J...],[J...,I...],ones(Bool, 2*length(edges)))

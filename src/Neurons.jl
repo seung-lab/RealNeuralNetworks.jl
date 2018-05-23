@@ -18,6 +18,7 @@ const EXPANSION = (ONE_UINT32, ONE_UINT32, ONE_UINT32)
 const VOXEL_SIZE = (1000, 1000, 1000)
 
 const DOWNSAMPLE_NODE_NUM_STEP = 24
+const TERMINAL_DISTANCE_THRESHOLD = 4000
 
 export Neuron
 
@@ -51,28 +52,24 @@ function Neuron(nodeNet::NodeNet)
         # there exist some uncollected nodes 
         # find the uncollected node that is closest to the terminal nodes as seed
         # terminal node should have high priority than normal nodes. 
-        seedNodeId, mergingSegmentId, mergingDistance = 
-            find_merging_terminal_node_id(neuron, nodeNet, collectedFlagVec)
-        if mergingDistance > 6000
+        seedNodeId2 = find_seed_node_id(neuron, nodeNet, collectedFlagVec)
+
+        mergingSegmentId1, mergingNodeIndexInSegment1, mergingDistance = 
+            find_merging_terminal_node_id(neuron, nodeNet[seedNodeId2])
+        if mergingDistance > TERMINAL_DISTANCE_THRESHOLD 
+            println("distance between terminal nodes are too far: $(mergingDistance)")
             # for some spine like structures, they should connect to nearest node
             # rather than terminal point. 
             # Note that only the terminal node in nodeNet were considered as candidates  
-            seedNodeId, mergingSegmentId = 
-                find_closest_node_index(neuron, nodeNet, collectedFlagVec)
+            mergingSegmentId1, mergingNodeIndexInSegment1 = 
+                find_closest_node_index(neuron, nodeNet[seedNodeId2])
         end 
 
-        # get the terminal node index of the terminal segment
-        segmentList = get_segment_list(neuron)
-        @assert mergingSegmentId <= length(segmentList)
-        mergingSegment = segmentList[mergingSegmentId]
-        # the last node should be the terminal node
-        mergingNodeIdInSegment = length(mergingSegment)
-
         # grow a new net from seed, and mark the collected nodes 
-        subnet = Neuron!(seedNodeId, nodeNet, collectedFlagVec) 
+        subnet = Neuron!(seedNodeId2, nodeNet, collectedFlagVec) 
         # merge the subnet to main net 
         neuron = merge( neuron, subnet, 
-                        mergingSegmentId, mergingNodeIdInSegment)
+                        mergingSegmentId1, mergingNodeIndexInSegment1)
     end 
     neuron     
 end 
@@ -1387,12 +1384,12 @@ function resample(nodeList::Vector{NTuple{4,Float32}}, resampleDistance::Float32
     ret 
 end
 
-function find_closest_node_index(self::Neuron, coordinate::NTuple{3,Float32})
+function find_closest_node_index(self::Neuron, seedNode::NTuple{4,Float32})
     segmentList = get_segment_list(self)
     
     # initialization 
     mergingSegmentId = 0
-    mergingNodeIdInSegment = 0
+    mergingNodeIndexInSegment = 0
     distance = typemax(Float32)
     
     @assert !isempty(segmentList)
@@ -1402,54 +1399,89 @@ function find_closest_node_index(self::Neuron, coordinate::NTuple{3,Float32})
         # this was used to filter out far away segments quickly
         # no need to compute all the distances between nodes
         # this is the lower bound of the distance
-        bbox_distance = Segments.get_bounding_box_distance(segment, coordinate)
+        bbox_distance = Segments.get_bounding_box_distance(segment, seedNode)
         if bbox_distance < distance 
-            d, nodeIndexInSegment = Segments.distance_from(segment, coordinate )
+            d, nodeIndexInSegment = Segments.distance_from(segment, seedNode )
             if d < distance 
                 distance = d
                 mergingSegmentId = segmentIndex 
-                mergingNodeIdInSegment = nodeIndexInSegment 
+                mergingNodeIndexInSegment = nodeIndexInSegment 
             end 
         end 
     end
-    mergingSegmentId, mergingNodeIdInSegment 
+    @assert mergingNodeIndexInSegment > 0
+    @assert mergingNodeIndexInSegment < length(segmentList[mergingSegmentId])
+    mergingSegmentId, mergingNodeIndexInSegment 
 end 
 
-function find_merging_terminal_node_id(self::Neuron, 
-                                          nodeNet::NodeNet, 
-                                          collectedFlagVec::Vector{Bool})
+function find_merging_terminal_node_id(self::Neuron, seedNode2::NTuple{4, Float32}) 
     # initialization 
-    closestNodeIndex = 0
-    closestTerminalSegmentIndex = 0
+    closestTerminalSegmentIndex1 = 0
     closestDistance = typemax(Float32)
 
-    terminalSegmentIndexList = get_terminal_segment_index_list(self)
-    segmentList = get_segment_list(self)
+    terminalSegmentIndexList1 = get_terminal_segment_index_list(self)
+    segmentList1 = get_segment_list(self)
 
-    nodeList = NodeNets.get_node_list(nodeNet)
-    connectivityMatrix = NodeNets.get_connectivity_matrix(nodeNet)
-    @assert length(nodeList) == length(collectedFlagVec)
-
-    for nodeIndex in 1:length(nodeList)
-        # check all the uncollected terminal nodes 
-        if !collectedFlagVec[nodeIndex] && NodeNets.is_terminal_node(nodeNet, nodeIndex)
-            node = nodeList[nodeIndex]
-            for terminalSegmentIndex in terminalSegmentIndexList
-                terminalSegment = segmentList[terminalSegmentIndex]
-                terminalNode = terminalSegment[end]
-                # euclidean distance 
-                distance = norm([map(-, terminalNode[1:3], node[1:3])...])
-                if distance < closestDistance
-                    closestDistance = distance
-                    closestNodeIndex = nodeIndex
-                    closestTerminalSegmentIndex = terminalSegmentIndex
-                end
-            end
+    for terminalSegmentIndex1 in terminalSegmentIndexList1 
+        terminalSegment1 = segmentList1[terminalSegmentIndex1]
+        terminalNode1 = terminalSegment1[end]
+        # euclidean distance 
+        distance = norm([map(-, terminalNode1[1:3], seedNode2[1:3])...])
+        if distance < closestDistance
+            closestDistance = distance
+            closestTerminalSegmentIndex1 = terminalSegmentIndex1
         end
     end
     @assert closestDistance < typemax(Float32)
-    return closestNodeIndex, closestTerminalSegmentIndex, closestDistance  
+    # the connecting node is always the terminal 
+    terminalNodeIndexInSegment1 = length( segmentList1[closestTerminalSegmentIndex1] )
+    return closestTerminalSegmentIndex1, terminalNodeIndexInSegment1, closestDistance  
 end 
+
+"""
+find_seed_node_id(neuron::Neuron, nodeNet::NodeNets, 
+                    collectedFlagVec::Vector{Bool})
+
+find the closest terminal node in uncollected node set as new growing seed.  
+"""
+function find_seed_node_id(neuron::Neuron, nodeNet::NodeNet, 
+                           collectedFlagVec::Vector{Bool})
+    # number 1 means the alread grown neuron 
+    # number 2 means the id in the raw node net 
+    segmentList1 = get_segment_list(neuron)
+    # the new seed will be chosen this terminal node set 
+    terminalNodeIdList2 = NodeNets.get_terminal_node_id_list(nodeNet)
+
+    # initialization
+    seedNodeId2 = 0
+    distance = typemax(Float32)
+    
+    @assert !isempty(segmentList1)
+    @assert !all(collectedFlagVec)
+    
+    for candidateSeedId2 in terminalNodeIdList2 
+        if !collectedFlagVec[candidateSeedId2]
+            # only choose from the uncollected ones 
+            node2 = nodeNet[candidateSeedId2] 
+            for (segmentIndex1, segment1) in enumerate(segmentList1)
+                # distance from bounding box give the maximum bound of closest distance
+                # this was used to filter out far away segments quickly
+                # no need to compute all the distances between nodes
+                # this is the lower bound of the distance
+                bbox_distance = Segments.get_bounding_box_distance(segment1, node2)
+                if bbox_distance < distance 
+                    d, _ = Segments.distance_from(segment1, node2)
+                    if d < distance 
+                        distance = d
+                        seedNodeId2 = candidateSeedId2 
+                    end 
+                end 
+            end
+        end 
+    end
+    return seedNodeId2 
+end 
+
 
 """
     find_closest_node_index(segmentList::Vector{Segment}, nodes::Vector{NTuple{4,Float32}})
