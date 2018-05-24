@@ -2,7 +2,7 @@ using RealNeuralNetworks
 using Base.Test
 using HDF5
 using BigArrays
-using GSDicts
+using BigArrays.GSDicts
 using RealNeuralNetworks.NodeNets
 using RealNeuralNetworks.SWCs
 

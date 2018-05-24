@@ -1,5 +1,5 @@
 using BigArrays
-using GSDicts
+using BigArrays.GSDicts
 using Base.Test
 using RealNeuralNetworks 
 using RealNeuralNetworks.Manifests

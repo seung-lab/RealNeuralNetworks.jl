@@ -3,7 +3,7 @@ include("Common.jl")
 using .Common 
 
 @everywhere using AWSSDK.SQS 
-@everywhere using GSDicts
+@everywhere using BigArrays.GSDicts
 
 @everywhere using RealNeuralNetworks
 @everywhere using RealNeuralNetworks.NodeNets

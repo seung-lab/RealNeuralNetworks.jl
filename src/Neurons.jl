@@ -9,7 +9,6 @@ using ImageFiltering
 using OffsetArrays
 using DataFrames
 using .Segments.Synapses 
-using Alembic
 
 
 const ONE_UINT32 = UInt32(1)
@@ -801,34 +800,6 @@ function get_arbor_density_map_distance(self::OffsetArray{T,N,Array{T,N}},
     d += sum(abs2.(self[selfDiff...]))
     d += sum(abs2.(other[otherDiff...]))
     d
-end 
-
-
-function _cross_correlation_along_axis(self::Array{T,3}, other::Array{T,3}, 
-                                                                axis::Int) where {T}
-    projection1 = maximum(self,  axis)
-    projection2 = maximum(other, axis)
-	projection1 = squeeze(projection1, axis)
-	projection2 = squeeze(projection2, axis)
-    
-    
-    template = projection2 
-    image = projection1  
-    if length(template) > length(image)
-        image, template = template, image 
-    end
-    
-    # pad the image with mean value to make sure that the template is smaller than image
-    if size(image, 1) < size(template, 1)
-        padSize = size(template,1) - size(image,1)
-        image = ImageFiltering.padarray( image, Fill(mean(image), (padSize,0), (0,0)) )
-    elseif size(image,2) < size(template,2)
-        padSize = size(template,2) - size(image,2)
-        image = ImageFiltering.padarray( image, Fill(mean(image), (0,padSize), (0,0)))
-    end 
-    
-    # projection1 is template, and projection2 is the image
-    return Alembic.normxcorr2_preallocated(template|>parent, image|>parent; shape="same")
 end 
 
 function _find_correlation_peak_along_axis(self::Array{T,3}, other::Array{T,3}, 

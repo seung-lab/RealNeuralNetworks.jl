@@ -2,7 +2,8 @@ module Manifests
 include("DBFs.jl"); using .DBFs;
 include("PointArrays.jl"); using .PointArrays;
 
-using GSDicts, BigArrays
+using BigArrays
+using BigArrays.GSDicts 
 using ..RealNeuralNetworks.NodeNets
 #import ..RealNeuralNetworks.NodeNets.DBFs
 #import ..RealNeuralNetworks.NodeNets.PointArrays
