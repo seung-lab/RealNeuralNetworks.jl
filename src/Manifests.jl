@@ -2,6 +2,7 @@ module Manifests
 include("DBFs.jl"); using .DBFs;
 include("PointArrays.jl"); using .PointArrays;
 
+# using JLD2
 using BigArrays
 using BigArrays.GSDicts 
 using ..RealNeuralNetworks.NodeNets
@@ -77,8 +78,7 @@ function trace(self::Manifest, cellId)
     dbfs = map(x->x[2], pointCloudDBFList)
     dbf = vcat(dbfs ...)
     # save temporal variables for debug
-    # save("/tmp/$(cellId).jld", "point_clouds", pointClouds, 
-    #         "point_cloud", pointCloud, "dbf", dbf)
+    # @save "/tmp/$(cellId).jld" pointClouds, pointCloud, dbf
     println("skeletonization from global point cloud and dbf using RealNeuralNetworks algorithm...")
     @time nodeNet = NodeNet(pointCloud; dbf=dbf) 
     return nodeNet
@@ -92,6 +92,7 @@ end
 get the point cloud and dbf
 """
 function Base.next(self::Manifest, i )
+    println("manifest index: $i in $(length(self.rangeList))")
     # example: [2456:2968, 1776:2288, 16400:16912]
     ranges = self.rangeList[i]
     offset = (map(x-> UInt32(start(x)-1), ranges)...)
@@ -103,9 +104,10 @@ function Base.next(self::Manifest, i )
     dbf = DBFs.compute_DBF(point_cloud, bin_im)
     PointArrays.add_offset!(point_cloud, offset)
     # no need to use voxel_offset since the file name encoded the global coordinate
-    #PointArrays.add_offset!(point_cloud, get_voxel_offset(self)) 
+    # PointArrays.add_offset!(point_cloud, get_voxel_offset(self)) 
     return (point_cloud, dbf), i+1
 end 
+
 function Base.done(self::Manifest, i)
     i > length( self.rangeList )
 end 

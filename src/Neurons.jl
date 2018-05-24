@@ -17,7 +17,6 @@ const EXPANSION = (ONE_UINT32, ONE_UINT32, ONE_UINT32)
 const VOXEL_SIZE = (1000, 1000, 1000)
 
 const DOWNSAMPLE_NODE_NUM_STEP = 24
-const TERMINAL_DISTANCE_THRESHOLD = 4000
 
 export Neuron
 
@@ -53,15 +52,15 @@ function Neuron(nodeNet::NodeNet)
         # terminal node should have high priority than normal nodes. 
         seedNodeId2 = find_seed_node_id(neuron, nodeNet, collectedFlagVec)
 
-        mergingSegmentId1, mergingNodeIndexInSegment1, mergingDistance = 
+        mergingSegmentId1, mergingNodeIndexInSegment1, weightedTerminalDistance = 
             find_merging_terminal_node_id(neuron, nodeNet[seedNodeId2])
-        if mergingDistance > TERMINAL_DISTANCE_THRESHOLD 
-            println("distance between terminal nodes are too far: $(mergingDistance)")
-            # for some spine like structures, they should connect to nearest node
-            # rather than terminal point. 
-            # Note that only the terminal node in nodeNet were considered as candidates  
-            mergingSegmentId1, mergingNodeIndexInSegment1 = 
-                find_closest_node_index(neuron, nodeNet[seedNodeId2])
+        # for some spine like structures, they should connect to nearest node
+        # rather than terminal point. 
+        closestSegmentId1, closestNodeIndexInSegment1, closestDistance = 
+            find_closest_node_index(neuron, nodeNet[seedNodeId2])
+        if closestDistance < weightedTerminalDistance
+            mergingSegmentId1 = closestSegmentId1 
+            mergingNodeIndexInSegment1 = closestNodeIndexInSegment1 
         end 
 
         # grow a new net from seed, and mark the collected nodes 
@@ -1381,32 +1380,56 @@ function find_closest_node_index(self::Neuron, seedNode::NTuple{4,Float32})
         end 
     end
     @assert mergingNodeIndexInSegment > 0
-    @assert mergingNodeIndexInSegment < length(segmentList[mergingSegmentId])
-    mergingSegmentId, mergingNodeIndexInSegment 
+    @assert mergingNodeIndexInSegment <= length(segmentList[mergingSegmentId])
+    mergingSegmentId, mergingNodeIndexInSegment, distance  
 end 
 
+"""
+    find_merging_terminal_node_id(self::Neuron, seedNode2::NTuple{4, Float32}) 
+
+the distance was weighted according to angle θ: d' = d * tan(θ)
+this function has a nice property that shrinking the distance within 45 degrees  
+and enlarge it with angle greater than 45 degrees 
+"""
 function find_merging_terminal_node_id(self::Neuron, seedNode2::NTuple{4, Float32}) 
     # initialization 
     closestTerminalSegmentIndex1 = 0
-    closestDistance = typemax(Float32)
+    terminalNodeIndexInSegment1 = 0
+    weightedDistance = typemax(Float32)
 
     terminalSegmentIndexList1 = get_terminal_segment_index_list(self)
     segmentList1 = get_segment_list(self)
 
     for terminalSegmentIndex1 in terminalSegmentIndexList1 
         terminalSegment1 = segmentList1[terminalSegmentIndex1]
+        if length(terminalSegment1) > 1
+            terminalNode0 = terminalSegment1[end-1]
+        else 
+            parentSegmentIndex = get_parent_segment_index(self, terminalSegmentIndex1)
+            terminalNode0 = segmentList1[parentSegmentIndex][end]
+        end 
         terminalNode1 = terminalSegment1[end]
-        # euclidean distance 
-        distance = norm([map(-, terminalNode1[1:3], seedNode2[1:3])...])
-        if distance < closestDistance
-            closestDistance = distance
-            closestTerminalSegmentIndex1 = terminalSegmentIndex1
-        end
+
+        # get angle θ
+        a = [ [terminalNode1[1:3]...] .- [terminalNode0[1:3]...] ]
+        b = [ [seedNode2[1:3]...] .- [terminalNode1[1:3]...] ]
+        theta = acos(dot(a,b) / (norm(a)*norm(b)))
+        
+        # euclidean distance
+        if theta <= pi/2
+            physicalDistance = norm([map(-, terminalNode1[1:3], seedNode2[1:3])...])
+            distance = physicalDistance * tan(theta)
+            if distance < weightedDistance
+                weightedDistance = distance 
+                closestTerminalSegmentIndex1 = terminalSegmentIndex1
+            end
+        end 
     end
-    @assert closestDistance < typemax(Float32)
-    # the connecting node is always the terminal 
-    terminalNodeIndexInSegment1 = length( segmentList1[closestTerminalSegmentIndex1] )
-    return closestTerminalSegmentIndex1, terminalNodeIndexInSegment1, closestDistance  
+
+    if closestTerminalSegmentIndex1 > 0
+        terminalNodeIndexInSegment1 = length( segmentList1[closestTerminalSegmentIndex1] )
+    end 
+    return closestTerminalSegmentIndex1, terminalNodeIndexInSegment1, weightedDistance  
 end 
 
 """
@@ -1455,7 +1478,8 @@ end
 
 
 """
-    find_closest_node_index(segmentList::Vector{Segment}, nodes::Vector{NTuple{4,Float32}})
+    find_closest_node_index(neuron::Neuron, nodeNet::NodeNet, 
+                            collectedFlagVec)
 
 find the uncollected node which is closest to the segment list 
 """

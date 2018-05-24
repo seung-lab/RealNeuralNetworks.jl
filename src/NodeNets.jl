@@ -154,6 +154,7 @@ function NodeNet( points::Array{T,2}; dbf::DBF=DBFs.compute_DBF(points),
 
     conn = get_connectivity_matrix(edges)
     nodeList = Vector{NTuple{4,Float32}}()
+    sizehint!(nodeList, length(node_radii))
     for i in 1:length(node_radii)
         push!(nodeList, (map(Float32,nodes[i,:])..., node_radii[i]))
     end 
@@ -734,10 +735,11 @@ function consolidate_paths( path_list::Vector )
 
     for path in path_list
         path_length = length(path);
-        @assert path_length > 0
+        @assert path_length > 1
 
         for i in 1:(path_length-1)
-            push!( edges, (path[i],path[i+1]) );
+            @assert path[i] != path[i+1]
+            push!( edges, (path[i], path[i+1]) );
             push!( nodes, path[i] );
         end
         push!( nodes, path[path_length] );
