@@ -57,7 +57,7 @@ function Neuron(nodeNet::NodeNet)
         # for some spine like structures, they should connect to nearest node
         # rather than terminal point. 
         closestSegmentId1, closestNodeIndexInSegment1, closestDistance = 
-            find_closest_node_index(neuron, nodeNet[seedNodeId2])
+                                find_closest_node_index(neuron, nodeNet[seedNodeId2][1:3])
         if closestDistance < weightedTerminalDistance
             mergingSegmentId1 = closestSegmentId1 
             mergingNodeIndexInSegment1 = closestNodeIndexInSegment1 
@@ -646,6 +646,48 @@ function get_gyration_radius( self::Neuron;  nodeList = get_node_list(self),
 end 
 
 """
+    get_surface_area(self::Neuron)
+frustum-based 
+"""
+function get_surface_area(self::Neuron)
+    ret = zero(Float32) 
+    segmentList = get_segment_list(self) 
+    for (segmentIndex, segment) in enumerate(segmentList)
+        ret += Segments.get_surface_area(segment) 
+        parentSegmentIndex = get_parent_segment_index(self, segmentIndex)
+        if parentSegmentIndex  > 0
+            parentNode = segmentList[parentSegmentIndex][end]
+            ret += Segments.euclidean_distance(parentNode[1:3], segment[1][1:3])
+        end 
+    end 
+    ret 
+end
+
+"""
+    get_volume(self::Neuron)
+frustum based volume:
+http://jwilson.coe.uga.edu/emt725/Frustum/Frustum.cone.html
+"""
+function get_volume(self::Neuron)
+    ret = zero(Float32)
+    segmentList = get_segment_list(self)
+    for (segmentIndex, segment) in enumerate(segmentList)
+        ret += Segments.get_volume(segment)
+        parentSegmentIndex = get_parent_segment_index(
+                                        self, segmentIndex)
+        if parentSegmentIndex > 0
+            parentNode = segmentList[parentSegmentIndex][end]
+            node = segment[1]
+            r1 = node[4]
+            r2 = parentNode[4]
+            h = Segments.euclidean_distance(node[1:3], parentNode[1:3])
+            ret += pi * h * (r1*r1 + r1*r2 + r2*r2) / Float32(3)
+        end 
+    end
+    ret 
+end 
+
+"""
     get_fractal_dimension( self::Neuron )
 compute fractal dimension using cumulative-mass method.
 https://www.sciencedirect.com/science/article/pii/016502709400115W
@@ -1100,12 +1142,16 @@ function remove_hair( self::Neuron; radiiScale::Float32 = Float32(2),
     removeSegmentIndexList = Vector{Int}()
     for terminalSegmentIndex in get_terminal_segment_index_list(self)
         parentSegmentIndex = get_parent_segment_index(self, terminalSegmentIndex)
-        terminalNode = segmentList[ terminalSegmentIndex ][end]
-        parentNode = segmentList[ parentSegmentIndex ][end]
-        distance = Segments.get_nodes_distance(terminalNode, parentNode)
-        if distance < radiiScale*parentNode[4] || distance < minDistance
-            println("remove segment $(terminalSegmentIndex) with distance of $(distance) and radius of $(parentNode[4])")
-            push!(removeSegmentIndexList, terminalSegmentIndex)
+        if parentSegmentIndex > 0
+            # this is not a root segment
+            parentSegment =segmentList[parentSegmentIndex] 
+            parentNode = parentSegment[end]
+            terminalNode = segmentList[ terminalSegmentIndex ][end]
+            distance = Segments.get_nodes_distance(terminalNode, parentNode)
+            if distance < radiiScale*parentNode[4] || distance < minDistance
+                println("remove segment $(terminalSegmentIndex) with distance of $(distance) and radius of $(parentNode[4])")
+                push!(removeSegmentIndexList, terminalSegmentIndex)
+            end
         end 
     end 
     return remove_segments(self, removeSegmentIndexList)
@@ -1267,7 +1313,7 @@ end
 function attach_pre_synapse!(self::Neuron, synapse::Segments.Synapse)
     preSynapticCoordinate = Synapses.get_pre_synaptic_coordinate( synapse )
     segmentIndex, nodeIndexInSegment = find_closest_node_index( self, 
-                                                                    preSynapticCoordinate )
+                                                                preSynapticCoordinate )
     segmentList = get_segment_list(self)
     Segments.attach_pre_synapse!(segmentList[segmentIndex], nodeIndexInSegment, synapse) 
 end 
@@ -1354,7 +1400,7 @@ function resample(nodeList::Vector{NTuple{4,Float32}}, resampleDistance::Float32
     ret 
 end
 
-function find_closest_node_index(self::Neuron, seedNode::NTuple{4,Float32})
+function find_closest_node_index(self::Neuron, seedNode::NTuple{3,Float32})
     segmentList = get_segment_list(self)
     
     # initialization 

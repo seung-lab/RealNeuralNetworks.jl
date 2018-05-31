@@ -96,6 +96,12 @@ end
     #@time fractalDimension, _,_ = Neurons.get_fractal_dimension( neuron )
     #@show fractalDimension 
 
+    println("get surface area which is frustum based")
+    @show Neurons.get_surface_area(neuron)
+    
+    println("get frustum based volume")
+    @show Neurons.get_volume(neuron)
+
     println("get typical radius ...")
     @show Neurons.get_typical_radius( neuron )
 

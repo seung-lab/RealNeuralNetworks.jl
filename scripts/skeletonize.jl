@@ -75,8 +75,18 @@ function main()
                          segmentationLayer=args["segmentationlayer"]), idList)
     elseif args["sqsqueue"] != nothing 
         queueUrl = SQS.get_queue_url(QueueName=args["sqsqueue"])["QueueUrl"]
-        while true 
-            message = SQS.receive_message(QueueUrl=queueUrl)["messages"][1]
+        while true
+            println("try to pull task from SQS queue: $(args["sqsqueue"])")
+            local message 
+            try 
+                message = SQS.receive_message(QueueUrl=queueUrl)["messages"][1]
+            catch err 
+                warn("no task fetched, could be all done!")
+                println(err)
+                println("sleep for 30 secs and then retry")
+                sleep(30)
+                continue 
+            end 
             receiptHandle = message["ReceiptHandle"]
             id = parse(message["Body"])
             println("tracing cell: $(id)")
@@ -92,6 +102,7 @@ function main()
                     rethrow() 
                 end 
             end
+            println("delete task in queue: $(receiptHandle)")
             SQS.delete_message(QueueUrl=queueUrl, ReceiptHandle=receiptHandle)
         end 
     else 

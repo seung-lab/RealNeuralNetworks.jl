@@ -49,6 +49,11 @@ end
     BoundingBoxes.distance_from(self.boundingBox, point)
 end 
 
+
+@inline function euclidean_distance( n1::NTuple{3,Float32}, n2::NTuple{3,Float32})
+    norm([map((x,y)->x-y, n1, n2)...])  
+end 
+
 """
     get_path_length(self::Segment; nodeIndex::Int=length(self))
 accumulate the euclidean distance between neighboring nodes 
@@ -56,12 +61,44 @@ accumulate the euclidean distance between neighboring nodes
 @inline function get_path_length(self::Segment; nodeIndex::Int=length(self))
     ret = 0.0
     for i in 2:nodeIndex
-        ret += norm( [map((x,y)-> x-y, self[i][1:3], self[i-1][1:3] )...] )
+        ret += euclidean_distance(self[i][1:3], self[i-1][1:3])
     end
     ret
 end
 
 @inline function get_radius_list( self::Segment ) map(n->n[4], self) end 
+
+"""
+    get_surface_area(self::Segment)
+frustum-based: http://www.treestoolbox.org/manual/surf_tree.html 
+"""
+function get_surface_area(self::Segment) 
+    ret = zero(Float32)  
+    for i in 2:length(self) 
+        # average diameter 
+        averageD = self[i][4] + self[i-1][4] 
+        l = euclidean_distance(self[i][1:3], self[i-1][1:3])
+        ret += pi*averageD*sqrt(l*l + averageD*averageD)
+    end
+    @assert typeof(ret) == Float32
+    ret 
+end
+
+"""
+    get_volume(self::Segment)
+compute frustum-based volume 
+http://jwilson.coe.uga.edu/emt725/Frustum/Frustum.cone.html 
+"""
+function get_volume(self::Segment)
+    ret = zero(Float32) 
+    for i in 2:length(self)
+        r1 = self[i-1][4]
+        r2 = self[i][4]
+        h = euclidean_distance(self[i-1][1:3], self[i][1:3])
+        ret += pi * h * (r1*r1 + r1*r2 + r2*r2) / Float32(3)
+    end 
+    ret 
+end 
 
 """
     get_tail_head_radius_ratio( self::Segment )
