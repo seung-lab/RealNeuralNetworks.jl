@@ -97,34 +97,33 @@ end
     #@show fractalDimension 
 
     println("get surface area which is frustum based")
-    @show Neurons.get_surface_area(neuron)
+    @test Neurons.get_surface_area(neuron) > 0
     
     println("get frustum based volume")
-    @show Neurons.get_volume(neuron)
+    @test Neurons.get_volume(neuron) > 0
 
     println("get typical radius ...")
-    @show Neurons.get_typical_radius( neuron )
+    @test Neurons.get_typical_radius( neuron ) > 0
 
     println("get asymmetry ...")
-    @show Neurons.get_asymmetry( neuron )
+    @test Neurons.get_asymmetry( neuron ) > 0
  
     println("get mass center ...")
     @show Neurons.get_mass_center( neuron )
 
     println("get branching angle ...")
-    @time angle = Neurons.get_branching_angle( neuron, 5 )
+    @test Neurons.get_branching_angle( neuron, 5 ) > 0
 
     println("get path to root length ...")
-    @time path2RootLength = Neurons.get_path_to_soma_length( neuron, 5; nodeIndex=4 )
+    @test Neurons.get_path_to_soma_length( neuron, 5; nodeIndex=4 ) > 0
 
     println("sholl analysis ...")
     @time shollNumList = Neurons.get_sholl_number_list(neuron, 10000 )
+    @test !isempty(shollNumList)
 
     println("get segment path length list ...")
     @time segmentPathLengthList = Neurons.get_segment_path_length_list( neuron )
-    @show segmentPathLengthList
     @show length( segmentPathLengthList )
-    @show Neurons.get_num_segments( neuron ) 
     @test length( segmentPathLengthList ) == Neurons.get_num_segments(neuron)
 
     println("get terminal segment index list...")
@@ -145,10 +144,13 @@ end
     @time seg = FakeSegmentations.broken_cylinder()
     println("skeletonization to build a Neuron ...")
     @time neuron = Neuron(seg)
+    @test !isempty(Neurons.get_node_list(neuron))
     
     println("create fake ring segmentation ...")
     seg = FakeSegmentations.broken_ring()
     neuron = Neuron(seg)
+    @test !isempty(Neurons.get_node_list(neuron))
+    
     println("transform to SWC structure ...")
     @time swc = SWCs.SWC( neuron )
     tempFile = tempname() * ".swc"
