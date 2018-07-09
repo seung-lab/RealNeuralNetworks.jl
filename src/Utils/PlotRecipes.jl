@@ -6,8 +6,6 @@ using Plots
 import PyPlot
 PyPlot.svg(true)
 
-@everywhere const VOXEL_SIZE = (400,400,400)
-@everywhere const GAUSSIAN_FILTER_STD = 8.0
 
 function plot_synapse_distributions( cellList;  
         synapseDistribution = map(get_synapse_to_soma_path_length_lists, cellList),

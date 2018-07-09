@@ -11,6 +11,14 @@ using .Common
 @everywhere using RealNeuralNetworks.SWCs
 @everywhere using RealNeuralNetworks.Neurons
 
+
+if !haskey(ENV, "AWS_ACCESS_KEY_ID") && isfile("/secrets/aws-secret.json")
+    d = JSON.parsefile("/secrets/aws-secret.json")
+    for (k,v) in d
+        ENV[k] = v
+    end 
+end 
+
 @everywhere function trace(cellId::Integer; swcDir      ::AbstractString = "/tmp/", 
                                 mip         ::Integer        = MIP, 
                                 meshName    ::String = "mesh_mip_$MIP",

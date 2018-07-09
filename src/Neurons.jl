@@ -800,7 +800,8 @@ function get_arbor_density_map(self::Neuron, voxelSize::Union{Tuple, Vector},
                                             gaussianFilterStd::AbstractFloat)
     densityMap = get_mask(self, voxelSize)
     # gaussion convolution
-    kernel = fill(gaussianFilterStd, 3) |> Kernel.gaussian
+    kernel = Kernel.gaussian((3,3,3))
+    # kernel = fill(gaussianFilterStd, 3) |> Kernel.gaussian
     println("convolution of gaussian kernel...")
     @time densityMap = imfilter(densityMap, kernel)
     # normalize by total path length of the neuron
@@ -1129,7 +1130,7 @@ function remove_subtree_in_soma( self::Neuron )
         terminalNodeList = get_terminal_node_list( self; startSegmentIndex=segmentIndex )
         if all( map(n->Segments.get_nodes_distance(n, rootNode) < rootNode[4]*2, 
                                                                 terminalNodeList ) )
-            println("remove segment: $segmentIndex")
+            # println("remove segment: $segmentIndex")
             push!(removeSegmentIndexList, segmentIndex)
         end 
     end
@@ -1149,7 +1150,7 @@ function remove_hair( self::Neuron; radiiScale::Float32 = Float32(2),
             terminalNode = segmentList[ terminalSegmentIndex ][end]
             distance = Segments.get_nodes_distance(terminalNode, parentNode)
             if distance < radiiScale*parentNode[4] || distance < minDistance
-                println("remove segment $(terminalSegmentIndex) with distance of $(distance) and radius of $(parentNode[4])")
+                # println("remove segment $(terminalSegmentIndex) with distance of $(distance) and radius of $(parentNode[4])")
                 push!(removeSegmentIndexList, terminalSegmentIndex)
             end
         end 
@@ -1177,7 +1178,7 @@ function remove_terminal_blobs( self::Neuron )
         end 
         segmentInnerPathLength = Segments.get_path_length( segment )
         if distance2Parent > segmentInnerPathLength
-            println("remove terminal blob. distance to parent: $(distance2Parent). segment inner path length: $(segmentInnerPathLength).")
+            # println("remove terminal blob. distance to parent: $(distance2Parent). segment inner path length: $(segmentInnerPathLength).")
             push!(blobTerminalSegmentIndexList, index)
         end 
     end 
@@ -1347,7 +1348,7 @@ function downsample_nodes(self::Neuron; nodeNumStep::Int=DOWNSAMPLE_NODE_NUM_STE
 end
 
 """
-    resample!( self::Neuron, resampleDistance::Float32 )
+    resample( self::Neuron, resampleDistance::Float32 )
 resampling the segments by a fixed point distance 
 """
 function resample(self::Neuron, resampleDistance::Float32)

@@ -72,8 +72,8 @@ end
 
 """
 function to_voxel_space(self::BoundingBox, voxelSize::Union{Tuple, Vector})
-    minCorner = map(/, self.minCorner, voxelSize)
-    maxCorner = map(/, self.maxCorner, voxelSize)
+    minCorner = map(fld, self.minCorner, voxelSize)
+    maxCorner = map(cld, self.maxCorner, voxelSize)
     BoundingBox(minCorner, maxCorner)
 end 
 
