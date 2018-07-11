@@ -46,6 +46,7 @@ function Manifest( ranges::Vector, ba::BigArray{D,T,N,C} ) where {D,T,N,C}
     obj_id = convert(T, obj_id)
     ranges = map(x-> split(x,":")[end], ranges)
     rangeList = map( BigArrays.Indexes.string2unit_range, ranges )
+    @show rangeList 
     Manifest( ba, obj_id, rangeList )
 end
 

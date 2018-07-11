@@ -21,8 +21,8 @@ RUN julia -e 'Pkg.add("Query")'
 # https://github.com/JuliaMath/FFTW.jl/issues/45
 RUN julia -e 'Pkg.add("FFTW")'
 RUN julia -e 'Pkg.clone("https://github.com/jingpengw/AWSCore.jl.git")'
-RUN julia -e 'Pkg.clone("https://github.com/JuliaCloud/AWSSDK.jl.git")'
-RUN julia -e 'Pkg.clone("https://github.com/samoconnor/AWSS3.jl.git")'
+RUN julia -e 'Pkg.clone("https://github.com/jingpengw/AWSSDK.jl.git")'
+RUN julia -e 'Pkg.clone("https://github.com/jingpengw/AWSS3.jl.git")'
 RUN julia -e 'Pkg.clone("https://github.com/seung-lab/EMIRT.jl.git")'
 RUN julia -e 'Pkg.clone("https://github.com/seung-lab/BigArrays.jl.git")'
 
