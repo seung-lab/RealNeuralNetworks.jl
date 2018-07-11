@@ -1,4 +1,4 @@
-FROM julia:0.6.1
+FROM julia:0.6
 LABEL   maintainer="Jingpeng Wu <jingpeng@princeton.edu>" \
         function="skeletonization"
 
