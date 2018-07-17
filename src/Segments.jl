@@ -7,12 +7,12 @@ using .Synapses
 const Node = NTuple{4,Float32}
 const SynapseList = SparseVector{Synapse, Int}
 
-const CLASS = zero(UInt8)
-
 export Segment 
 mutable struct Segment 
     # list of tuple (x,y,z,r)
     nodeList        ::Vector{Node}
+    # the class is consistent with swc node type 
+    # 0->undefined, 1->soma, 2->axon, 3->dendrite 
     class           ::UInt8
     boundingBox     ::BoundingBox
     preSynapseList  ::SynapseList 
@@ -20,7 +20,7 @@ mutable struct Segment
 end 
 
 function Segment(nodeList::Vector{Node}; 
-                 class::UInt8=CLASS, boundingBox=BoundingBox(nodeList),
+                 class::UInt8=zero(UInt8), boundingBox=BoundingBox(nodeList),
                  preSynapseList::SynapseList  = spzeros(Synapse, length(nodeList)),
                  postSynapseList::SynapseList = spzeros(Synapse, length(nodeList)))
     Segment(nodeList, class, boundingBox, preSynapseList, postSynapseList)
@@ -55,12 +55,12 @@ end
 end 
 
 """
-    get_path_length(self::Segment; nodeIndex::Int=length(self))
+    get_path_length(self::Segment; nodeId::Int=length(self))
 accumulate the euclidean distance between neighboring nodes 
 """
-@inline function get_path_length(self::Segment; nodeIndex::Int=length(self))
+@inline function get_path_length(self::Segment; nodeId::Int=length(self))
     ret = 0.0
-    for i in 2:nodeIndex
+    for i in 2:nodeId
         ret += euclidean_distance(self[i][1:3], self[i-1][1:3])
     end
     ret
@@ -232,12 +232,22 @@ end
 
 ################## manipulation ###############################
 
-function attach_pre_synapse!(self::Segment, nodeIndex::Int, synapse::Synapse)
-    self.preSynapseList[ nodeIndex ] = synapse 
+@inline function attach_pre_synapse!(self::Segment, nodeId::Int, synapse::Synapse)
+    self.preSynapseList[ nodeId ] = synapse 
 end 
 
-function attach_post_synapse!(self::Segment, nodeIndex::Int, synapse::Synapse)
-    self.postSynapseList[ nodeIndex ] = synapse
+@inline function attach_post_synapse!(self::Segment, nodeId::Int, synapse::Synapse)
+    self.postSynapseList[ nodeId ] = synapse
+end 
+
+function adjust_class!(self::Segment)
+    if nnz(self.preSynapseList) > nnz(self.postSynapseList)
+        # mostly presynapses, so this is an axon 
+        self.class = 2 
+    elseif nnz(self.preSynapseList) < nnz(self.postSynapseList) 
+        # mostly postsynapses, so this is a dendrite 
+        self.class = 3  
+    end 
 end 
 
 function add_offset(self::Segment, offset::Union{Tuple, Vector})
@@ -250,10 +260,10 @@ function add_offset(self::Segment, offset::Union{Tuple, Vector})
     Segment(nodeList, self.class, self.boundingBox)    
 end 
 
-function remove_node(self::Segment, removeNodeIndex::Integer)
+function remove_node(self::Segment, removeNodeId::Integer)
     newNodeList = Vector{NTuple{4, Float32}}()
     for (index,node) in enumerate(get_node_list(self))
-        if index != removeNodeIndex 
+        if index != removeNodeId 
             push!(newNodeList, node)
         end 
     end 

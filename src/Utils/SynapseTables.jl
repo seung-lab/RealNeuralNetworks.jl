@@ -15,48 +15,46 @@ function preprocessing!(self::SynapseTable, voxelSize::NTuple{3,Int})
 		end
     end
     
-    DataFrames.rename!(self, [  :COM_x => :psd_x, 
-                                :COM_y => :psd_y,
-                                :COM_z => :psd_z,
-                                :presyn_seg     => :presyn_segid,
-                                :postsyn_seg    => :postsyn_segid])
+    DataFrames.rename!(self, [  :centroid_x => :psd_x, 
+                                :centroid_y => :psd_y,
+                                :centroid_z => :psd_z])
 
     # transform to physical coordinate
-    self[:BBOX_bx] .*= voxelSize[1]
-    self[:BBOX_by] .*= voxelSize[2]
-    self[:BBOX_bz] .*= voxelSize[3]
-    self[:BBOX_ex] .*= voxelSize[1]
-    self[:BBOX_ey] .*= voxelSize[2]
-    self[:BBOX_ez] .*= voxelSize[3]
-    self[:psd_x]   .*= voxelSize[1]
-    self[:psd_y]   .*= voxelSize[2]
-    self[:psd_z]   .*= voxelSize[3]
-    self[:presyn_x].*= voxelSize[1]
-    self[:presyn_y].*= voxelSize[2]
-    self[:presyn_z].*= voxelSize[3]
-    self[:postsyn_x].*= voxelSize[1]
-    self[:postsyn_y].*= voxelSize[2]
-    self[:postsyn_z].*= voxelSize[3]
+    self[:BBOX_bx]      .*= voxelSize[1]
+    self[:BBOX_by]      .*= voxelSize[2]
+    self[:BBOX_bz]      .*= voxelSize[3]
+    self[:BBOX_ex]      .*= voxelSize[1]
+    self[:BBOX_ey]      .*= voxelSize[2]
+    self[:BBOX_ez]      .*= voxelSize[3]
+    self[:psd_x]        .*= voxelSize[1]
+    self[:psd_y]        .*= voxelSize[2]
+    self[:psd_z]        .*= voxelSize[3]
+    self[:presyn_x]     .*= voxelSize[1]
+    self[:presyn_y]     .*= voxelSize[2]
+    self[:presyn_z]     .*= voxelSize[3]
+    self[:postsyn_x]    .*= voxelSize[1]
+    self[:postsyn_y]    .*= voxelSize[2]
+    self[:postsyn_z]    .*= voxelSize[3]
 	nothing
 end
 
 function postprocessing!(self::SynapseTable, voxelSize::NTuple{3,Int})
-    # transform to physical coordinate
-    self[:BBOX_bx] ./= voxelSize[1]
-    self[:BBOX_by] ./= voxelSize[2]
-    self[:BBOX_bz] ./= voxelSize[3]
-    self[:BBOX_ex] ./= voxelSize[1]
-    self[:BBOX_ey] ./= voxelSize[2]
-    self[:BBOX_ez] ./= voxelSize[3]
-    self[:psd_x]   ./= voxelSize[1]
-    self[:psd_y]   ./= voxelSize[2]
-    self[:psd_z]   ./= voxelSize[3]
-    self[:presyn_x]./= voxelSize[1]
-    self[:presyn_y]./= voxelSize[2]
-    self[:presyn_z]./= voxelSize[3]
-    self[:postsyn_x]./= voxelSize[1]
-    self[:postsyn_y]./= voxelSize[2]
-    self[:postsyn_z]./= voxelSize[3]
+    # transform to voxel coordinate
+    self[:BBOX_bx]      ./= voxelSize[1]
+    self[:BBOX_by]      ./= voxelSize[2]
+    self[:BBOX_bz]      ./= voxelSize[3]
+    self[:BBOX_ex]      ./= voxelSize[1]
+    self[:BBOX_ey]      ./= voxelSize[2]
+    self[:BBOX_ez]      ./= voxelSize[3]
+    self[:psd_x]        ./= voxelSize[1]
+    self[:psd_y]        ./= voxelSize[2]
+    self[:psd_z]        ./= voxelSize[3]
+    self[:presyn_x]     ./= voxelSize[1]
+    self[:presyn_y]     ./= voxelSize[2]
+    self[:presyn_z]     ./= voxelSize[3]
+    self[:postsyn_x]    ./= voxelSize[1]
+    self[:postsyn_y]    ./= voxelSize[2]
+    self[:postsyn_z]    ./= voxelSize[3]
 end 
 
 function get_coordinate_array(self::SynapseTable, prefix::String)

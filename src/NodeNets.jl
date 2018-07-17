@@ -92,18 +92,18 @@ function NodeNet( points::Array{T,2}; dbf::DBF=DBFs.compute_DBF(points),
     println("build dbf weights from penalty function ...")
     @time dbf_weights = penalty_fn( weights, dbf, G )
 
-  #init
-  #nonzeros SHOULD remove duplicates, but it doesn't so
-  # I have to do something a bit more complicated
-  _,nonzero_vals = findnz(volumeIndex2NodeId);
-  disconnectedNodeIdSet = IntSet( nonzero_vals );
-  pathList = Vector(); # holds vector of nodeNet paths
-  destinationNodeIdList = Vector{Int}(); #host dest node for each path
-  # set of nodes for which we've "inspected" already
-  # removing their neighbors based on DBF
-  inspectedNodeIdList = Set{Int}();
+    #init
+    #nonzeros SHOULD remove duplicates, but it doesn't so
+    # I have to do something a bit more complicated
+    _,nonzero_vals = findnz(volumeIndex2NodeId);
+    disconnectedNodeIdSet = IntSet( nonzero_vals );
+    pathList = Vector(); # holds vector of nodeNet paths
+    destinationNodeIdList = Vector{Int}(); #host dest node for each path
+    # set of nodes for which we've "inspected" already
+    # removing their neighbors based on DBF
+    inspectedNodeIdList = Set{Int}();
 
-  println("Finding paths")
+    println("Finding paths")
     while length(disconnectedNodeIdSet) > 0
         rootNodeId = find_new_root_node_id( dbf, disconnectedNodeIdSet );
         @assert rootNodeId in disconnectedNodeIdSet 
@@ -123,32 +123,31 @@ function NodeNet( points::Array{T,2}; dbf::DBF=DBFs.compute_DBF(points),
 
         while length(reachableNodeIdList) > 0
 
-          #find the node farthest away from the root
-          # by euc distance
-          _, farthestNodeIndex = findmax( dsp_euclidean.dists[[reachableNodeIdList...]] );
-          farthestNodeId = reachableNodeIdList[farthestNodeIndex];
-          push!(destinationNodeIdList, farthestNodeId);
-          println("dest node index: $(farthestNodeId)")
+            #find the node farthest away from the root
+            # by euc distance
+            _, farthestNodeIndex = findmax( dsp_euclidean.dists[[reachableNodeIdList...]] );
+            farthestNodeId = reachableNodeIdList[farthestNodeIndex];
+            push!(destinationNodeIdList, farthestNodeId);
+            println("dest node index: $(farthestNodeId)")
 
-          if farthestNodeId == rootNodeId break end #this can happen apparently
+            if farthestNodeId == rootNodeId break end #this can happen apparently
 
-          new_path = LightGraphs.enumerate_paths( dsp_dbf, farthestNodeId );
+            new_path = LightGraphs.enumerate_paths( dsp_dbf, farthestNodeId );
 
-          push!(pathList, new_path)
-          #can't do this in-place with arrays
-          #this fn call is getting ridiculous
-          @time reachableNodeIdList = remove_path_from_rns!( reachableNodeIdList, 
+            push!(pathList, new_path)
+            #can't do this in-place with arrays
+            #this fn call is getting ridiculous
+            @time reachableNodeIdList = remove_path_from_rns!( reachableNodeIdList, 
                                                         new_path, points, volumeIndex2NodeId,
                                                         dbf, max_dims_arr,
                                                         inspectedNodeIdList );
-
         end #while reachable nodes from root
     end #while disconnected nodes
 
-  println("Consolidating Paths")
-  path_nodes, path_edges = consolidate_paths( pathList );
-  node_radii = dbf[path_nodes];
-  
+    println("Consolidating Paths")
+    path_nodes, path_edges = consolidate_paths( pathList );
+    node_radii = dbf[path_nodes];
+
     # build a new graph containing only the nodeNet nodes and edges
     nodes, edges = distill!(points, path_nodes, path_edges)
 
@@ -745,7 +744,7 @@ function consolidate_paths( path_list::Vector )
         push!( nodes, path[path_length] );
     end
 
-  collect(nodes), collect(edges)
+    collect(nodes), collect(edges)
 end
 
 """

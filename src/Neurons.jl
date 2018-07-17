@@ -11,12 +11,8 @@ using DataFrames
 using .Segments.Synapses 
 
 
-const ONE_UINT32 = UInt32(1)
-const ZERO_FLOAT32 = Float32(0)
-const EXPANSION = (ONE_UINT32, ONE_UINT32, ONE_UINT32)
-const VOXEL_SIZE = (1000, 1000, 1000)
-
-const DOWNSAMPLE_NODE_NUM_STEP = 24
+const EXPANSION = (one(UInt32), one(UInt32), one(UInt32))
+const VOXEL_SIZE = (500, 500, 500)
 
 export Neuron
 
@@ -40,10 +36,10 @@ function Neuron(nodeNet::NodeNet)
     nodesConnectivityMatrix  = NodeNets.get_connectivity_matrix(nodeNet)
     # locate the root node with largest radius
     # theoritically this should be the center of soma 
-    _, rootNodeIndex = findmax(radii)
-    seedNodeIndexList::Vector = [rootNodeIndex]
+    _, rootNodeId = findmax(radii)
+    seedNodeIdList::Vector = [rootNodeId]
     # grow the main net
-    neuron = Neuron!(rootNodeIndex, nodeNet, collectedFlagVec)
+    neuron = Neuron!(rootNodeId, nodeNet, collectedFlagVec)
     #return neuron # only use the main segment for evaluation
 
     while !all(collectedFlagVec)
@@ -52,38 +48,38 @@ function Neuron(nodeNet::NodeNet)
         # terminal node should have high priority than normal nodes. 
         seedNodeId2 = find_seed_node_id(neuron, nodeNet, collectedFlagVec)
 
-        mergingSegmentId1, mergingNodeIndexInSegment1, weightedTerminalDistance = 
+        mergingSegmentId1, mergingNodeIdInSegment1, weightedTerminalDistance = 
             find_merging_terminal_node_id(neuron, nodeNet[seedNodeId2])
         # for some spine like structures, they should connect to nearest node
         # rather than terminal point. 
-        closestSegmentId1, closestNodeIndexInSegment1, closestDistance = 
-                                find_closest_node_index(neuron, nodeNet[seedNodeId2][1:3])
+        closestSegmentId1, closestNodeIdInSegment1, closestDistance = 
+                                find_closest_node_id(neuron, nodeNet[seedNodeId2][1:3])
         if closestDistance < weightedTerminalDistance
             mergingSegmentId1 = closestSegmentId1 
-            mergingNodeIndexInSegment1 = closestNodeIndexInSegment1 
+            mergingNodeIdInSegment1 = closestNodeIdInSegment1 
         end 
 
         # grow a new net from seed, and mark the collected nodes 
         subnet = Neuron!(seedNodeId2, nodeNet, collectedFlagVec) 
         # merge the subnet to main net 
         neuron = merge( neuron, subnet, 
-                        mergingSegmentId1, mergingNodeIndexInSegment1)
+                        mergingSegmentId1, mergingNodeIdInSegment1)
     end 
     neuron     
 end 
 
 """
-    Neuron!(seedNodeIndex::Integer, nodeNet::NodeNet, collectedFlagVec::Vector{Bool})
+    Neuron!(seedNodeId::Integer, nodeNet::NodeNet, collectedFlagVec::Vector{Bool})
 
 build a net from a seed node using connected component
 mark the nodes in this new net as collected, so the collectedFlagVec was changed.
 """
-function Neuron!(seedNodeIndex::Integer, nodeNet::NodeNet, 
+function Neuron!(seedNodeId::Integer, nodeNet::NodeNet, 
                                             collectedFlagVec::Vector{Bool})
     # initialization
     segmentList = Vector{Segment}()
-    parentSegmentIndexList = Vector{Int}()
-    childSegmentIndexList  = Vector{Int}()
+    parentSegmentIdList = Vector{Int}()
+    childSegmentIdList  = Vector{Int}()
 
     nodes = NodeNets.get_node_list(nodeNet)
     nodesConnectivityMatrix = NodeNets.get_connectivity_matrix( nodeNet )
@@ -91,54 +87,54 @@ function Neuron!(seedNodeIndex::Integer, nodeNet::NodeNet,
     # the seed of segment should record both seed node index 
     # and the the parent segment index
     # the parent segment index of root segment is -1 
-    segmentSeedList = [(seedNodeIndex, -1)]
+    segmentSeedList = [(seedNodeId, -1)]
     # depth first search
     while !isempty(segmentSeedList)
-        seedNodeIndex, segmentParentIndex = pop!(segmentSeedList)
+        seedNodeId, segmentParentId = pop!(segmentSeedList)
         # grow a segment from seed
         nodeListInSegment = Vector{NTuple{4, Float32}}()
-        seedNodeIndexList = [seedNodeIndex]
+        seedNodeIdList = [seedNodeId]
         while true
             # construct this segment
-            seedNodeIndex = pop!(seedNodeIndexList)
+            seedNodeId = pop!(seedNodeIdList)
             # push the seed node
-            push!(nodeListInSegment, nodes[seedNodeIndex])
+            push!(nodeListInSegment, nodes[seedNodeId])
             # label this node index as collected
-            collectedFlagVec[ seedNodeIndex ] = true 
+            collectedFlagVec[ seedNodeId ] = true 
 
             # find the connected nodes
-            connectedNodeIndexList,_ = findnz(nodesConnectivityMatrix[:, seedNodeIndex])
+            connectedNodeIdList,_ = findnz(nodesConnectivityMatrix[:, seedNodeId])
             # exclude the collected nodes
-            connectedNodeIndexList = connectedNodeIndexList[ .!collectedFlagVec[connectedNodeIndexList] ] 
+            connectedNodeIdList = connectedNodeIdList[ .!collectedFlagVec[connectedNodeIdList] ] 
 
-            if length(connectedNodeIndexList) == 1
+            if length(connectedNodeIdList) == 1
                 # belong to the same segment
-                push!(nodeListInSegment, nodes[ connectedNodeIndexList[1] ])
-                push!(seedNodeIndexList, connectedNodeIndexList[1])
+                push!(nodeListInSegment, nodes[ connectedNodeIdList[1] ])
+                push!(seedNodeIdList, connectedNodeIdList[1])
             else
                 # terminal branching point or multiple branching points
                 # finish constructing this segment
                 segment = Segment(nodeListInSegment)
                 push!(segmentList, segment)
-                if segmentParentIndex != -1
+                if segmentParentId != -1
                     # this is not the root segment, establish the segment connection
-                    push!(parentSegmentIndexList, segmentParentIndex)
-                    push!(childSegmentIndexList,  length(segmentList))
+                    push!(parentSegmentIdList, segmentParentId)
+                    push!(childSegmentIdList,  length(segmentList))
                 end 
                 # seed new segments
                 # if this is terminal segment, no seed will be pushed
-                for index in connectedNodeIndexList 
+                for index in connectedNodeIdList 
                     push!(segmentSeedList, (index, length(segmentList)))
                 end 
                 break
             end 
         end 
     end
-    @assert length(parentSegmentIndexList) == length(childSegmentIndexList)
+    @assert length(parentSegmentIdList) == length(childSegmentIdList)
     # note that the connectivity matrix should be a square matrix for easier use
     connectivityMatrix = spzeros(Bool, length(segmentList), length(segmentList))
-    tempConnectivityMatrix = sparse(parentSegmentIndexList, childSegmentIndexList, 
-                                ones(Bool,length(childSegmentIndexList)))
+    tempConnectivityMatrix = sparse(parentSegmentIdList, childSegmentIdList, 
+                                ones(Bool,length(childSegmentIdList)))
     connectivityMatrix[1:size(tempConnectivityMatrix,1), 
                        1:size(tempConnectivityMatrix,2)] = tempConnectivityMatrix
     for segment in segmentList 
@@ -191,13 +187,13 @@ end
 ####################### properties ##############
 
 """
-    get_root_segment_index( self::Neuron )
+    get_root_segment_id( self::Neuron )
 
 the first segment should be the root segment, and the first node should be the root node 
 """
-function get_root_segment_index(self::Neuron) 1 end 
+function get_root_segment_id(self::Neuron) 1 end 
 function get_root_segment(self::Neuron) 
-    get_segment_list(self)[get_root_segment_index(self)]
+    get_segment_list(self)[get_root_segment_id(self)]
 end 
 
 """
@@ -205,8 +201,8 @@ end
 the returned root node is a tuple of Float64, which represents x,y,z,r
 """
 function get_root_node( self::Neuron ) 
-    rootSegmentIndex = get_root_segment_index(self)
-    rootSegment = get_segment_list(self)[ rootSegmentIndex ]
+    rootSegmentId = get_root_segment_id(self)
+    rootSegment = get_segment_list(self)[ rootSegmentId ]
     rootSegment[1]
 end 
 
@@ -221,8 +217,8 @@ function get_num_segments(self::Neuron) length(self.segmentList) end
 function get_num_branching_points(self::Neuron)
     numSegmentingPoint = 0
     for index in 1:get_num_segments(self)
-        childrenSegmentIndexList = get_children_segment_index_list(self, index)
-        if length(childrenSegmentIndexList) > 0
+        childrenSegmentIdList = get_children_segment_id_list(self, index)
+        if length(childrenSegmentIdList) > 0
             numSegmentingPoint += 1
         end 
     end 
@@ -242,13 +238,13 @@ function get_segment_order_list(self::Neuron)
     
     index2order = Dict{Int,Int}()
     # the first one is segment index, the second one is segment order 
-    seedSegmentIndexOrderList = Vector{NTuple{2,Int}}([(1,1)])
-    while !isempty( seedSegmentIndexOrderList )
-        segmentIndex, segmentOrder = pop!(seedSegmentIndexOrderList)
-        index2order[segmentIndex] = segmentOrder 
-        childrenSegmentIndexList = get_children_segment_index_list(self, segmentIndex)
-        for childSegmentIndex in childrenSegmentIndexList 
-            push!(seedSegmentIndexOrderList, (childSegmentIndex, segmentOrder+1))
+    seedSegmentIdOrderList = Vector{NTuple{2,Int}}([(1,1)])
+    while !isempty( seedSegmentIdOrderList )
+        segmentId, segmentOrder = pop!(seedSegmentIdOrderList)
+        index2order[segmentId] = segmentOrder 
+        childrenSegmentIdList = get_children_segment_id_list(self, segmentId)
+        for childSegmentId in childrenSegmentIdList 
+            push!(seedSegmentIdOrderList, (childSegmentId, segmentOrder+1))
         end 
     end 
     
@@ -292,50 +288,50 @@ get the edges with type of Vector{NTuple{2, Int}}
 """
 function get_edge_list( self::Neuron )
     edgeList = Vector{NTuple{2,Int}}()
-    segmentStartNodeIndexList = Vector{Int}()
-    segmentStopNodeIndexList = Vector{Int}()
+    segmentStartNodeIdList = Vector{Int}()
+    segmentStopNodeIdList = Vector{Int}()
     # total number of nodes
     nodeNum = 0
-    for (segmentIndex, segment) in enumerate(get_segment_list(self))
-        push!(segmentStartNodeIndexList, nodeNum+1)
+    for (segmentId, segment) in enumerate(get_segment_list(self))
+        push!(segmentStartNodeIdList, nodeNum+1)
         # build the edges inside segment
-        for nodeIndex in nodeNum+1:nodeNum+length(segment)-1
-            push!(edgeList, (nodeIndex, nodeIndex+1))
+        for nodeId in nodeNum+1:nodeNum+length(segment)-1
+            push!(edgeList, (nodeId, nodeId+1))
         end 
         # update node number
         nodeNum += length(segment)
-        push!(segmentStopNodeIndexList,  nodeNum)
+        push!(segmentStopNodeIdList,  nodeNum)
     end 
     # add segment connections
-    parentSegmentIndexList, childSegmentIndexList, _ = findnz( get_connectivity_matrix(self) )
-    for (index, parentSegmentIndex) in enumerate( parentSegmentIndexList )
-        childSegmentIndex = childSegmentIndexList[ index ]
-        parentNodeIndex = segmentStopNodeIndexList[ parentSegmentIndex ]
-        childNodeIndex  = segmentStartNodeIndexList[ childSegmentIndex ]
-        push!( edgeList, (parentNodeIndex, childNodeIndex) )
+    parentSegmentIdList, childSegmentIdList, _ = findnz( get_connectivity_matrix(self) )
+    for (index, parentSegmentId) in enumerate( parentSegmentIdList )
+        childSegmentId = childSegmentIdList[ index ]
+        parentNodeId = segmentStopNodeIdList[ parentSegmentId ]
+        childNodeId  = segmentStartNodeIdList[ childSegmentId ]
+        push!( edgeList, (parentNodeId, childNodeId) )
     end 
     edgeList 
 end 
 
 function get_path_to_soma_length(self::Neuron, synapse::Synapse)
-    mergingSegmentId, closestNodeIndex = find_closest_node_index( self, synapse )
-    get_path_to_soma_length( self, mergingSegmentId; nodeIndex=closestNodeIndex )
+    mergingSegmentId, closestNodeId = find_closest_node_id( self, synapse )
+    get_path_to_soma_length( self, mergingSegmentId; nodeId=closestNodeId )
 end 
 
-function get_path_to_soma_length(self::Neuron, segmentIndex::Integer; 
+function get_path_to_soma_length(self::Neuron, segmentId::Integer; 
                         segmentList::Vector{Segment}=get_segment_list(self), 
-                        nodeIndex::Int = length(segmentList[segmentIndex]), 
+                        nodeId::Int = length(segmentList[segmentId]), 
                         segmentPathLengthList::Vector = get_segment_path_length_list(self))
-    path2RootLength = Segments.get_path_length( segmentList[segmentIndex]; 
-                                                        nodeIndex=nodeIndex )
+    path2RootLength = Segments.get_path_length( segmentList[segmentId]; 
+                                                        nodeId=nodeId )
     while true 
-        parentSegmentIndex = get_parent_segment_index(self, segmentIndex )
-        if parentSegmentIndex < 1 
+        parentSegmentId = get_parent_segment_id(self, segmentId )
+        if parentSegmentId < 1 
             # root segment do not have parent 
             break 
         else
-            path2RootLength += segmentPathLengthList[ parentSegmentIndex ]
-            segmentIndex = parentSegmentIndex 
+            path2RootLength += segmentPathLengthList[ parentSegmentId ]
+            segmentId = parentSegmentId 
         end 
     end
     path2RootLength 
@@ -345,13 +341,13 @@ function get_pre_synapse_to_soma_path_length_list(self::Neuron;
                         segmentList::Vector=get_segment_list(self),
                         segmentPathLengthList::Vector=get_segment_path_length_list(self))
     preSynapseToSomaPathLengthList = Vector{Float32}()
-    for (segmentIndex, segment) in enumerate( segmentList )
+    for (segmentId, segment) in enumerate( segmentList )
         preSynapseList = Segments.get_pre_synapse_list( segment )
-        nodeIndexList, _ = findnz( preSynapseList )
-        pathToSomaLengthList = map(nodeIndex->get_path_to_soma_length(self, segmentIndex; 
+        nodeIdList, _ = findnz( preSynapseList )
+        pathToSomaLengthList = map(nodeId->get_path_to_soma_length(self, segmentId; 
                                     segmentList=segmentList,
                                     segmentPathLengthList=segmentPathLengthList,
-                                    nodeIndex=nodeIndex), nodeIndexList)
+                                    nodeId=nodeId), nodeIdList)
         append!(preSynapseToSomaPathLengthList, pathToSomaLengthList)
     end
     preSynapseToSomaPathLengthList 
@@ -361,13 +357,13 @@ function get_post_synapse_to_soma_path_length_list(self::Neuron;
                         segmentList::Vector=get_segment_list(self),
                         segmentPathLengthList::Vector=get_segment_path_length_list(self))
     postSynapseToSomaPathLengthList = Vector{Float32}()
-    for (segmentIndex, segment) in enumerate( segmentList )
+    for (segmentId, segment) in enumerate( segmentList )
         postSynapseList = Segments.get_post_synapse_list( segment )
-        nodeIndexList, _ = findnz( postSynapseList )
-        pathToSomaLengthList = map(nodeIndex->get_path_to_soma_length(self, segmentIndex; 
+        nodeIdList, _ = findnz( postSynapseList )
+        pathToSomaLengthList = map(nodeId->get_path_to_soma_length(self, segmentId; 
                                     segmentList=segmentList,
                                     segmentPathLengthList=segmentPathLengthList,
-                                    nodeIndex=nodeIndex), nodeIndexList)
+                                    nodeId=nodeId), nodeIdList)
         append!(postSynapseToSomaPathLengthList, pathToSomaLengthList)
     end
     postSynapseToSomaPathLengthList 
@@ -383,9 +379,9 @@ function get_segment_path_length_list( self::Neuron; segmentList = get_segment_l
     for (index, segment) in enumerate( segmentList )
         segmentPathLength = Segments.get_path_length( segment )
         # add the edge length to parent node
-        parentSegmentIndex = get_parent_segment_index(self, index)
-        if parentSegmentIndex > 0
-            parentSegment = segmentList[ parentSegmentIndex ]
+        parentSegmentId = get_parent_segment_id(self, index)
+        if parentSegmentId > 0
+            parentSegment = segmentList[ parentSegmentId ]
             parentNode = parentSegment[ end ]
             node = segment[1]
             segmentPathLength += norm( [map((x,y)->x-y, node[1:3], parentNode[1:3])...] )
@@ -412,11 +408,11 @@ function get_total_path_length(self::Neuron)
 end 
 
 """
-    get_segment_end_node_index_list( self::Neuron )
+    get_segment_end_node_id_list( self::Neuron )
 
 get a vector of integer, which represent the node index of segment end 
 """
-function get_segment_end_node_index_list( self::Neuron ) cumsum( get_segment_length_list(self) ) end 
+function get_segment_end_node_id_list( self::Neuron ) cumsum( get_segment_length_list(self) ) end 
 
 """
     get_num_nodes(self::Neuron)
@@ -465,74 +461,80 @@ function get_asymmetry( self::Neuron )
 end 
 
 """
-    get_children_segment_index_list(self::Neuron, parentSegmentIndex::Integer)
+    get_children_segment_id_list(self::Neuron, parentSegmentId::Integer)
 """
-function get_children_segment_index_list(self::Neuron, parentSegmentIndex::Integer)
-    childrenSegmentIndexList,_ = findnz(self.connectivityMatrix[parentSegmentIndex, :])
-    childrenSegmentIndexList 
+@inline function get_children_segment_id_list(self::Neuron, parentSegmentId::Integer)
+    get_children_segment_id_list(self.connectivityMatrix, parentSegmentId)
 end
 
-function get_parent_segment_index( self::Neuron, childSegmentIndex::Integer )
-    parentSegmentIndexList,_ = findnz(self.connectivityMatrix[:, childSegmentIndex])
-    @assert length(parentSegmentIndexList) <= 1
-    if isempty( parentSegmentIndexList ) 
+@inline function get_children_segment_id_list(connectivityMatrix::SparseMatrixCSC, 
+                                      parentSegmentId::Integer)
+    childrenSegmentIdList,_ = findnz(connectivityMatrix[parentSegmentId, :])
+    childrenSegmentIdList 
+end 
+
+@inline function get_parent_segment_id( self::Neuron, childSegmentId::Integer )
+    get_parent_segment_id(self.connectivityMatrix, childSegmentId) 
+end
+
+function get_parent_segment_id( connectivityMatrix::SparseMatrixCSC, childSegmentId::Integer )
+
+    parentSegmentIdList,_ = findnz(connectivityMatrix[:, childSegmentId])
+    if isempty( parentSegmentIdList ) 
         # no parent, this is a root segment
         return 0
     else 
-        return parentSegmentIndexList[1]
+        @assert length(parentSegmentIdList) == 1
+        return parentSegmentIdList[1]
     end 
 end
 
 """
-    get_subtree_segment_index_list( self, segmentInde )
+    get_subtree_segment_id_list( self, segmentInde )
 get the segment index list of subtree 
 """
-function get_subtree_segment_index_list( self::Neuron, segmentIndex::Integer )
-    @assert segmentIndex > 0 && segmentIndex <= get_num_segments(self)
-    subtreeSegmentIndexList = Vector{Integer}()
-    seedSegmentIndexList = [segmentIndex]
-    while !isempty( seedSegmentIndexList )
-        seedSegmentIndex = pop!( seedSegmentIndexList )
-        push!(subtreeSegmentIndexList, seedSegmentIndex)
-        childrenSegmentIndexList = get_children_segment_index_list( self, seedSegmentIndex )
-        append!(seedSegmentIndexList, childrenSegmentIndexList)
+function get_subtree_segment_id_list( self::Neuron, segmentId::Integer )
+    @assert segmentId > 0 && segmentId <= get_num_segments(self)
+    subtreeSegmentIdList = Vector{Integer}()
+    seedSegmentIdList = [segmentId]
+    while !isempty( seedSegmentIdList )
+        seedSegmentId = pop!( seedSegmentIdList )
+        push!(subtreeSegmentIdList, seedSegmentId)
+        childrenSegmentIdList = get_children_segment_id_list( self, seedSegmentId )
+        append!(seedSegmentIdList, childrenSegmentIdList)
     end 
-    subtreeSegmentIndexList 
+    subtreeSegmentIdList 
 end 
 
-function get_terminal_segment_index_list( self::Neuron; startSegmentIndex::Integer = 1 )
-    terminalSegmentIndexList = Vector{Int}()
-    segmentIndexList = [ startSegmentIndex ]
-    for segmentIndex in segmentIndexList 
-        childrenSegmentIndexList = get_children_segment_index_list( self, segmentIndex )
-        if isempty( childrenSegmentIndexList ) 
-            # this is a terminal segment
-            push!(terminalSegmentIndexList, segmentIndex )
-        else
-            append!(segmentIndexList, childrenSegmentIndexList)
+function get_terminal_segment_id_list( self::Neuron; startSegmentId::Integer = 1 )
+    terminalSegmentIdList = Vector{Int}()
+    for segmentId in startSegmentId:length(get_segment_list(self))
+        childrenSegmentIdList = get_children_segment_id_list(self, segmentId)
+        if isempty(childrenSegmentIdList) 
+            push!(terminalSegmentIdList, segmentId)
         end 
     end 
-    terminalSegmentIndexList 
+    terminalSegmentIdList 
 end
 
-function get_terminal_node_list( self::Neuron; startSegmentIndex::Integer = 1 )
-    terminalSegmentIndexList = get_terminal_segment_index_list( self )
-    map( x -> Segments.get_node_list(x)[end], get_segment_list(self)[ terminalSegmentIndexList ] )
+function get_terminal_node_list( self::Neuron; startSegmentId::Integer = 1 )
+    terminalSegmentIdList = get_terminal_segment_id_list( self )
+    map( x -> Segments.get_node_list(x)[end], get_segment_list(self)[ terminalSegmentIdList ] )
 end 
 
 """
-    get_branching_angle( self::Neuron, segmentIndex::Integer; nodeDistance::AbstractFloat  )
+    get_branching_angle( self::Neuron, segmentId::Integer; nodeDistance::AbstractFloat  )
 if the node is too close the angle might not be accurate. For example, if they are voxel neighbors, the angle will alwasys be 90 or 45 degree. Thus, we have nodeDistance here to help make the nodes farther away.
 Note that the acos returns angle in the format of radiens.
 """
-function get_branching_angle( self::Neuron, segmentIndex::Integer; nodeDistance::Real = 5000.0 )
-    segment = self[segmentIndex]
-    parentSegmentIndex = get_parent_segment_index(self, segmentIndex)
-    if parentSegmentIndex < 1
+function get_branching_angle( self::Neuron, segmentId::Integer; nodeDistance::Real = 5000.0 )
+    segment = self[segmentId]
+    parentSegmentId = get_parent_segment_id(self, segmentId)
+    if parentSegmentId < 1
         # this is root segment
         return 0.0
     end
-    parentSegment = self[ get_parent_segment_index(self, segmentIndex) ]
+    parentSegment = self[ get_parent_segment_id(self, segmentId) ]
     if length(parentSegment) == 1 || length(segment) == 1
         return 0.0
     end 
@@ -652,11 +654,11 @@ frustum-based
 function get_surface_area(self::Neuron)
     ret = zero(Float32) 
     segmentList = get_segment_list(self) 
-    for (segmentIndex, segment) in enumerate(segmentList)
+    for (segmentId, segment) in enumerate(segmentList)
         ret += Segments.get_surface_area(segment) 
-        parentSegmentIndex = get_parent_segment_index(self, segmentIndex)
-        if parentSegmentIndex  > 0
-            parentNode = segmentList[parentSegmentIndex][end]
+        parentSegmentId = get_parent_segment_id(self, segmentId)
+        if parentSegmentId  > 0
+            parentNode = segmentList[parentSegmentId][end]
             ret += Segments.euclidean_distance(parentNode[1:3], segment[1][1:3])
         end 
     end 
@@ -671,12 +673,12 @@ http://jwilson.coe.uga.edu/emt725/Frustum/Frustum.cone.html
 function get_volume(self::Neuron)
     ret = zero(Float32)
     segmentList = get_segment_list(self)
-    for (segmentIndex, segment) in enumerate(segmentList)
+    for (segmentId, segment) in enumerate(segmentList)
         ret += Segments.get_volume(segment)
-        parentSegmentIndex = get_parent_segment_index(
-                                        self, segmentIndex)
-        if parentSegmentIndex > 0
-            parentNode = segmentList[parentSegmentIndex][end]
+        parentSegmentId = get_parent_segment_id(
+                                        self, segmentId)
+        if parentSegmentId > 0
+            parentNode = segmentList[parentSegmentId][end]
             node = segment[1]
             r1 = node[4]
             r2 = parentNode[4]
@@ -722,11 +724,11 @@ function get_fractal_dimension( self::Neuron )
 
     # iterate all the nodes inside gyration radius as the center of scanning disks
     averageMassList = zeros( length(radiusList) )
-    for (centerIndex, center) in enumerate(diskCenterList)
-        for (radiusIndex, radius) in enumerate(radiusList)
+    for (centerId, center) in enumerate(diskCenterList)
+        for (radiusId, radius) in enumerate(radiusList)
             for node in nodeList 
                 if Segments.get_nodes_distance( center,  node) < radius
-                    averageMassList[radiusIndex] += 1.0 / length(diskCenterList)
+                    averageMassList[radiusId] += 1.0 / length(diskCenterList)
                 end 
             end 
         end 
@@ -885,8 +887,8 @@ function Base.merge(self::Neuron, other::Neuron,
     
     if mergingNodeIdInSegment == length(segmentList1[mergingSegmentId])
         println("connecting to a segment end...")
-        childrenSegmentIndexList = get_children_segment_index_list(self, mergingSegmentId)
-        if length(childrenSegmentIndexList) > 0
+        childrenSegmentIdList = get_children_segment_id_list(self, mergingSegmentId)
+        if length(childrenSegmentIdList) > 0
             println("the closest segment have children, do not merge the root segment")
             total_num_segments = num_segments1 + num_segments2 
             mergedSegmentList = vcat(segmentList1, segmentList2)
@@ -932,10 +934,10 @@ function Base.merge(self::Neuron, other::Neuron,
                                          num_segments1+1 : end] = 
                                                 other.connectivityMatrix[2:end, 2:end]
                 # reestablish the connection of root2
-                childrenSegmentIndexList2 = get_children_segment_index_list(other, 1)
-                for childSegmentIndex2 in childrenSegmentIndexList2
+                childrenSegmentIdList2 = get_children_segment_id_list(other, 1)
+                for childSegmentId2 in childrenSegmentIdList2
                     mergedConnectivityMatrix[ mergingSegmentId, 
-                                              num_segments1+childSegmentIndex2-1 ] = true 
+                                              num_segments1+childSegmentId2-1 ] = true 
                 end
                 return Neuron(mergedSegmentList, mergedConnectivityMatrix)
             end 
@@ -958,12 +960,12 @@ function Base.merge(self::Neuron, other::Neuron,
         mergedConnectivityMatrix[mergingSegmentId, num_segments1+1] = true 
 
         # redirect the children segments to segmentPart2
-        childrenSegmentIndexList = get_children_segment_index_list(self, mergingSegmentId)
-        for childSegmentIndex in childrenSegmentIndexList
+        childrenSegmentIdList = get_children_segment_id_list(self, mergingSegmentId)
+        for childSegmentId in childrenSegmentIdList
             # remove old connection
-            mergedConnectivityMatrix[mergingSegmentId, childSegmentIndex] = false
+            mergedConnectivityMatrix[mergingSegmentId, childSegmentId] = false
             # build new connection
-            mergedConnectivityMatrix[num_segments1+1, childSegmentIndex] = true 
+            mergedConnectivityMatrix[num_segments1+1, childSegmentId] = true 
         end 
 
         # merge the other net
@@ -984,43 +986,43 @@ end
 function Base.isempty(self::Neuron)    isempty(self.segmentList) end 
 
 """
-    Base.split(self::Neuron, splitSegmentIndex::Integer; nodeIndexInSegment::Integer=0)
+    Base.split(self::Neuron, splitSegmentId::Integer; nodeIdInSegment::Integer=0)
 
 split the segment net into two neurons
-the nodeIndexInSegment will be included in the first main net including the original root node  
+the nodeIdInSegment will be included in the first main net including the original root node  
 """
-function Base.split(self::Neuron, splitSegmentIndex::Integer; nodeIndexInSegment::Integer=1)
-    if splitSegmentIndex == 1 && nodeIndexInSegment < 1 
+function Base.split(self::Neuron, splitSegmentId::Integer; nodeIdInSegment::Integer=1)
+    if splitSegmentId == 1 && nodeIdInSegment < 1 
         return Neuron(), self
     end 
 
     segmentList = get_segment_list(self)
     connectivityMatrix = get_connectivity_matrix(self)
 
-    segmentIndexListInSubtree2 = get_subtree_segment_index_list( self, splitSegmentIndex )
-    subtree1Segment, subtree2RootSegment = split(segmentList[splitSegmentIndex], 
-                                                                nodeIndexInSegment)
+    segmentIdListInSubtree2 = get_subtree_segment_id_list( self, splitSegmentId )
+    subtree1Segment, subtree2RootSegment = split(segmentList[splitSegmentId], 
+                                                                nodeIdInSegment)
 
     # build the split out subtree2, which do not contain the root node
     segmentList2 = [subtree2RootSegment]
-    append!(segmentList2, segmentList[ segmentIndexListInSubtree2 ])
-    segmentIndexMap = Dict{Int,Int}()
-    sizehint!(segmentIndexMap, length(segmentIndexListInSubtree2))
-    for (segmentIndexInSubtree2, mainTreeSegmentIndex ) in 
-                                                    enumerate(segmentIndexListInSubtree2)
-        segmentIndexMap[ mainTreeSegmentIndex ] = segmentIndexInSubtree2 
+    append!(segmentList2, segmentList[ segmentIdListInSubtree2 ])
+    segmentIdMap = Dict{Int,Int}()
+    sizehint!(segmentIdMap, length(segmentIdListInSubtree2))
+    for (segmentIdInSubtree2, mainTreeSegmentId ) in 
+                                                    enumerate(segmentIdListInSubtree2)
+        segmentIdMap[ mainTreeSegmentId ] = segmentIdInSubtree2 
     end
     connectivityMatrix2 = spzeros( Bool, length(segmentList2), length(segmentList2) )
-    for (segmentIndexInSubtree2, segmentIndexInOriginalTree) in 
-                                            enumerate(segmentIndexListInSubtree2)
-        parentSegmentIndexInOriginalTree = 
-                                get_parent_segment_index(self, segmentIndexInOriginalTree)
-        if haskey(segmentIndexMap, parentSegmentIndexInOriginalTree)
-            parentSegmentIndexInSubtree2 = segmentIndexMap[ parentSegmentIndexInOriginalTree ]
-            connectivityMatrix2[ parentSegmentIndexInSubtree2, segmentIndexInSubtree2 ] = true 
+    for (segmentIdInSubtree2, segmentIdInOriginalTree) in 
+                                            enumerate(segmentIdListInSubtree2)
+        parentSegmentIdInOriginalTree = 
+                                get_parent_segment_id(self, segmentIdInOriginalTree)
+        if haskey(segmentIdMap, parentSegmentIdInOriginalTree)
+            parentSegmentIdInSubtree2 = segmentIdMap[ parentSegmentIdInOriginalTree ]
+            connectivityMatrix2[ parentSegmentIdInSubtree2, segmentIdInSubtree2 ] = true 
         else 
             # this is the root segment of new tree 
-            println("find root of new tree in the original tree : $(parentSegmentIndexInOriginalTree)")
+            println("find root of new tree in the original tree : $(parentSegmentIdInOriginalTree)")
         end 
     end 
     subtree2 = Neuron( segmentList2, connectivityMatrix2 )
@@ -1028,40 +1030,40 @@ function Base.split(self::Neuron, splitSegmentIndex::Integer; nodeIndexInSegment
     # rebuild the main tree without the subtree2. 
     # the main tree still contains the old root
     segmentList1 = Vector{Segment}()
-    segmentIndexListInSubtree1 = Vector{Int}()
-    segmentIndexMap = Dict{Int,Int}()
+    segmentIdListInSubtree1 = Vector{Int}()
+    segmentIdMap = Dict{Int,Int}()
     # the first one is the root segment
-    seedSegmentIndexList = [1]
+    seedSegmentIdList = [1]
     # build segmentList1 without the splitout segment, will deal with it later
-    while !isempty( seedSegmentIndexList )
-        seedSegmentIndex = pop!( seedSegmentIndexList )
-        if seedSegmentIndex != splitSegmentIndex 
-            push!(segmentList1, segmentList[seedSegmentIndex])
-            push!(segmentIndexListInSubtree1, seedSegmentIndex)
+    while !isempty( seedSegmentIdList )
+        seedSegmentId = pop!( seedSegmentIdList )
+        if seedSegmentId != splitSegmentId 
+            push!(segmentList1, segmentList[seedSegmentId])
+            push!(segmentIdListInSubtree1, seedSegmentId)
             # map the old segment index to the new segment index
             # 3 => 2 means the 3rd segment of old tree is the 2nd segment of new tree
-            segmentIndexMap[ seedSegmentIndex ] = length(segmentList1)
-            childrenSegmentIndexList = get_children_segment_index_list(self, seedSegmentIndex)
-            append!(seedSegmentIndexList, childrenSegmentIndexList)
+            segmentIdMap[ seedSegmentId ] = length(segmentList1)
+            childrenSegmentIdList = get_children_segment_id_list(self, seedSegmentId)
+            append!(seedSegmentIdList, childrenSegmentIdList)
         else 
             # deal with the split out segment
-            if nodeIndexInSegment != 1
+            if nodeIdInSegment != 1
                 @assert length(subtree1Segment) != 0
                 push!(segmentList1, subtree1Segment)
-                segmentIndexMap[ seedSegmentIndex ] = length(segmentList1)
+                segmentIdMap[ seedSegmentId ] = length(segmentList1)
                 # do not need to travase the subtree2 
                 # so don't put children to seed list
             end 
         end 
     end 
     connectivityMatrix1 = spzeros(Bool, length(segmentList1), length(segmentList1))
-    for (segmentIndexInSubtree1, segmentIndexInOriginalTree) in 
-                                                    enumerate(segmentIndexListInSubtree1)
-        parentSegmentIndexInOriginalTree = 
-                                get_parent_segment_index(self, segmentIndexInOriginalTree)
-        if parentSegmentIndexInOriginalTree > 0
-            parentSegmentIndexInSubtree1 = segmentIndexMap[ parentSegmentIndexInOriginalTree ]
-            connectivityMatrix1[ parentSegmentIndexInSubtree1, segmentIndexInSubtree1 ] = true 
+    for (segmentIdInSubtree1, segmentIdInOriginalTree) in 
+                                                    enumerate(segmentIdListInSubtree1)
+        parentSegmentIdInOriginalTree = 
+                                get_parent_segment_id(self, segmentIdInOriginalTree)
+        if parentSegmentIdInOriginalTree > 0
+            parentSegmentIdInSubtree1 = segmentIdMap[ parentSegmentIdInOriginalTree ]
+            connectivityMatrix1[ parentSegmentIdInSubtree1, segmentIdInSubtree1 ] = true 
         end 
     end 
     subtree1 = Neuron( segmentList1, connectivityMatrix1 )
@@ -1069,16 +1071,15 @@ function Base.split(self::Neuron, splitSegmentIndex::Integer; nodeIndexInSegment
 end
 
 
-function remove_segments!(self::Neuron, removeSegmentIndexList::Union{Vector,Set})
-    self = remove_segments( self, removeSegmentIndexList )
+function remove_segments(self::Neuron, removeSegmentIdList::Vector{Int})
+    remove_segments(self, Set{Int}( removeSegmentIdList ))
 end 
 
-function remove_segments(self::Neuron, removeSegmentIndexList::Vector{Int})
-    remove_segments(self, Set{Int}( removeSegmentIndexList ))
-end 
-
-function remove_segments(self::Neuron, removeSegmentIndexList::Set{Int})
-    @assert !(1 in removeSegmentIndexList) "should not contain the root segment!"
+function remove_segments(self::Neuron, removeSegmentIdSet::Set{Int})
+    if isempty(removeSegmentIdSet)
+        return self 
+    end 
+    @assert !(1 in removeSegmentIdSet) "should not contain the root segment!"
 
     segmentList = get_segment_list(self)
     connectivityMatrix = get_connectivity_matrix(self)
@@ -1086,34 +1087,91 @@ function remove_segments(self::Neuron, removeSegmentIndexList::Set{Int})
     # rebuild the main tree without the subtree2. 
     # the main tree still contains the old root
     newSegmentList = Vector{Segment}()
-    newSegmentIndexList = Vector{Int}()
-    segmentIndexMap = Dict{Int,Int}()
+    newSegmentIdList = Vector{Int}()
+    segmentIdMap = Dict{Int,Int}()
     # the first one is the root segment
-    seedSegmentIndexList = [1]
+    seedSegmentIdList = [1]
     # build segmentList1 without the splitout segment, will deal with it later
-    while !isempty( seedSegmentIndexList )
-        seedSegmentIndex = pop!( seedSegmentIndexList )
-        if !(seedSegmentIndex in removeSegmentIndexList) 
+    while !isempty( seedSegmentIdList )
+        seedSegmentId = pop!( seedSegmentIdList )
+        if !(seedSegmentId in removeSegmentIdSet) 
             # should contain this segment
-            push!(newSegmentList, segmentList[seedSegmentIndex])
-            push!(newSegmentIndexList, seedSegmentIndex)
+            push!(newSegmentList, segmentList[seedSegmentId])
+            push!(newSegmentIdList, seedSegmentId)
             # map the old segment index to the new segment index
-            segmentIndexMap[ seedSegmentIndex ] = length(newSegmentList)
-            childrenSegmentIndexList = get_children_segment_index_list(self, seedSegmentIndex)
-            append!(seedSegmentIndexList, childrenSegmentIndexList)
+            segmentIdMap[ seedSegmentId ] = length(newSegmentList)
+            childrenSegmentIdList = get_children_segment_id_list(self, seedSegmentId)
+            append!(seedSegmentIdList, childrenSegmentIdList)
         end 
     end 
     newConnectivityMatrix = spzeros(Bool, length(newSegmentList), length(newSegmentList))
-    for (newSegmentIndex, segmentIndexInOriginalTree) in 
-                                                    enumerate(newSegmentIndexList)
-        parentSegmentIndexInOriginalTree = 
-                                get_parent_segment_index(self, segmentIndexInOriginalTree)
-        if parentSegmentIndexInOriginalTree > 0
-            newParentSegmentIndex = segmentIndexMap[ parentSegmentIndexInOriginalTree ]
-            newConnectivityMatrix[ newParentSegmentIndex, newSegmentIndex ] = true 
+    for (newSegmentId, segmentIdInOriginalTree) in enumerate(newSegmentIdList)
+        parentSegmentIdInOriginalTree = 
+                                get_parent_segment_id(self, segmentIdInOriginalTree)
+        if parentSegmentIdInOriginalTree > 0
+            newParentSegmentId = segmentIdMap[ parentSegmentIdInOriginalTree ]
+            newConnectivityMatrix[ newParentSegmentId, newSegmentId ] = true 
         end 
+    end
+    neuron = Neuron( newSegmentList, newConnectivityMatrix )
+    neuron = merge_only_child(neuron)
+    return neuron
+end 
+
+"""
+    merge_only_child(self::Neuron)
+If a segment only have one child, there should not be a branching point here. 
+It should be merged with it's only-child.
+Find the segment mapping by depth-first search. 
+"""
+function merge_only_child(self::Neuron)
+    segmentList = get_segment_list(self)
+    connectivityMatrix = get_connectivity_matrix(self)
+
+    newSegmentList = Vector{Segment}()
+    # root always map to root 
+    oldId2NewId = Dict{Int,Int}(0=>0)
+    seedSegmentIdList = [1]
+   
+    # depth first traverse 
+    while !isempty(seedSegmentIdList)
+        seedSegmentId = pop!(seedSegmentIdList)
+        seedSegment = segmentList[seedSegmentId]
+        childrenSegmentIdList = get_children_segment_id_list(self, seedSegmentId)
+        oldSegmentIdList = [seedSegmentId]    
+        # find all the single child segments along this line 
+        while length(childrenSegmentIdList) == 1
+            childSegmentId = childrenSegmentIdList[1]
+            push!(oldSegmentIdList, childSegmentId)
+            childSegment = segmentList[childSegmentId]
+            seedSegment = merge(seedSegment, childSegment)
+            @assert length(seedSegment) > length(childSegment)
+            childrenSegmentIdList = get_children_segment_id_list(self, 
+                                                                 childSegmentId)
+        end 
+        @assert length(seedSegment) > 0
+        push!(newSegmentList, seedSegment)
+        for oldSegmentId in oldSegmentIdList 
+            oldId2NewId[oldSegmentId] = length(newSegmentList)
+        end 
+
+        @assert length(childrenSegmentIdList) != 1
+        for childSegmentId in childrenSegmentIdList
+            push!(seedSegmentIdList, childSegmentId) 
+        end
     end 
-    return Neuron( newSegmentList, newConnectivityMatrix )
+    
+    # create new connectivity matrix 
+    newConnectivityMatrix = spzeros(Bool, length(newSegmentList), length(newSegmentList))
+    for oldSegmentId in 1:length(segmentList)
+        oldParentSegmentId = get_parent_segment_id(connectivityMatrix, oldSegmentId)
+        newParentSegmentId = oldId2NewId[oldParentSegmentId] 
+        newSegmentId = oldId2NewId[oldSegmentId]
+        if newParentSegmentId!=newSegmentId && newParentSegmentId>0 
+            newConnectivityMatrix[newParentSegmentId, newSegmentId] = true 
+        end 
+    end
+    Neuron(newSegmentList, newConnectivityMatrix)
 end 
 
 """
@@ -1122,40 +1180,40 @@ end
 remove the subtree which is inside the soma, which is an artifact of TEASAR algorithm
 """
 function remove_subtree_in_soma( self::Neuron )
-    removeSegmentIndexList = Vector{Int}()
-    rootSegmentIndex = get_root_segment_index( self )
+    removeSegmentIdList = Vector{Int}()
+    rootSegmentId = get_root_segment_id( self )
     rootNode = get_root_node( self )
-    childrenSegmentIndexList = get_children_segment_index_list( self, rootSegmentIndex )
-    for segmentIndex in childrenSegmentIndexList 
-        terminalNodeList = get_terminal_node_list( self; startSegmentIndex=segmentIndex )
+    childrenSegmentIdList = get_children_segment_id_list( self, rootSegmentId )
+    for segmentId in childrenSegmentIdList 
+        terminalNodeList = get_terminal_node_list( self; startSegmentId=segmentId )
         if all( map(n->Segments.get_nodes_distance(n, rootNode) < rootNode[4]*2, 
                                                                 terminalNodeList ) )
-            # println("remove segment: $segmentIndex")
-            push!(removeSegmentIndexList, segmentIndex)
+            # println("remove segment: $segmentId")
+            push!(removeSegmentIdList, segmentId)
         end 
     end
-    return remove_segments( self, removeSegmentIndexList )
+    return remove_segments( self, removeSegmentIdList )
 end
 
 function remove_hair( self::Neuron; radiiScale::Float32 = Float32(2),
                                     minDistance::Float32 = Float32(2000) )
     segmentList = get_segment_list(self)
-    removeSegmentIndexList = Vector{Int}()
-    for terminalSegmentIndex in get_terminal_segment_index_list(self)
-        parentSegmentIndex = get_parent_segment_index(self, terminalSegmentIndex)
-        if parentSegmentIndex > 0
+    removeSegmentIdList = Vector{Int}()
+    for terminalSegmentId in get_terminal_segment_id_list(self)
+        parentSegmentId = get_parent_segment_id(self, terminalSegmentId)
+        if parentSegmentId > 0
             # this is not a root segment
-            parentSegment =segmentList[parentSegmentIndex] 
+            parentSegment =segmentList[parentSegmentId] 
             parentNode = parentSegment[end]
-            terminalNode = segmentList[ terminalSegmentIndex ][end]
+            terminalNode = segmentList[ terminalSegmentId ][end]
             distance = Segments.get_nodes_distance(terminalNode, parentNode)
             if distance < radiiScale*parentNode[4] || distance < minDistance
-                # println("remove segment $(terminalSegmentIndex) with distance of $(distance) and radius of $(parentNode[4])")
-                push!(removeSegmentIndexList, terminalSegmentIndex)
+                # println("remove segment $(terminalSegmentId) with distance of $(distance) and radius of $(parentNode[4])")
+                push!(removeSegmentIdList, terminalSegmentId)
             end
         end 
     end 
-    return remove_segments(self, removeSegmentIndexList)
+    return remove_segments(self, removeSegmentIdList)
 end
 
 """
@@ -1164,25 +1222,25 @@ some terminal segmentation was fragmented. a lot of blobs was attatched to dendr
 The blob terminal segment path length is normally smaller than the distance to parent dendrite.
 """
 function remove_terminal_blobs( self::Neuron )
-    terminalSegmentIndexList = get_terminal_segment_index_list( self )
-    blobTerminalSegmentIndexList = Vector{Int}()
-    for index in terminalSegmentIndexList 
+    terminalSegmentIdList = get_terminal_segment_id_list( self )
+    blobTerminalSegmentIdList = Vector{Int}()
+    for index in terminalSegmentIdList 
         segment = self[index]
         distance2Parent = 0.0
         try 
-            parentSegment = self[ get_parent_segment_index(self, index) ]
+            parentSegment = self[ get_parent_segment_id(self, index) ]
             distance2Parent = Segments.get_nodes_distance( segment[1], parentSegment[end] )
         catch err 
-            @assert get_parent_segment_index(self, index) < 1
             warn("this terminal segment is root segment!")
+            @assert get_parent_segment_id(self, index) < 1
         end 
         segmentInnerPathLength = Segments.get_path_length( segment )
         if distance2Parent > segmentInnerPathLength
             # println("remove terminal blob. distance to parent: $(distance2Parent). segment inner path length: $(segmentInnerPathLength).")
-            push!(blobTerminalSegmentIndexList, index)
+            push!(blobTerminalSegmentIdList, index)
         end 
     end 
-    return remove_segments( self, blobTerminalSegmentIndexList )
+    return remove_segments( self, blobTerminalSegmentIdList )
 end
 
 """
@@ -1192,13 +1250,13 @@ if neighboring node is the same, remove one of them
 function remove_redundent_nodes(self::Neuron)
     newSegmentList = Vector{Segment}()
     sizehint!(newSegmentList, get_num_segments(self))
-    removeSegmentIndexList = Vector{Int}()
+    removeSegmentIdList = Vector{Int}()
     segmentList = get_segment_list(self)
-    for (segmentIndex, segment) in enumerate( segmentList )
+    for (segmentId, segment) in enumerate( segmentList )
         Segments.remove_redundent_nodes!( segment )
-        parentSegmentIndex = get_parent_segment_index(self, segmentIndex)
-        if parentSegmentIndex > 0 
-            parentSegment = segmentList[ parentSegmentIndex ]
+        parentSegmentId = get_parent_segment_id(self, segmentId)
+        if parentSegmentId > 0 
+            parentSegment = segmentList[ parentSegmentId ]
             if segment[1] == parentSegment[end]
                 segment = Segments.remove_node(segment, 1)
             end
@@ -1206,11 +1264,11 @@ function remove_redundent_nodes(self::Neuron)
         push!(newSegmentList, segment) 
         if length(segment) == 0
             # empty segment, should be removed later
-            push!(removeSegmentIndexList, segmentIndex)
+            push!(removeSegmentIdList, segmentId)
         end 
     end 
     newNeuron = Neuron( newSegmentList, get_connectivity_matrix(self) )
-    return remove_segments(newNeuron, removeSegmentIndexList)
+    return remove_segments(newNeuron, removeSegmentIdList)
 end 
 ########################## type convertion ####################
 """
@@ -1227,26 +1285,26 @@ function SWCs.SWC(self::Neuron)
     # initialize swc, which is a list of point objects
     swc = SWCs.SWC()
     # the node index of each segment, will be used for connecting the child segment
-    segmentEndNodeIndexList = get_segment_end_node_index_list(self)
+    segmentEndNodeIdList = get_segment_end_node_id_list(self)
     # connectivity matrix of segments
     segmentConnectivityMatrix = get_connectivity_matrix(self)
 
-    for (segmentIndex, segment) in enumerate( get_segment_list(self) )
-        for (nodeIndex, node) in enumerate( Segments.get_node_list( segment ))
+    for (segmentId, segment) in enumerate( get_segment_list(self) )
+        for (nodeId, node) in enumerate( Segments.get_node_list( segment ))
             # type, x, y, z, r, parent
             # in default, this was assumed that the connection is inside a segment, 
             # the parent is simply the previous node 
             pointObj = SWCs.PointObj( Segments.get_class(segment), node[1], node[2], node[3], node[4], length(swc) )
             
-            if nodeIndex == 1
+            if nodeId == 1
                 # the first node should connect to other segment or be root node
                 if length(swc) == 0
                     pointObj.parent = -1
                 else
                     # find the connected parent segment index
-                    parentSegmentIndex = get_parent_segment_index(self, segmentIndex)
+                    parentSegmentId = get_parent_segment_id(self, segmentId)
                     # the node index of parent segment end
-                    pointObj.parent= segmentEndNodeIndexList[ parentSegmentIndex ]
+                    pointObj.parent= segmentEndNodeIdList[ parentSegmentId ]
                 end 
             end 
             push!(swc, pointObj)
@@ -1285,7 +1343,24 @@ function get_neuroglancer_precomputed(self::Neuron)
     bin = Vector{UInt8}(take!(buffer))
     close(buffer)
     return bin 
+end
+
+function get_num_pre_synapses(self::Neuron)
+    ret = 0
+    for segment in get_segment_list(self)
+        ret += nnz(Segments.get_pre_synapse_list(segment))
+    end 
+    ret 
 end 
+
+function get_num_post_synapses(self::Neuron)
+    ret = 0
+    for segment in get_segment_list(self)
+        ret += nnz(Segments.get_post_synapse_list(segment))
+    end 
+    ret 
+end 
+
 
 ############################### manipulations ##########################################
 """
@@ -1297,6 +1372,10 @@ function attach_pre_synapses!(self::Neuron, synapseTable::DataFrame)
         synapse = Synapse(row)
         attach_pre_synapse!(self, synapse)
     end 
+    # adjust segment class according to this new information
+    for segment in get_segment_list(self)
+        Segments.adjust_class!(segment)
+    end 
 end 
 
 """
@@ -1307,28 +1386,30 @@ function attach_post_synapses!(self::Neuron, synapseTable::DataFrame)
     for row in DataFrames.eachrow( synapseTable )
         synapse = Synapse(row)
         attach_post_synapse!(self, synapse)
+    end  
+    # adjust segment class according to this new information
+    for segment in get_segment_list(self)
+        Segments.adjust_class!(segment)
     end 
 end 
 
-
 function attach_pre_synapse!(self::Neuron, synapse::Segments.Synapse)
     preSynapticCoordinate = Synapses.get_pre_synaptic_coordinate( synapse )
-    segmentIndex, nodeIndexInSegment = find_closest_node_index( self, 
+    segmentId, nodeIdInSegment = find_closest_node_id( self, 
                                                                 preSynapticCoordinate )
     segmentList = get_segment_list(self)
-    Segments.attach_pre_synapse!(segmentList[segmentIndex], nodeIndexInSegment, synapse) 
+    Segments.attach_pre_synapse!(segmentList[segmentId], nodeIdInSegment, synapse) 
 end 
 
 function attach_post_synapse!(self::Neuron, synapse::Segments.Synapse)
     postSynapticCoordinate = Synapses.get_post_synaptic_coordinate( synapse )
-    segmentIndex, nodeIndexInSegment = find_closest_node_index( self, 
+    segmentId, nodeIdInSegment = find_closest_node_id( self, 
                                                                 postSynapticCoordinate )
     segmentList = get_segment_list(self)
-    Segments.attach_post_synapse!(segmentList[segmentIndex], nodeIndexInSegment, synapse) 
+    Segments.attach_post_synapse!(segmentList[segmentId], nodeIdInSegment, synapse) 
 end 
 
-
-function downsample_nodes(self::Neuron; nodeNumStep::Int=DOWNSAMPLE_NODE_NUM_STEP) 
+function downsample_nodes(self::Neuron; nodeNumStep::Int=24) 
 	@assert nodeNumStep > 1
     segmentList = get_segment_list(self)
     newSegmentList = Vector{Segment}()
@@ -1351,84 +1432,89 @@ end
     resample( self::Neuron, resampleDistance::Float32 )
 resampling the segments by a fixed point distance 
 """
-function resample(self::Neuron, resampleDistance::Float32)
+function resample(self::Neuron, resampleDistance::Float32) 
     newSegmentList = Vector{Segment}()
     segmentList = get_segment_list(self)
     local nodeList::Vector 
     for (index, segment) in enumerate(segmentList)
-        parentSegmentIndex = get_parent_segment_index(self, index)
-        if parentSegmentIndex > 0 
-            parentNode = segmentList[parentSegmentIndex][end]
+        parentSegmentId = get_parent_segment_id(self, index)
+        if parentSegmentId > 0 
+            parentNode = segmentList[parentSegmentId][end]
             nodeList = [parentNode, Segments.get_node_list(segment) ...]
+            nodeList = resample(nodeList, resampleDistance) 
+            newSegment = Segment(nodeList[2:end]; class=Segments.get_class(segment))
+            push!(newSegmentList, newSegment)
         else 
             # no parent segment
             nodeList = Segments.get_node_list(segment) 
+            nodeList = resample(nodeList, resampleDistance) 
+            newSegment = Segment(nodeList; class=Segments.get_class(segment))
+            push!(newSegmentList, newSegment)
         end 
-        nodeList = resample(nodeList, resampleDistance) 
-        newSegment = Segment(nodeList[2:end]; class=Segments.get_class(segment))
-        push!(newSegmentList, newSegment)
     end 
     Neuron(newSegmentList, get_connectivity_matrix(self))
 end
 
-function resample(nodeList::Vector{NTuple{4,Float32}}, resampleDistance::Float32)
+function resample(nodeList::Vector{NTuple{4,T}}, resampleDistance::T) where T
+    @assert !isempty(nodeList)
     # always keep the first node
     ret = [nodeList[1]]
 
     # walk through the nodes
-    walkedDistance = ZERO_FLOAT32 
-    requiredDistance = resampleDistance  
+    accumulatedNodeDistance = zero(T) 
     @inbounds for index in 1:length(nodeList)-1
         n1 = [nodeList[index  ] ...]
         n2 = [nodeList[index+1] ...]
         nodePairDistance = norm(n1[1:3].-n2[1:3])
-        remainingDistance = nodePairDistance
-        finishedDistance = ZERO_FLOAT32
-        while remainingDistance > requiredDistance 
-            # walk a step 
+        accumulatedNodeDistance += nodePairDistance
+        while accumulatedNodeDistance > resampleDistance 
+            # walk a step of resample distance 
             # interperate the distance 
-            interpretRatio = finishedDistance / nodePairDistance 
+            interpretRatio = 1 - (accumulatedNodeDistance-resampleDistance) / nodePairDistance
+            @assert interpretRatio >= zero(T) && interpretRatio <= one(T)
             interpretedNode = n1 .+ (n2.-n1) .* interpretRatio 
             push!(ret, (interpretedNode...))
 
-            # update remaining distance 
-            finishedDistance += requiredDistance   
-            remainingDistance -= requiredDistance  
-            requiredDistance = resampleDistance 
+            # update accumulated node distance  
+            accumulatedNodeDistance -= resampleDistance 
         end 
-        requiredDistance = resampleDistance - remainingDistance 
-    end 
+    end
+    if accumulatedNodeDistance > zero(T)
+        # if there is remaining distance, add the last node
+        push!(ret, nodeList[end])
+    end
+    @assert !isempty(ret)
     ret 
 end
 
-function find_closest_node_index(self::Neuron, seedNode::NTuple{3,Float32})
+function find_closest_node_id(self::Neuron, seedNode::NTuple{3,T}) where T 
     segmentList = get_segment_list(self)
     
     # initialization 
     mergingSegmentId = 0
-    mergingNodeIndexInSegment = 0
-    distance = typemax(Float32)
+    mergingNodeIdInSegment = 0
+    distance = typemax(T)
     
     @assert !isempty(segmentList)
     
-    for (segmentIndex, segment) in enumerate(segmentList)
+    for (segmentId, segment) in enumerate(segmentList)
         # distance from bounding box give the maximum bound of closest distance
         # this was used to filter out far away segments quickly
         # no need to compute all the distances between nodes
         # this is the lower bound of the distance
         bbox_distance = Segments.get_bounding_box_distance(segment, seedNode)
         if bbox_distance < distance 
-            d, nodeIndexInSegment = Segments.distance_from(segment, seedNode )
+            d, nodeIdInSegment = Segments.distance_from(segment, seedNode )
             if d < distance 
                 distance = d
-                mergingSegmentId = segmentIndex 
-                mergingNodeIndexInSegment = nodeIndexInSegment 
+                mergingSegmentId = segmentId 
+                mergingNodeIdInSegment = nodeIdInSegment 
             end 
         end 
     end
-    @assert mergingNodeIndexInSegment > 0
-    @assert mergingNodeIndexInSegment <= length(segmentList[mergingSegmentId])
-    mergingSegmentId, mergingNodeIndexInSegment, distance  
+    @assert mergingNodeIdInSegment > 0
+    @assert mergingNodeIdInSegment <= length(segmentList[mergingSegmentId])
+    mergingSegmentId, mergingNodeIdInSegment, distance  
 end 
 
 """
@@ -1440,20 +1526,20 @@ and enlarge it with angle greater than 45 degrees
 """
 function find_merging_terminal_node_id(self::Neuron, seedNode2::NTuple{4, Float32}) 
     # initialization 
-    closestTerminalSegmentIndex1 = 0
-    terminalNodeIndexInSegment1 = 0
+    closestTerminalSegmentId1 = 0
+    terminalNodeIdInSegment1 = 0
     weightedDistance = typemax(Float32)
 
-    terminalSegmentIndexList1 = get_terminal_segment_index_list(self)
+    terminalSegmentIdList1 = get_terminal_segment_id_list(self)
     segmentList1 = get_segment_list(self)
 
-    for terminalSegmentIndex1 in terminalSegmentIndexList1 
-        terminalSegment1 = segmentList1[terminalSegmentIndex1]
+    for terminalSegmentId1 in terminalSegmentIdList1 
+        terminalSegment1 = segmentList1[terminalSegmentId1]
         if length(terminalSegment1) > 1
             terminalNode0 = terminalSegment1[end-1]
         else 
-            parentSegmentIndex = get_parent_segment_index(self, terminalSegmentIndex1)
-            terminalNode0 = segmentList1[parentSegmentIndex][end]
+            parentSegmentId = get_parent_segment_id(self, terminalSegmentId1)
+            terminalNode0 = segmentList1[parentSegmentId][end]
         end 
         terminalNode1 = terminalSegment1[end]
 
@@ -1468,15 +1554,15 @@ function find_merging_terminal_node_id(self::Neuron, seedNode2::NTuple{4, Float3
             distance = physicalDistance * tan(theta)
             if distance < weightedDistance
                 weightedDistance = distance 
-                closestTerminalSegmentIndex1 = terminalSegmentIndex1
+                closestTerminalSegmentId1 = terminalSegmentId1
             end
         end 
     end
 
-    if closestTerminalSegmentIndex1 > 0
-        terminalNodeIndexInSegment1 = length( segmentList1[closestTerminalSegmentIndex1] )
+    if closestTerminalSegmentId1 > 0
+        terminalNodeIdInSegment1 = length( segmentList1[closestTerminalSegmentId1] )
     end 
-    return closestTerminalSegmentIndex1, terminalNodeIndexInSegment1, weightedDistance  
+    return closestTerminalSegmentId1, terminalNodeIdInSegment1, weightedDistance  
 end 
 
 """
@@ -1504,7 +1590,7 @@ function find_seed_node_id(neuron::Neuron, nodeNet::NodeNet,
         if !collectedFlagVec[candidateSeedId2]
             # only choose from the uncollected ones 
             node2 = nodeNet[candidateSeedId2] 
-            for (segmentIndex1, segment1) in enumerate(segmentList1)
+            for (segmentId1, segment1) in enumerate(segmentList1)
                 # distance from bounding box give the maximum bound of closest distance
                 # this was used to filter out far away segments quickly
                 # no need to compute all the distances between nodes
@@ -1525,18 +1611,18 @@ end
 
 
 """
-    find_closest_node_index(neuron::Neuron, nodeNet::NodeNet, 
+    find_closest_node_id(neuron::Neuron, nodeNet::NodeNet, 
                             collectedFlagVec)
 
 find the uncollected node which is closest to the segment list 
 """
-function find_closest_node_index(neuron::Neuron, nodeNet::NodeNet, 
+function find_closest_node_id(neuron::Neuron, nodeNet::NodeNet, 
                                  collectedFlagVec::Vector{Bool})
     segmentList = get_segment_list(neuron)
     nodes = NodeNets.get_node_list(nodeNet)
 
     # initialization 
-    closestNodeIndex = 0
+    closestNodeId = 0
     mergingSegmentId = 0
     mergingNodeIdInSegment = 0
     distance = typemax(Float32)
@@ -1545,30 +1631,30 @@ function find_closest_node_index(neuron::Neuron, nodeNet::NodeNet,
     @assert length(nodes) == length(collectedFlagVec)
     @assert !all(collectedFlagVec)
     
-    for (nodeIndex, node) in enumerate(nodes)
-        if !collectedFlagVec[nodeIndex] && NodeNets.is_terminal_node(nodeNet, nodeIndex)
-            for (segmentIndex, segment) in enumerate(segmentList)
+    for (nodeId, node) in enumerate(nodes)
+        if !collectedFlagVec[nodeId] && NodeNets.is_terminal_node(nodeNet, nodeId)
+            for (segmentId, segment) in enumerate(segmentList)
                 # distance from bounding box give the maximum bound of closest distance
                 # this was used to filter out far away segments quickly
                 # no need to compute all the distances between nodes
                 # this is the lower bound of the distance
                 bbox_distance = Segments.get_bounding_box_distance(segment, node)
                 if bbox_distance < distance 
-                    d, nodeIndexInSegment = Segments.distance_from(segment, node)
+                    d, nodeIdInSegment = Segments.distance_from(segment, node)
                     if d < distance 
                         distance = d
-                        closestNodeIndex = nodeIndex 
-                        mergingSegmentId = segmentIndex 
-                        mergingNodeIdInSegment = nodeIndexInSegment 
+                        closestNodeId = nodeId 
+                        mergingSegmentId = segmentId 
+                        mergingNodeIdInSegment = nodeIdInSegment 
                     end 
                 end 
             end
         end 
     end
-    # the segmentIndex should be inside the segmentList
+    # the segmentId should be inside the segmentList
     #@assert mergingSegmentId > 0
     #@assert mergingSegmentId <= length(segmentList)
-    return closestNodeIndex, mergingSegmentId, mergingNodeIdInSegment 
+    return closestNodeId, mergingSegmentId, mergingNodeIdInSegment 
 end 
 
 function add_offset(self::Neuron, offset::Union{Vector, Tuple})
