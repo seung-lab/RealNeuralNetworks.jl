@@ -66,6 +66,34 @@ accumulate the euclidean distance between neighboring nodes
     ret
 end
 
+@inline function get_num_pre_synapses(self::Segment)
+    nnz(get_pre_synapse_list(self))
+end 
+@inline function get_num_post_synapses(self::Segment)
+    nnz(get_num_post_synapses(self))
+end 
+
+"""
+    get_pre_synapse_density(self::Segment)
+note that the unit is # / micron 
+"""
+@inline function get_pre_synapse_density(self::Segment)
+    numPreSynapses = get_num_pre_synapses(self)
+    pathLength = get_path_length(self)
+    numPreSynapses / pathLength * 1000
+end 
+
+"""
+    get_post_synapse_density(self::Segment)
+note that the unit is # / micron 
+"""
+@inline function get_post_synapse_density(self::Segment)
+    numPostSynapses = get_num_post_synapses(self)
+    pathLength = get_path_length(self)
+    numPostSynapses / pathLength * 1000
+end 
+
+
 @inline function get_radius_list( self::Segment ) map(n->n[4], self) end 
 
 """
@@ -232,11 +260,13 @@ end
 
 ################## manipulation ###############################
 
-@inline function attach_pre_synapse!(self::Segment, nodeId::Int, synapse::Synapse)
+@inline function attach_pre_synapse!(self::Segment, nodeId::Int, 
+                                     synapse::Synapse)
     self.preSynapseList[ nodeId ] = synapse 
 end 
 
-@inline function attach_post_synapse!(self::Segment, nodeId::Int, synapse::Synapse)
+@inline function attach_post_synapse!(self::Segment, nodeId::Int, 
+                                      synapse::Synapse)
     self.postSynapseList[ nodeId ] = synapse
 end 
 
@@ -260,16 +290,50 @@ function add_offset(self::Segment, offset::Union{Tuple, Vector})
     Segment(nodeList, self.class, self.boundingBox)    
 end 
 
-function remove_node(self::Segment, removeNodeId::Integer)
+"""
+    remove_nodes(self::Segment, removeIdRange::UnitRange{Int})
+remove nodes from a segment
+"""
+function remove_nodes(self::Segment, removeIdRange::UnitRange{Int}) 
+    newLength = length(self) - length(removeIdRange)
+    @assert newLength > 0
     newNodeList = Vector{NTuple{4, Float32}}()
+    sizehint!(newNodeList, newLength)
+
     for (index,node) in enumerate(get_node_list(self))
-        if index != removeNodeId 
+        if !(index in removeIdRange)
             push!(newNodeList, node)
         end 
+    end
+    
+    preSynapseList = get_pre_synapse_list(self)
+    postSynapseList = get_post_synapse_list(self)
+    newPreSynapseList = spzeros(Synapse, newLength) 
+    newPostSynapseList = spzeros(Synapse, newLength)
+
+    for index in findnz(preSynapseList)[1]
+        if index < removeIdRange.start  
+            newPreSynapseList[index] = true 
+        elseif index > removeIdRange.stop  
+            newPreSynapseList[index-length(removeIdRange)] = true 
+        end 
     end 
-    Segment(newNodeList; class = get_class(self))
+    for index in findnz(postSynapseList)[1]
+        if index < removeIdRange.start 
+            newPostSynapseList[index] = true 
+        elseif index > removeIdRange.stop  
+            newPostSynapseList[index-length(removeIdRange)] = true 
+        end 
+    end 
+
+    Segment(newNodeList; class = get_class(self), 
+            preSynapseList=newPreSynapseList, postSynapseList=newPostSynapseList)
 end 
 
+"""
+    remove_redundent_nodes!(self::Segment)
+remove neighboring nodes that is the same. 
+"""
 function remove_redundent_nodes!(self::Segment)
     nodeList = get_node_list(self)
     newNodeList = Vector{NTuple{4, Float32}}()

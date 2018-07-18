@@ -1348,7 +1348,7 @@ end
 function get_num_pre_synapses(self::Neuron)
     ret = 0
     for segment in get_segment_list(self)
-        ret += nnz(Segments.get_pre_synapse_list(segment))
+        ret += Segments.get_num_pre_synapse_list(segment)
     end 
     ret 
 end 
@@ -1356,11 +1356,10 @@ end
 function get_num_post_synapses(self::Neuron)
     ret = 0
     for segment in get_segment_list(self)
-        ret += nnz(Segments.get_post_synapse_list(segment))
+        ret += Segments.get_num_post_synapse_list(segment)
     end 
     ret 
 end 
-
 
 ############################### manipulations ##########################################
 """
