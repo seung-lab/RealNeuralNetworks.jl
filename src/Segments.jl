@@ -19,6 +19,10 @@ mutable struct Segment
     postSynapseList ::SynapseList 
 end 
 
+function Segment()
+    nodeList = Vector{Node}()
+    Segment(nodeList)
+end 
 function Segment(nodeList::Vector{Node}; 
                  class::UInt8=zero(UInt8), boundingBox=BoundingBox(nodeList),
                  preSynapseList::SynapseList  = spzeros(Synapse, length(nodeList)),
@@ -290,13 +294,20 @@ function add_offset(self::Segment, offset::Union{Tuple, Vector})
     Segment(nodeList, self.class, self.boundingBox)    
 end 
 
+@inline function remove_node(self::Segment, removeId::Int)
+    remove_nodes(self, removeId:removeId)
+end 
+
 """
     remove_nodes(self::Segment, removeIdRange::UnitRange{Int})
 remove nodes from a segment
 """
 function remove_nodes(self::Segment, removeIdRange::UnitRange{Int}) 
     newLength = length(self) - length(removeIdRange)
-    @assert newLength > 0
+    @assert newLength >= 0
+    if newLength == 0 
+        return Segment()
+    end 
     newNodeList = Vector{NTuple{4, Float32}}()
     sizehint!(newNodeList, newLength)
 
@@ -313,16 +324,16 @@ function remove_nodes(self::Segment, removeIdRange::UnitRange{Int})
 
     for index in findnz(preSynapseList)[1]
         if index < removeIdRange.start  
-            newPreSynapseList[index] = true 
+            newPreSynapseList[index] = preSynapseList[index]
         elseif index > removeIdRange.stop  
-            newPreSynapseList[index-length(removeIdRange)] = true 
+            newPreSynapseList[index-length(removeIdRange)] = preSynapseList[index]  
         end 
     end 
     for index in findnz(postSynapseList)[1]
         if index < removeIdRange.start 
-            newPostSynapseList[index] = true 
+            newPostSynapseList[index] = postSynapseList[index] 
         elseif index > removeIdRange.stop  
-            newPostSynapseList[index-length(removeIdRange)] = true 
+            newPostSynapseList[index-length(removeIdRange)] = postSynapseList[index]
         end 
     end 
 

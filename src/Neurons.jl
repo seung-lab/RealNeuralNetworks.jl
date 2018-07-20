@@ -768,6 +768,15 @@ function get_mask(self::Neuron, voxelSize::Union{Tuple, Vector})
     mask
 end 
 
+function get_bounding_box(self::Neuron)
+    segmentList = get_segment_list(self)
+    bb = Segments.get_bounding_box( segmentList[1] )
+    for segment in segmentList[2:end]
+        bb = union(bb, Segments.get_bounding_box(segment))
+    end 
+    return bb 
+end 
+
 function get_2d_binary_projection(self::Neuron; axis=3, voxelSize=VOXEL_SIZE)
     nodeList = get_node_list(self)
     voxelSet = Set{NTuple{3, Int}}()
@@ -1470,7 +1479,8 @@ function resample(nodeList::Vector{NTuple{4,T}}, resampleDistance::T) where T
             # walk a step of resample distance 
             # interperate the distance 
             interpretRatio = 1 - (accumulatedNodeDistance-resampleDistance) / nodePairDistance
-            @assert interpretRatio >= zero(T) && interpretRatio <= one(T)
+            @assert (interpretRatio >= zero(T) && interpretRatio <= one(T)) || 
+                    isapprox(interpretRatio, 0; atol=6)
             interpretedNode = n1 .+ (n2.-n1) .* interpretRatio 
             push!(ret, (interpretedNode...))
 
