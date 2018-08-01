@@ -62,35 +62,25 @@ function plot(neuron::Neuron; nodeStep = 10)
     plot!([root[1]], [root[2]], [root[3]], m=(2, :circle), leg=false)
 end 
 
-function plot_arbor_density_map(densityMap::Array)
+"""
+    plot_maximum_intensity_projection(vol::Array; colorMap="gray")
+color map could be "jet" if you like colorful display. 
+"""
+function plot_maximum_intensity_projection(vol::Array{T,3}; colorMap="gray") where T
     fig = PyPlot.figure()
     fig[:add_subplot](2,2,1)
-    xy = maximum(densityMap, 3)[:,:,1]
-    PyPlot.imshow(xy, "jet")
+    xy = maximum(vol, 3)[:,:,1]
+    PyPlot.imshow(xy, colorMap)
     # colorbar()
     fig[:add_subplot](2,2,2)
-    xz = maximum(densityMap, 2)[:,1,:]
-    PyPlot.imshow(xz, "jet")
+    xz = maximum(vol, 2)[:,1,:]
+    PyPlot.imshow(xz, colorMap)
     fig[:add_subplot](2,2,3)
-    yz = maximum(densityMap, 1)[1,:,:] |> rotl90
-    PyPlot.imshow(yz, "jet")
+    yz = maximum(vol, 1)[1,:,:] |> rotl90
+    PyPlot.imshow(yz, colorMap)
     PyPlot.colorbar()
 end 
 
-function plot_mask(mask::Array{T,3}) where T
-    fig = PyPlot.figure()
-    fig[:add_subplot](2,2,1)
-    xy = maximum(mask, 3)[:,:,1]
-    PyPlot.imshow(xy, "gray")
-    # colorbar()
-    fig[:add_subplot](2,2,2)
-    xz = maximum(mask, 2)[:,1,:]
-    PyPlot.imshow(xz, "gray")
-    fig[:add_subplot](2,2,3)
-    yz = maximum(mask, 1)[1,:,:] |> rotl90
-    PyPlot.imshow(yz, "gray")
-end 
- 
 function indexmap(x::Vector)
     ret = Dict()
     for (i,v) in enumerate(x)

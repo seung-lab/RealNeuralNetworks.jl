@@ -5,7 +5,7 @@ using DataFrames
 
 export Synapse 
 
-struct Synapse
+mutable struct Synapse
     psdSegmentationId               ::Int 
     psdCoordinate                   ::NTuple{3,Float32} # nm
     psdBoundingBox                  ::BoundingBox 
@@ -33,6 +33,8 @@ function Synapse( df::DataFrame )
     @assert DataFrames.nrow( df ) == 1
     Synapse( df[1,:] )
 end 
+
+############### Base functions ################
 
 ############### properties ####################
 @inline function get_psd_segmentation_id(self::Synapse) self.psdSegmentationId end 

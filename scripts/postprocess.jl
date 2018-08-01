@@ -10,11 +10,11 @@ function parse_commandline()
     s = ArgParseSettings()
     @add_arg_table s begin 
         "--inputdir", "-i"
-            help = "the directory to store swc file"
+            help = "the input directory to store swc files"
             arg_type = String
             default = "/tmp"
         "--outputpath", "-o"
-            help = "the path to store outputs"
+            help = "the output directory to store binary swc files"
             arg_type = String
             default = "/tmp"
         "--resample-node-distance", "-d"
@@ -47,17 +47,11 @@ function main()
         neuron = Neurons.resample(neuron, args["resample-node-distance"])
 
         # output file 
-        outputName = joinpath(expanduser(args["outputpath"]*"_swc_bin"), fileName)
+        outputName = joinpath(expanduser(args["outputpath"]), fileName)
         if !isdir(dirname(outputName))
             mkdir(dirname(outputName))
         end 
         Neurons.save_swc_bin(neuron, outputName)
-        
-        outputName = joinpath(expanduser(args["outputpath"]*"_swc"), fileName)
-        if !isdir(dirname(outputName))
-            mkdir(dirname(outputName))
-        end 
-        Neurons.save_swc(neuron, outputName)
     end
 end
 

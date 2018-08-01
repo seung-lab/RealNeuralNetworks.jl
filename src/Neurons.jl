@@ -164,6 +164,16 @@ function Neuron( swcString::AbstractString )
 end
 
 ######################### IO ################
+function load(fileName::AbstractString)
+    if endswith(fileName, ".swc")
+        return load_swc(fileName)
+    elseif endswith(fileName, ".swc.bin")
+        return load_swc_bin(fileName)
+    else 
+        error("only support .swc or .swc.bin file: $fileName")
+    end
+end
+
 function load_swc( fileName::AbstractString )
     swcString = readstring( fileName )
     Neuron( swcString )
@@ -876,7 +886,21 @@ function get_arbor_density_map_overlap_min_distance(self ::Array{T,3},
 end 
 
 ############################### Base functions ###################################
-function Base.getindex(self::Neuron, index::Integer)
+@inline function Base.start(self::Neuron) 1 end
+
+@inline function Base.next(self::Neuron, segmentId::Int) 
+    self[segmentId], segmentId+1
+end 
+
+@inline function Base.done(self::Neuron, segmentId::Int)
+    length(self) < segmentId
+end 
+
+@inline function Base.length(self::Neuron)
+    length(get_segment_list(self))
+end 
+
+@inline function Base.getindex(self::Neuron, index::Integer)
     get_segment_list(self)[index]
 end
 
@@ -1354,10 +1378,40 @@ function get_neuroglancer_precomputed(self::Neuron)
     return bin 
 end
 
+"""
+return all the post synapses in a list 
+"""
+function get_all_pre_synapse_list(self::Neuron)
+    ret = Vector{Synapse}()
+    for segment in self 
+        preSynapseSparseVec = Segments.get_pre_synapse_sparse_vec(segment)
+        I, synapseList = findnz(preSynapseSparseVec)
+        if !isempty(I)
+            append!(ret, synapseList)
+        end 
+    end
+    ret 
+end 
+
+"""
+return all the pre synapses in a list 
+"""
+function get_all_post_synapse_list(self::Neuron)
+    ret = Vector{Synapse}()
+    for segment in self 
+        postSynapseSparseVec = Segments.get_post_synapse_sparse_vec(segment)
+        I, synapseList = findnz(postSynapseSparseVec)
+        if !isempty(I)
+            append!(ret, synapseList)
+        end 
+    end
+    ret 
+end 
+
 function get_num_pre_synapses(self::Neuron)
     ret = 0
     for segment in get_segment_list(self)
-        ret += Segments.get_num_pre_synapse_list(segment)
+        ret += Segments.get_num_pre_synapses(segment)
     end 
     ret 
 end 
@@ -1365,7 +1419,7 @@ end
 function get_num_post_synapses(self::Neuron)
     ret = 0
     for segment in get_segment_list(self)
-        ret += Segments.get_num_post_synapse_list(segment)
+        ret += Segments.get_num_post_synapses(segment)
     end 
     ret 
 end 

@@ -45,8 +45,10 @@ end
 @inline function get_pre_synapse_list( self::Segment ) self.preSynapseList end 
 @inline function get_post_synapse_list( self::Segment ) self.postSynapseList end
 @inline function get_pre_synapse( self::Segment, index::Int ) self.preSynapseList[index] end
-@inline function get_post_synapse( self::Segment, index::Int ) 
-                                        self.postSynapseList[index] end
+@inline function get_post_synapse( self::Segment, index::Int ) self.postSynapseList[index] end
+
+get_pre_synapse_sparse_vec = get_pre_synapse_list
+get_post_synapse_sparse_vec = get_post_synapse_list 
 
 @inline function get_bounding_box_distance(self::Segment, point::Union{Tuple, Vector})
     @assert length(point) >= 3
@@ -74,7 +76,7 @@ end
     nnz(get_pre_synapse_list(self))
 end 
 @inline function get_num_post_synapses(self::Segment)
-    nnz(get_num_post_synapses(self))
+    nnz(get_post_synapse_list(self))
 end 
 
 """
