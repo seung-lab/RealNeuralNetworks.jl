@@ -9,10 +9,11 @@ mutable struct Synapse
     psdSegmentationId               ::Int 
     psdCoordinate                   ::NTuple{3,Float32} # nm
     psdBoundingBox                  ::BoundingBox 
+    psdSize                         ::Int 
     preSynapticSegmentationId       ::Int 
     preSynapticCoordinate           ::NTuple{3,Float32} # nm
     preSynapticWeight               ::Float32 
-    postSynapticSegmentationId      ::Int 
+    postSynapticSegmentationId      ::Int  
     postSynapticCoordinate          ::NTuple{3,Float32} # nm
     postSynapticWeight              ::Float32 
 end 
@@ -24,7 +25,7 @@ function Synapse( row::DataFrameRow )
     preSynapticCoordinate = SynapseTables.get_coordinate(row, "presyn_") 
     postSynapticCoordinate = SynapseTables.get_coordinate(row, "postsyn_")
 
-    Synapse(row[:psd_segid], psdCoordinate, psdBoundingBox, 
+    Synapse(row[:psd_segid], psdCoordinate, psdBoundingBox, row[:size], 
             row[:presyn_segid],  preSynapticCoordinate,  row[:presyn_wt],
             row[:postsyn_segid], postSynapticCoordinate, row[:postsyn_wt])
 end
@@ -37,6 +38,10 @@ end
 ############### Base functions ################
 
 ############### properties ####################
+"""
+Note that the psd size was measured using voxel numbers.
+"""
+@inline function get_psd_size(self::Synapse) self.psdSize end  
 @inline function get_psd_segmentation_id(self::Synapse) self.psdSegmentationId end 
 @inline function get_psd_coordinate( self::Synapse ) self.psdCoordinate end 
 @inline function get_psd_bounding_box( self::Synapse ) self.psdBoundingBox end 
@@ -54,8 +59,8 @@ end
 @inline function get_post_synaptic_weight( self::Synapse ) self.postSynapticWeight end 
 
 
-@inline function isbutton(self::Synapse, neuronId::Int)
-    neuronId == get_presynaptic_segmentation_id(self)
-end 
+#@inline function isbutton(self::Synapse, neuronId::Int)
+#    neuronId == get_presynaptic_segmentation_id(self)
+#end 
 
 end # module

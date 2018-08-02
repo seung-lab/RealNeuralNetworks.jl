@@ -18,7 +18,7 @@ function get_seg_from_h5()
     seg = f["main"][1,:,:,101:500]
     close(f)
     seg = reshape(seg, size(seg)[2:4])
-    @assert ndims(seg) == 3
+    @asset ndims(seg) == 3
     for i in eachindex(seg)
         if seg[i] == 77605
             seg[i] = convert(UInt32,1)

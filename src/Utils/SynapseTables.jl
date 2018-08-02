@@ -20,41 +20,52 @@ function preprocessing!(self::SynapseTable, voxelSize::NTuple{3,Int})
                                 :centroid_z => :psd_z])
 
     # transform to physical coordinate
-    self[:BBOX_bx]      .*= voxelSize[1]
-    self[:BBOX_by]      .*= voxelSize[2]
-    self[:BBOX_bz]      .*= voxelSize[3]
-    self[:BBOX_ex]      .*= voxelSize[1]
-    self[:BBOX_ey]      .*= voxelSize[2]
-    self[:BBOX_ez]      .*= voxelSize[3]
-    self[:psd_x]        .*= voxelSize[1]
-    self[:psd_y]        .*= voxelSize[2]
-    self[:psd_z]        .*= voxelSize[3]
-    self[:presyn_x]     .*= voxelSize[1]
-    self[:presyn_y]     .*= voxelSize[2]
-    self[:presyn_z]     .*= voxelSize[3]
-    self[:postsyn_x]    .*= voxelSize[1]
-    self[:postsyn_y]    .*= voxelSize[2]
-    self[:postsyn_z]    .*= voxelSize[3]
+    self[:BBOX_bx]      = (self[:BBOX_bx] .- 1) .* voxelSize[1]
+    self[:BBOX_by]      = (self[:BBOX_by] .- 1) .* voxelSize[2]
+    self[:BBOX_bz]      = (self[:BBOX_bz] .- 1) .* voxelSize[3]
+    
+    self[:BBOX_ex]      = (self[:BBOX_ex] .- 1) .* voxelSize[1]
+    self[:BBOX_ey]      = (self[:BBOX_ey] .- 1) .* voxelSize[2]
+    self[:BBOX_ez]      = (self[:BBOX_ez] .- 1) .* voxelSize[3]
+
+    self[:psd_x]        = (self[:psd_x].-1) .* voxelSize[1]
+    self[:psd_y]        = (self[:psd_y].-1) .* voxelSize[2]
+    self[:psd_z]        = (self[:psd_z].-1) .* voxelSize[3]
+    
+    self[:presyn_x]     = (self[:presyn_x] .- 1) .* voxelSize[1]
+    self[:presyn_y]     = (self[:presyn_y] .- 1) .* voxelSize[2]
+    self[:presyn_z]     = (self[:presyn_z] .- 1) .* voxelSize[3]
+    
+    self[:postsyn_x]    = (self[:postsyn_x] .- 1) .* voxelSize[1]
+    self[:postsyn_y]    = (self[:postsyn_y] .- 1) .* voxelSize[2]
+    self[:postsyn_z]    = (self[:postsyn_z] .- 1) .* voxelSize[3]
 	nothing
 end
 
 function postprocessing!(self::SynapseTable, voxelSize::NTuple{3,Int})
     # transform to voxel coordinate
-    self[:BBOX_bx]      ./= voxelSize[1]
-    self[:BBOX_by]      ./= voxelSize[2]
-    self[:BBOX_bz]      ./= voxelSize[3]
-    self[:BBOX_ex]      ./= voxelSize[1]
-    self[:BBOX_ey]      ./= voxelSize[2]
-    self[:BBOX_ez]      ./= voxelSize[3]
-    self[:psd_x]        ./= voxelSize[1]
-    self[:psd_y]        ./= voxelSize[2]
-    self[:psd_z]        ./= voxelSize[3]
-    self[:presyn_x]     ./= voxelSize[1]
-    self[:presyn_y]     ./= voxelSize[2]
-    self[:presyn_z]     ./= voxelSize[3]
-    self[:postsyn_x]    ./= voxelSize[1]
-    self[:postsyn_y]    ./= voxelSize[2]
-    self[:postsyn_z]    ./= voxelSize[3]
+    self[:BBOX_bx]      = (self[:BBOX_bx]./voxelSize[1]) .+ 1
+    self[:BBOX_by]      = (self[:BBOX_by]./voxelSize[2]) .+ 1
+    self[:BBOX_bz]      = (self[:BBOX_bz]./voxelSize[3]) .+ 1
+    
+    self[:BBOX_ex]      = (self[:BBOX_ex]./voxelSize[1]) .+ 1
+    self[:BBOX_ey]      = (self[:BBOX_ey]./voxelSize[2]) .+ 1
+    self[:BBOX_ez]      = (self[:BBOX_ez]./voxelSize[3]) .+ 1
+
+    
+    self[:psd_x]        = (self[:psd_x]./voxelSize[1]) .+ 1
+    self[:psd_y]        = (self[:psd_y]./voxelSize[2]) .+ 1
+    self[:psd_z]        = (self[:psd_z]./voxelSize[3]) .+ 1
+    
+    self[:presyn_x]     = (self[:presyn_x]./voxelSize[1]) .+ 1
+    self[:presyn_y]     = (self[:presyn_y]./voxelSize[2]) .+ 1
+    self[:presyn_z]     = (self[:presyn_z]./voxelSize[3]) .+ 1
+ 
+    self[:postsyn_x]     = (self[:postsyn_x]./voxelSize[1]) .+ 1
+    self[:postsyn_y]     = (self[:postsyn_y]./voxelSize[2]) .+ 1
+    self[:postsyn_z]     = (self[:postsyn_z]./voxelSize[3]) .+ 1
+    
+    nothing
 end 
 
 function get_coordinate_array(self::SynapseTable, prefix::String)

@@ -6,7 +6,7 @@ using RealNeuralNetworks.SWCs
 using CSV
 
 const NEURON_ID = 77625
-const ASSERT_DIR = joinpath(@__DIR__, "../assert")
+const ASSERT_DIR = joinpath(@__DIR__, "../asset")
 const SWC_BIN_PATH = joinpath(ASSERT_DIR, "$(NEURON_ID).swc.bin") 
 const ARBOR_DENSITY_MAP_VOXEL_SIZE = (2000,2000,2000)
 

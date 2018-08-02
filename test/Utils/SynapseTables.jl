@@ -4,7 +4,7 @@ using DataFrames
 using RealNeuralNetworks.Utils.SynapseTables 
 
 @testset "synapse tables" begin
-    syn = CSV.read(joinpath(@__DIR__, "../../assert/syn100.csv"))
+    syn = CSV.read(joinpath(@__DIR__, "../../asset/syn100.csv"))
     @test 100 == DataFrames.nrow(syn)
     SynapseTables.preprocessing!(syn, (5,5,45))
     @test 100 >= DataFrames.nrow(syn)
