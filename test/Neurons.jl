@@ -118,6 +118,8 @@ end
     numPostSynapses = Neurons.get_num_post_synapses(neuron)
     @test numPostSynapses <= DataFrames.nrow(postSynapses)
     @test numPostSynapses > 0 
+
+    Neurons.adjust_segment_class!(neuron)
     
     preSynapseList = Neurons.get_all_pre_synapse_list(neuron)
     postSynapseList = Neurons.get_all_post_synapse_list(neuron)

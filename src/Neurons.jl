@@ -1471,6 +1471,30 @@ function attach_post_synapse!(self::Neuron, synapse::Segments.Synapse)
     Segments.attach_post_synapse!(segmentList[segmentId], nodeIdInSegment, synapse) 
 end 
 
+"""
+    adjust_segment_class(self::Neuron)
+adjust the segment class considering the observation that once a segment becomes axon, 
+all the children segments should be axon.
+"""
+function adjust_segment_class!(self::Neuron)
+    # adjust class according to the number of pre and post synapses as an initialization 
+    for segment in get_segment_list(self)
+        Segments.adjust_class!(segment)
+    end 
+    
+    # dendrite parent should all be dendrite 
+    for (segmentIndex, segment) in get_segment_list(self) |> enumerate 
+        if Segments.DENDRITE_CLASS == segment.class 
+            parentSegmentIndex = get_parent_segment_id(self, segmentIndex)
+            parentSegment = self[parentSegmentIndex]
+            if Segments.AXON_CLASS == parentSegment.class 
+                parentSegment.class = Segments.DENDRITE_CLASS 
+            end 
+        end
+    end 
+    nothing
+end 
+
 function downsample_nodes(self::Neuron; nodeNumStep::Int=24) 
 	@assert nodeNumStep > 1
     segmentList = get_segment_list(self)

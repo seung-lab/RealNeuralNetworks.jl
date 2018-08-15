@@ -7,12 +7,16 @@ using .Synapses
 const Node = NTuple{4,Float32}
 const SynapseList = SparseVector{Synapse, Int}
 
+# classes following SWC format 
+const AXON_CLASS = UInt8(2)
+const DENDRITE_CLASS = UInt8(3)
+const SOMA_CLASS = one(UInt8)
+const UNDEFINED_CLASS = zero(UInt8)
+
 export Segment 
 mutable struct Segment 
     # list of tuple (x,y,z,r)
     nodeList        ::Vector{Node}
-    # the class is consistent with swc node type 
-    # 0->undefined, 1->soma, 2->axon, 3->dendrite 
     class           ::UInt8
     boundingBox     ::BoundingBox
     preSynapseList  ::SynapseList 
@@ -24,7 +28,7 @@ function Segment()
     Segment(nodeList)
 end 
 function Segment(nodeList::Vector{Node}; 
-                 class::UInt8=zero(UInt8), boundingBox=BoundingBox(nodeList),
+                 class::UInt8=UNDEFINED_CLASS, boundingBox=BoundingBox(nodeList),
                  preSynapseList::SynapseList  = spzeros(Synapse, length(nodeList)),
                  postSynapseList::SynapseList = spzeros(Synapse, length(nodeList)))
     Segment(nodeList, class, boundingBox, preSynapseList, postSynapseList)
@@ -276,13 +280,20 @@ end
     self.postSynapseList[ nodeId ] = synapse
 end 
 
-function adjust_class!(self::Segment)
-    if nnz(self.preSynapseList) > nnz(self.postSynapseList)
-        # mostly presynapses, so this is an axon 
-        self.class = 2 
-    elseif nnz(self.preSynapseList) < nnz(self.postSynapseList) 
-        # mostly postsynapses, so this is a dendrite 
-        self.class = 3  
+function adjust_class!(self::Segment) 
+    if self.class == UNDEFINED_CLASS 
+        if nnz(self.preSynapseList) > nnz(self.postSynapseList)
+            # mostly presynapses, so this is an axon 
+            # Note that this simple metric fails in the axonal hillock, 
+            # where there exist a lot of post synapses.
+            self.class = AXON_CLASS 
+        elseif nnz(self.preSynapseList) < nnz(self.postSynapseList) 
+            # mostly postsynapses, so this is a dendrite 
+            self.class = DENDRITE_CLASS   
+        elseif nnz(self.postSynapseList) == 0 && get_path_length(self)>5000
+            # a long segment without both pre and post synapses was considered axon 
+            self.class = AXON_CLASS 
+        end 
     end 
 end 
 
