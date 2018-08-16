@@ -13,7 +13,8 @@ end
 function PointObj( p::Tuple )
     @assert length(p) == 6
     PointObj( UInt8(p[1]), Float32(p[2]), Float32(p[3]), Float32(p[4]), Float32(p[5]), Int32(p[6]) )
-end 
+end
+
 function PointObj( data::Vector{UInt8} )
     @assert length(data) == 21
     PointObj(   data[1], 

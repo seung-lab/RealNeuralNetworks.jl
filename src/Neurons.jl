@@ -1486,9 +1486,11 @@ function adjust_segment_class!(self::Neuron)
     for (segmentIndex, segment) in get_segment_list(self) |> enumerate 
         if Segments.DENDRITE_CLASS == segment.class 
             parentSegmentIndex = get_parent_segment_id(self, segmentIndex)
-            parentSegment = self[parentSegmentIndex]
-            if Segments.AXON_CLASS == parentSegment.class 
-                parentSegment.class = Segments.DENDRITE_CLASS 
+            if parentSegmentIndex > 0
+                parentSegment = self[parentSegmentIndex]
+                if Segments.AXON_CLASS == parentSegment.class 
+                    parentSegment.class = Segments.DENDRITE_CLASS 
+                end 
             end 
         end
     end 
