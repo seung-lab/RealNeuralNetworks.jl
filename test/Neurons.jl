@@ -38,7 +38,11 @@ const ARBOR_DENSITY_MAP_VOXEL_SIZE = (2000,2000,2000)
  
     println("remove terminal blobs ...")
     @time neuron = Neurons.remove_terminal_blobs(neuron)
-    println("after remove terminal blobs: $(Neurons.get_num_segments(neuron))")
+    println("after remove terminal blobs: $(Neurons.get_num_segments(neuron))") 
+
+    println("get principle direction based on the furthest terminal node pair...")
+    @time vec, maxDistance = Neurons.get_furthest_terminal_node_pair_direction(neuron)
+    @test maxDistance > 0
   
     println("remove redundent nodes...")
     @time neuron = Neurons.remove_redundent_nodes(neuron)
