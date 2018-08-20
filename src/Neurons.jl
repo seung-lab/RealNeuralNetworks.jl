@@ -435,6 +435,38 @@ function get_num_nodes( self::Neuron )
 end 
 
 """
+    get_furthest_terminal_node_pair_direction(self::Neurons)
+
+Return: 
+    vec::Vector{Float32}, the 3d vector representing the direction 
+    maxNodeDistance::Float32, the maximum distance between terminal nodes 
+"""
+function get_furthest_terminal_node_pair_direction(self::Neuron)
+    terminalNodeList = Neurons.get_terminal_node_list(self)
+    get_furthest_terminal_node_pair_direction(terminalNodeList)
+end 
+
+function get_furthest_terminal_node_pair_direction(terminalNodeList::Vector{NTuple{4,Float32}})
+    # find the farthest node pair
+    vec = zeros(Float32, 2)
+    maxNodeDistance = zero(Float32)
+    for i in 1:length(terminalNodeList)
+        node1 = terminalNodeList[i][1:3]
+        for j in i+1:length(terminalNodeList)
+            node2 = terminalNodeList[j][1:3]
+            v = [node1...] .- [node2...]
+            d = norm(v)
+            if d > maxNodeDistance
+                vec = v
+                maxNodeDistance = d
+            end
+        end
+    end
+    return vec, maxNodeDistance 
+end 
+
+
+"""
     get_mass_center( self::Neuron )
 mass center was computed simply as center of all nodes 
 """
@@ -1496,6 +1528,27 @@ function adjust_segment_class!(self::Neuron)
     end 
     nothing
 end 
+
+"""
+    remove_segments_with_class(self::Neuron, class::UInt8)
+Note that the axon classes should be labeled first!
+"""
+function remove_segments_with_class(self::Neuron, class::UInt8)
+    # we should assume that the axons were labeled to avoid redundent computation 
+    #adjust_segment_class!(self)
+    segmentIdList = Vector{Int}()
+    for (segmentId, segment) in get_segment_list(self) |> enumerate 
+        if class == segment.class 
+            push!(segmentIdList, segmentId)
+        end 
+    end 
+    remove_segments(self, segmentIdList)
+end 
+
+remove_axons(self::Neuron) = remove_segments_with_class(self, Segments.AXON_CLASS)
+remove_dendrites(self::Neuron) = remove_segments_with_class(self, Segments.DENDRITE_CLASS)
+
+
 
 function downsample_nodes(self::Neuron; nodeNumStep::Int=24) 
 	@assert nodeNumStep > 1

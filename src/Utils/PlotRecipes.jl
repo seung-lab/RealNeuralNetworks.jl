@@ -45,7 +45,25 @@ function coloring(dm)
     img
 end 
 
-function plot(neuron::Neuron; nodeStep = 10)
+
+function plot(neuron::Neuron; nodeStep::Integer=10)
+    #using PyPlot
+    PyPlot.pygui(true)
+
+    # plot soma
+    root = Neurons.get_root_node(neuron)
+    PyPlot.scatter3D([root[1]], [root[2]], [root[3]])
+        
+    for segment in neuron
+        nodeList = Segments.get_node_list(segment)
+        x = map(n->n[1], nodeList[1:nodeStep:end])
+        y = map(n->n[2], nodeList[1:nodeStep:end])
+        z = map(n->n[3], nodeList[1:nodeStep:end])
+        PyPlot.plot(x,y,z)
+    end
+end 
+
+function plot_v1(neuron::Neuron; nodeStep::Integer=10)
     segmentList = neuron.segmentList
     plotly()
     for branch in segmentList
