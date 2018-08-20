@@ -9,8 +9,9 @@ notifications:
     email: false
 
 git: 
-    depth: 99999
+    depth: false
 
 script:
-    - julia -e 'Pkg.add("HDF5")'
-    - julia -e 'Pkg.clone(pwd()); Pkg.test("RealNeuralNetworks")'
+    - apt-get install -y hdf5-tools
+    - julia -e 'import Pkg; Pkg.add("HDF5")'
+    - julia -e 'import Pkg; Pkg.clone(pwd()); Pkg.test("RealNeuralNetworks")'
