@@ -9,12 +9,10 @@ export NodeNet
 import LightGraphs
 import BigArrays
 
-const ZERO_UINT32 = convert(UInt32, 0)
-const ONE_UINT32  = convert(UInt32, 1)
-const OFFSET = (ZERO_UINT32, ZERO_UINT32, ZERO_UINT32)
+const DEFAULT_OFFSET = (zero(UInt32), zero(UInt32), zero(UInt32))
 
 # rescale the skeleton
-const EXPANSION = (ONE_UINT32, ONE_UINT32, ONE_UINT32)
+const DEFAULT_EXPANSION = (one(UInt32), one(UInt32), one(UInt32))
 
 # control the removing points around path based on DBF
 const REMOVE_PATH_SCALE = 3 
@@ -285,7 +283,7 @@ end
 
 function Base.UnitRange(self::NodeNet)
     minCoordinates = [typemax(UInt32), typemax(UInt32), typemax(UInt32)]
-    maxCoordinates = [ZERO_UINT32, ZERO_UINT32, ZERO_UINT32]
+    maxCoordinates = [zero(UInt32), zero(UInt32), zero(UInt32)]
     for node in get_node_list(self)
         minCoordinates = map(min, minCoordinates, node[1:3])
         maxCoordinates = map(max, maxCoordinates, node[1:3])
@@ -323,8 +321,8 @@ function get_neuroglancer_precomputed(self::NodeNet)
     # write the edges
     for edge in get_edges( self )
         # neuroglancer index is 0-based
-        write(buffer, UInt32( edge[1]-ONE_UINT32 ))
-        write(buffer, UInt32( edge[2]-ONE_UINT32 ))
+        write(buffer, UInt32( edge[1] - one(UInt32) ))
+        write(buffer, UInt32( edge[2] - one(UInt32) ))
     end
     bin = Vector{UInt8}(take!(buffer))
     close(buffer)

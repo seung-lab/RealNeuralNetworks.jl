@@ -19,23 +19,23 @@ end
 
 """
 
-    compute_DBF( point_cloud )
+    compute_DBF( pointCloud )
 
   Returns an array of DBF values for the point cloud. Currently creates
   a binary image, and runs bwd2 on it, though ideally we'd get rid of the
   need for an explicit bin_im
 """
-function compute_DBF( point_cloud::Array{T, 2} ) where T
-    bin_im = create_binary_image( point_cloud );
-    compute_DBF(point_cloud, bin_im)
+function compute_DBF( pointCloud::Array{T, 2} ) where T
+    bin_im = create_binary_image( pointCloud );
+    compute_DBF(pointCloud, bin_im)
 end
 
 """
     compute_DBF( bin_im )
 """
-function compute_DBF( point_cloud::Array{T,2}, bin_im::Union{BitArray, Array{Bool, 3}} ) where T
+function compute_DBF( pointCloud::Array{T,2}, bin_im::Union{BitArray, Array{Bool, 3}} ) where T
     dbf_im = distance_transform( bin_im );
-    return extract_dbf_values( dbf_im, point_cloud );
+    return extract_dbf_values( dbf_im, pointCloud );
 end 
 
 """
@@ -235,18 +235,18 @@ end
 
 """
 
-    create_binary_image( point_cloud )
+    create_binary_image( pointCloud )
 
   Creates a boolean volume where the non-segment indices
   map to true, while the segment indices map to false.
 """
-function create_binary_image( point_cloud::Array{T,2} ) where T;
+function create_binary_image( pointCloud::Array{T,2} ) where T;
 
-  max_dims = maximum( point_cloud, 1 );
+  max_dims = maximum( pointCloud, 1 );
     bin_im = falses(max_dims...)
 
-  for p in 1:size( point_cloud, 1 )
-    bin_im[ point_cloud[p,:]... ] = false;
+  for p in 1:size( pointCloud, 1 )
+    bin_im[ pointCloud[p,:]... ] = false;
   end
 
   bin_im;
@@ -258,8 +258,8 @@ end
 Creates a boolean volume where the non-segment indices
 map to true, while the segment indices map to false 
 """
-function create_binary_image( seg::Array{T,3}; obj_id::T = T(1) ) where T
-    bin_im = ones(Bool, size(seg))
+function create_binary_image( seg::Array{T,3}; obj_id::T = one(T) ) where T
+    bin_im = trues(size(seg))
     for i in eachindex(seg)
         if seg[i] == obj_id 
             bin_im[i] = false 
@@ -271,19 +271,19 @@ end
 
 """
 
-    extract_dbf_values( dbf_image, point_cloud )
+    extract_dbf_values( dbf_image, pointCloud )
 
   Takes an array where rows indicate subscripts, and extracts the values
   within a volume at those subscripts (in row order)
 """
-@generated function extract_dbf_values( dbf_image::Array{Float32,N}, point_cloud ) where N
+@generated function extract_dbf_values( dbf_image::Array{Float32,N}, pointCloud ) where N
   quote
 
-  num_points = size( point_cloud, 1 );
+  num_points = size( pointCloud, 1 );
   dbf_values = zeros(Float32, num_points);
 
   for p in 1:num_points 
-    dbf_values[p] = (@nref $N dbf_image i->point_cloud[p,i]);
+    dbf_values[p] = (@nref $N dbf_image i->pointCloud[p,i]);
   end
 
   dbf_values
