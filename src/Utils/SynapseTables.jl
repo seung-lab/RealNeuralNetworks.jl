@@ -148,7 +148,7 @@ end
 
 @inline function BoundingBox(self::SynapseTable, coordinateNames::NTuple{3,Symbol})
     if isempty(self)
-        warn("empty synapse table!")
+        @warn("empty synapse table!")
         return nothing
     else 
         minCorner = map(x->minimum(self[x]), coordinateNames)

@@ -130,7 +130,7 @@ function save(self::SWC, file_name::AbstractString)
 end 
 
 function load(fileName::AbstractString)
-    swcString = readstring( fileName )
+    swcString = read( fileName , String)
     SWC( swcString )    
 end
 

@@ -74,7 +74,7 @@ function get_boundary_point_indexes(self::Array{T,2}, seg::Array{TSeg,3},
     ret = Vector{T}()
     for i in 1:size(self,1)
         point = self[i,:]
-        x,y,z = (point...)
+        x,y,z = (point...,)
         if  z==1 || z==size(seg, 3) ||
             y==1 || y==size(seg, 2) ||
             x==1 || x==size(seg, 1) 

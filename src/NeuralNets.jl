@@ -21,7 +21,7 @@ Return:
 """
 function NeuralNet(neuronId2neuron::Dict{Int, Neuron}; 
                    neuronIdList::Vector{Int} = collect(keys(neuronId2neuron)))
-    const neuronIdSet = Set(keys(neuronId2neuron) |> collect)
+    neuronIdSet = Set(keys(neuronId2neuron) |> collect)
     net = NeuralNet(length(neuronId2neuron))
     
     # name the vertices 
@@ -68,7 +68,7 @@ end
 
 function NeuralNet( syn::DataFrame; neuronDict::Dict{Int, Neuron}=Dict{Int,Neuron}(), 
                                     cellIdList=get_cell_id_list(syn) )
-    const N = length(cellIdList)
+    N = length(cellIdList)
     net = NeuralNet(N)
     # name the vertices
     for (i,cellId) in enumerate(cellIdList)

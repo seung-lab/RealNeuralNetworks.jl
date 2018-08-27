@@ -60,7 +60,7 @@ function read_cell_id_list( fileName::String )
     open(fileName) do f 
         for line in eachline(f)
             try 
-                id = parse(split(line, ":")[1])
+                id = Meta.parse(split(line, ":")[1])
                 push!(idList, UInt32(id))
             catch err
                 if line != "\n"
@@ -89,14 +89,14 @@ function main()
             try 
                 message = SQS.receive_message(QueueUrl=queueUrl)["messages"][1]
             catch err 
-                warn("no task fetched, could be all done!")
+                @warn("no task fetched, could be all done!")
                 println(err)
                 println("sleep for 30 secs and then retry")
                 sleep(30)
                 continue 
             end 
             receiptHandle = message["ReceiptHandle"]
-            id = parse(message["Body"])
+            id = Meta.parse(message["Body"])
             println("tracing cell: $(id)")
             try 
                 trace(id; swcDir=args["swcdir"], mip=args["mip"], 

@@ -1,4 +1,4 @@
-using Base.Test
+using Test
 using CSV
 using DataFrames
 using RealNeuralNetworks.Utils.SynapseTables 

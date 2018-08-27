@@ -1,4 +1,4 @@
-using Base.Test
+using Test
 using RealNeuralNetworks.Utils.FakeSegmentations 
 using RealNeuralNetworks.Neurons
 using RealNeuralNetworks.NodeNets

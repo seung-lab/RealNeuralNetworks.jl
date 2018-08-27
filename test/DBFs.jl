@@ -1,6 +1,6 @@
 using RealNeuralNetworks
 using RealNeuralNetworks.NodeNets.DBFs   
-using Base.Test
+using Test
 
 seg = zeros(UInt32,(100,100,100))
 seg[48:52,48:52,:] = UInt32(1)

@@ -44,7 +44,7 @@ end
 example: ["770048087:0:2968-3480_1776-2288_16912-17424"]
 """
 function Manifest( ranges::Vector, ba::BigArray{D,T,N,C} ) where {D,T,N,C}
-    obj_id = parse( split(ranges[1], ":")[1] )
+    obj_id = Meta.parse( split(ranges[1], ":")[1] )
     obj_id = convert(T, obj_id)
     ranges = map(x-> split(x,":")[end], ranges)
     rangeList = map( BigArrays.Indexes.string2unit_range, ranges )
@@ -66,7 +66,7 @@ function get_voxel_offset(self::Manifest)
     # voxel_offset = map((x,y)->UInt32(x*y), voxel_offset, (2^MIP_LEVEL, 2^MIP_LEVEL,1))
     voxel_offset = Vector{UInt32}(voxel_offset)
     @show voxel_offset
-    return (voxel_offset...)
+    return (voxel_offset...,)
 end 
 
 """
@@ -98,7 +98,7 @@ function Base.next(self::Manifest, i )
     println("manifest index: $i in $(length(self.rangeList))")
     # example: [2456:2968, 1776:2288, 16400:16912]
     ranges = self.rangeList[i]
-    offset = (map(x-> UInt32(start(x)-1), ranges)...)
+    offset = (map(x-> UInt32(start(x)-1), ranges)...,)
     seg = self.ba[ranges...] |> parent
     bin_im = DBFs.create_binary_image( seg; obj_id = self.obj_id )
     @assert any(bin_im)

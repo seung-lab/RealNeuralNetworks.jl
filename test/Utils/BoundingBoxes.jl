@@ -1,4 +1,4 @@
-using Base.Test
+using Test
 using RealNeuralNetworks.Utils.BoundingBoxes 
 
 function create_fake_bounding_box()
