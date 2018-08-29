@@ -3,18 +3,17 @@ RealNeuralNetworks.jl
 3D neuron models extracted from EM image segmentation
 
 # Installation
-run this inside julia REPL:
+run this inside julia package REPL (hit `[` to enter package mode):
 
-    Pkg.clone("https://github.com/seung-lab/RealNeuralNetworks.jl.git")
+    dev https://github.com/seung-lab/RealNeuralNetworks.jl.git 
 
 # Usage
 
 ## commandline
-`julia ~/julia/v0.6/RealNeuralNetworks/scripts/skeletonize.jl -h`
+`julia skeletonize.jl -h`
 
 ## Docker (recommanded)
 ### build docker image
-    cd ~/julia/v0.6/RealNeuralNetworks
     sudo docker build . -t realneuralnetworks
 
 ```
