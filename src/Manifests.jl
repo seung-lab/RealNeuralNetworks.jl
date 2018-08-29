@@ -15,7 +15,7 @@ const MIP_LEVEL = 4
 export Manifest
 
 struct Manifest
-    # the bigarray for cutout
+    # the bigarray for cutout of segmentation 
     ba          ::AbstractBigArray
     # the id of object
     obj_id       ::Integer
@@ -32,12 +32,14 @@ function Manifest( manifestDirPath::AbstractString, manifestKey::AbstractString,
     h = GSDict( manifestDirPath; valueType=Dict{Symbol, Any})
     Manifest( h[manifestKey], ba )
 end
+
 """
 example: {"fragments": ["770048087:0:2968-3480_1776-2288_16912-17424"]}
 """
 function Manifest( h::Dict{Symbol, Any}, ba::AbstractBigArray )
     Manifest( h[:fragments], ba )
 end 
+
 """
 example: ["770048087:0:2968-3480_1776-2288_16912-17424"]
 """

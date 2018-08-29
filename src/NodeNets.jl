@@ -21,7 +21,7 @@ const REMOVE_PATH_CONST = 4
 
 mutable struct NodeNet 
     # x,y,z,r
-    nodeList               :: Vector{NTuple{4,Float32}}
+    nodeList            :: Vector{NTuple{4,Float32}}
     # connectivity matrix to represent edges
     # conn[2,3]=true means node 2 and 3 connected with each other
     # conn[3,2] should also be true since this is undirected graph

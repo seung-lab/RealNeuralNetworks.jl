@@ -1334,7 +1334,9 @@ function remove_redundent_nodes(self::Neuron)
     end 
     newNeuron = Neuron( newSegmentList, get_connectivity_matrix(self) )
     return remove_segments(newNeuron, removeSegmentIdList)
-end 
+end
+
+
 ########################## type convertion ####################
 """
     NodeNets.NodeNet( self::Neuron )
@@ -1359,7 +1361,8 @@ function SWCs.SWC(self::Neuron)
             # type, x, y, z, r, parent
             # in default, this was assumed that the connection is inside a segment, 
             # the parent is simply the previous node 
-            pointObj = SWCs.PointObj( Segments.get_class(segment), node[1], node[2], node[3], node[4], length(swc) )
+            pointObj = SWCs.PointObj( Segments.get_class(segment), 
+                                     node[1], node[2], node[3], node[4], length(swc) )
             
             if nodeId == 1
                 # the first node should connect to other segment or be root node
@@ -1490,7 +1493,7 @@ end
 function attach_pre_synapse!(self::Neuron, synapse::Segments.Synapse)
     preSynapticCoordinate = Synapses.get_pre_synaptic_coordinate( synapse )
     segmentId, nodeIdInSegment = find_closest_node_id( self, 
-                                                                preSynapticCoordinate )
+                                                        preSynapticCoordinate )
     segmentList = get_segment_list(self)
     Segments.attach_pre_synapse!(segmentList[segmentId], nodeIdInSegment, synapse) 
 end 
@@ -1498,7 +1501,7 @@ end
 function attach_post_synapse!(self::Neuron, synapse::Segments.Synapse)
     postSynapticCoordinate = Synapses.get_post_synaptic_coordinate( synapse )
     segmentId, nodeIdInSegment = find_closest_node_id( self, 
-                                                                postSynapticCoordinate )
+                                                        postSynapticCoordinate )
     segmentList = get_segment_list(self)
     Segments.attach_post_synapse!(segmentList[segmentId], nodeIdInSegment, synapse) 
 end 
