@@ -44,10 +44,10 @@ function from_seg(seg::Array{T,3}; obj_id::T=convert(T,1),
         end 
     end 
     # initialize the points array with offset
-    points = Array{UInt32}(nov, 3)
-    points[:,1] = offset[1]
-    points[:,2] = offset[2]
-    points[:,3] = offset[3]
+    points = Array{UInt32}(undef, nov, 3)
+    points[:,1] .= offset[1]
+    points[:,2] .= offset[2]
+    points[:,3] .= offset[3]
     
     # position of current row
     pos = 0

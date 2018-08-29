@@ -2,14 +2,16 @@ using RealNeuralNetworks
 using Test
 using HDF5
 using BigArrays
-using BigArrays.GSDicts
+using BigArrays.BinDicts 
 using RealNeuralNetworks.NodeNets
 using RealNeuralNetworks.SWCs
 
+using LinearAlgebra
+
 const CELL_ID = UInt32(76880)
 const EXPANSION= (UInt32(80), UInt32(80), UInt32(40))
-const GS_SEG_PATH = "gs://neuroglancer/zfish_v1/consensus-20170829/80_80_45"
-const GS_SKELETON_PATH = "gs://neuroglancer/zfish_v1/consensus-20170829/nodeNet_mip_4"
+const SEG_PATH = "/neuroglancer/zfish_v1/consensus-20170829/80_80_45"
+#const SKELETON_PATH = "/neuroglancer/zfish_v1/consensus-20170829/nodeNet_mip_4"
 const MIP = 4
 
 function get_seg_from_h5()
@@ -18,7 +20,7 @@ function get_seg_from_h5()
     seg = f["main"][1,:,:,101:500]
     close(f)
     seg = reshape(seg, size(seg)[2:4])
-    @asset ndims(seg) == 3
+    @assert ndims(seg) == 3
     for i in eachindex(seg)
         if seg[i] == 77605
             seg[i] = convert(UInt32,1)
@@ -30,15 +32,15 @@ function get_seg_from_h5()
 end
 
 function get_seg_from_gs()
-    ba = BigArray(GSDict( GS_SEG_PATH ))
+    ba = BigArray(BinDict( SEG_PATH ))
     seg = ba[2457:2968, 1777:2288, 16401:16912]
 end 
 
 function create_fake_seg()
     seg = zeros(UInt32,(100,100,100))
-    seg[50,50,:] = UInt32(1)
-    seg[49:52, 49:52, 48:52] = 1
-    seg[47:54, 47:54, 71:78] = 1
+    seg[50,50,:] .= one(UInt32)
+    seg[49:52, 49:52, 48:52] .= one(UInt32)
+    seg[47:54, 47:54, 71:78] .= one(UInt32)
     return seg 
 end 
 
@@ -48,7 +50,7 @@ end
     # @time seg = get_seg_from_gs()
     println("building nodeNet ...")
     #@time nodeNet = NodeNet( seg; obj_id = CELL_ID )
-    @time nodeNet = NodeNet( seg; obj_id = UInt32(1) )
+    @time nodeNet = NodeNet( seg; obj_id = one(UInt32) )
     NodeNets.add_offset!(nodeNet, (-1,-1,-1))
     bin = NodeNets.get_neuroglancer_precomputed(nodeNet)
     # open("/tmp/fake.bin", "w") do f write(f, bin)  end 

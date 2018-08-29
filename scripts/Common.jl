@@ -22,10 +22,10 @@ end
 customized argument parse for tuple
 """
 function ArgParse.parse_item(::Type{NTuple{3,Int}}, x::AbstractString)
-    return (map(parse, split(x,","))...)
+    return (map(Meta.parse, split(x,","))...)
 end
 function ArgParse.parse_item(::Type{UInt32}, x::AbstractString)
-    return UInt32(parse(x))
+    return UInt32(Meta.parse(x))
 end 
 
 function parse_commandline()

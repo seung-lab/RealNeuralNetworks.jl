@@ -30,7 +30,7 @@ function get_parent( self::PointObj )
 end 
 
 function serialize(self::PointObj)
-    io = IOBuffer(21)
+    io = IOBuffer(read=false, write=true, maxsize=21)
     write(io, self.point_type)
     write(io, self.x)
     write(io, self.y)

@@ -15,9 +15,9 @@ function preprocessing!(self::SynapseTable, voxelSize::NTuple{3,Int})
 		end
     end
     
-    DataFrames.rename!(self, [  :centroid_x => :psd_x, 
-                                :centroid_y => :psd_y,
-                                :centroid_z => :psd_z])
+    #DataFrames.rename!(self, [  :centroid_x => :psd_x, 
+    #                            :centroid_y => :psd_y,
+    #                            :centroid_z => :psd_z])
 
     # transform to physical coordinate
     self[:BBOX_bx]      = (self[:BBOX_bx] .- 1) .* voxelSize[1]

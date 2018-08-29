@@ -240,7 +240,7 @@ end
 """
 function create_binary_image( pointCloud::Array{T,2} ) where T;
 
-  max_dims = maximum( pointCloud, 1 );
+  max_dims = maximum( pointCloud, dims=1 );
     bin_im = falses(max_dims...)
 
   for p in 1:size( pointCloud, 1 )

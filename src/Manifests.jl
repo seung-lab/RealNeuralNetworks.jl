@@ -4,11 +4,13 @@ include("PointArrays.jl"); using .PointArrays;
 
 # using JLD2
 using BigArrays
-using BigArrays.GSDicts 
+using BigArrays.BinDicts 
 using ..RealNeuralNetworks.NodeNets
 #import ..RealNeuralNetworks.NodeNets.DBFs
 #import ..RealNeuralNetworks.NodeNets.PointArrays
 using OffsetArrays
+using JSON
+import Distributed: pmap 
 
 const MIP_LEVEL = 4
 
@@ -28,9 +30,11 @@ Parameters:
     dir 
 """
 function Manifest( manifestDirPath::AbstractString, manifestKey::AbstractString, bigArrayPath::AbstractString )
-    ba = BigArray( GSDict( bigArrayPath ) )
-    h = GSDict( manifestDirPath; valueType=Dict{Symbol, Any})
-    Manifest( h[manifestKey], ba )
+    ba = BigArray( BinDict( bigArrayPath ) )
+    h = BinDict( manifestDirPath)
+    str = String(h[manifestKey])
+    d = JSON.parse(str; dicttype=Dict{Symbol, Any})
+    Manifest( d, ba )
 end
 
 """
@@ -87,18 +91,16 @@ function trace(self::Manifest, cellId)
     return nodeNet
 end 
 
-function Base.start(self::Manifest)
-    1
-end 
-
-"""
-get the point cloud and dbf
-"""
-function Base.next(self::Manifest, i )
-    println("manifest index: $i in $(length(self.rangeList))")
+function Base.iterate(self::Manifest, state=1)
+    if state > length( self.rangeList )
+        # finish iteration 
+        return nothing 
+    end 
+    
+    println("manifest index: $state in $(length(self.rangeList))")
     # example: [2456:2968, 1776:2288, 16400:16912]
-    ranges = self.rangeList[i]
-    offset = (map(x-> UInt32(start(x)-1), ranges)...,)
+    ranges = self.rangeList[state]
+    offset = (map(x-> UInt32(x.start-1), ranges)...,)
     seg = self.ba[ranges...] |> parent
     bin_im = DBFs.create_binary_image( seg; obj_id = self.obj_id )
     @assert any(bin_im)
@@ -108,11 +110,8 @@ function Base.next(self::Manifest, i )
     PointArrays.add_offset!(point_cloud, offset)
     # no need to use voxel_offset since the file name encoded the global coordinate
     # PointArrays.add_offset!(point_cloud, get_voxel_offset(self)) 
-    return (point_cloud, dbf), i+1
-end 
+    return (point_cloud, dbf), state+1
 
-function Base.done(self::Manifest, i)
-    i > length( self.rangeList )
-end 
+end  
 
 end # module

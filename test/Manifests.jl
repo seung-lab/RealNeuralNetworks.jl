@@ -1,17 +1,20 @@
 using BigArrays
-using BigArrays.GSDicts
+using BigArrays.BinDicts
 using Test
 using RealNeuralNetworks 
 using RealNeuralNetworks.Manifests
 using RealNeuralNetworks.NodeNets
 using RealNeuralNetworks.SWCs
+using JSON 
 
 const cellId = 77497
 const VOXEL_SIZE = (80,80,45)
 
 @testset "test basic data structure" begin 
-    h = GSDict("gs://neuroglancer/zfish_v1/consensus-20180123/mesh_mip_4"; valueType=Dict{Symbol, Any})
-    manifest = h["$(cellId):0"]
+    h = BinDict("/neuroglancer/zfish_v1/consensus-20180123/mesh_mip_4")
+    manifest = String(h["$(cellId):0"])
+    manifest = JSON.parse(manifest; dicttype=Dict{Symbol, Any})
+    
     str = split(manifest[:fragments][1], ":")[end]
     @show str
     range = BigArrays.Indexes.string2unit_range( str )
@@ -19,8 +22,8 @@ const VOXEL_SIZE = (80,80,45)
 end 
 
 @testset "test manifest iteration" begin
-    manifest = Manifest("gs://neuroglancer/zfish_v1/consensus-20180123/mesh_mip_4", 
-                        "$(cellId):0", "gs://neuroglancer/zfish_v1/consensus-20180123/40_40_45")
+    manifest = Manifest("/neuroglancer/zfish_v1/consensus-20180123/mesh_mip_4", 
+                        "$(cellId):0", "/neuroglancer/zfish_v1/consensus-20180123/40_40_45")
     println("trace a cell...")
     @time nodeNet = Manifests.trace(manifest, cellId)
     swc = SWC( nodeNet )

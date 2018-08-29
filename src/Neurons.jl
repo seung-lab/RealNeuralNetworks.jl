@@ -4,12 +4,15 @@ using .Segments
 using ..NodeNets
 using ..SWCs
 using ..Utils.BoundingBoxes 
+using .Segments.Synapses 
+
 using LsqFit
 using ImageFiltering
 using OffsetArrays
 using DataFrames
-using .Segments.Synapses 
-
+using SparseArrays
+#import LinearAlgebra: norm, dot, normalize 
+using LinearAlgebra 
 
 const EXPANSION = (one(UInt32), one(UInt32), one(UInt32))
 const VOXEL_SIZE = (500, 500, 500)
@@ -803,7 +806,7 @@ function get_mask(self::Neuron, voxelSize::Union{Tuple, Vector})
     mask = zeros(Bool, sz)
     mask = OffsetArray(mask, range...)
 
-    @unsafe for voxel in voxelSet
+    @inbounds for voxel in voxelSet
         # add a small number to make sure that there is no 0
         mask[voxel...] = true 
     end 
@@ -833,7 +836,7 @@ function get_2d_binary_projection(self::Neuron; axis=3, voxelSize=VOXEL_SIZE)
     mask = zeros(Bool, sz)
     mask = OffsetArray(mask, range...)
 
-    @unsafe for voxel in voxelSet 
+    @inbounds for voxel in voxelSet 
         # add a small number to make sure that there is no 0 
         mask[voxel[1:2]...] = true 
     end 
@@ -872,8 +875,8 @@ function translate_soma_to_coordinate_origin(self::Neuron, densityMap::OffsetArr
                                              voxelSize::Tuple)
     # assume that the first node is the soma node with largest radius
     somaCorrdinate = get_root_node(self)[1:3]
-    newRange = map((x,y,s)->(x-round(Int,y/s)), 
-                   indices(densityMap), somaCorrdinate, voxelSize)
+    newRange = map((x,y,s)->(x .- round(Int,y/s)), 
+                   axes(densityMap), somaCorrdinate, voxelSize)
     OffsetArray(parent(densityMap), newRange...)
 end 
 
@@ -885,13 +888,13 @@ translated to make the soma located in (0,0,0).
 function get_arbor_density_map_distance(self::OffsetArray{T,N,Array{T,N}}, 
                                         other::OffsetArray{T,N,Array{T,N}}) where {T,N}
     # find the intersection of two offset arrays
-    intersectIndices = map(intersect, indices(self), indices(other))
+    intersectIndices = map(intersect, axes(self), axes(other))
     d = 0.0
     # add the distance of intersection
     d += sum(abs2.(self[intersectIndices...] .- other[intersectIndices...])) 
     # add the distance of self from non-intersect regions
-    selfDiff  = map(setdiff, indices(self),  intersectIndices)
-    otherDiff = map(setdiff, indices(other), intersectIndices)
+    selfDiff  = map(setdiff, axes(self),  intersectIndices)
+    otherDiff = map(setdiff, axes(other), intersectIndices)
     d += sum(abs2.(self[selfDiff...]))
     d += sum(abs2.(other[otherDiff...]))
     d
@@ -918,14 +921,13 @@ function get_arbor_density_map_overlap_min_distance(self ::Array{T,3},
 end 
 
 ############################### Base functions ###################################
-@inline function Base.start(self::Neuron) 1 end
 
-@inline function Base.next(self::Neuron, segmentId::Int) 
-    self[segmentId], segmentId+1
-end 
+function Base.iterate(self::Neuron, state::Int=1)
+    if state > length(self)
+        return nothing 
+    end 
 
-@inline function Base.done(self::Neuron, segmentId::Int)
-    length(self) < segmentId
+    return self[state], state+1
 end 
 
 @inline function Base.length(self::Neuron)
@@ -1618,7 +1620,7 @@ function resample(nodeList::Vector{NTuple{4,T}}, resampleDistance::T) where T
             @assert (interpretRatio >= zero(T) && interpretRatio <= one(T)) || 
                     isapprox(interpretRatio, 0; atol=6)
             interpretedNode = n1 .+ (n2.-n1) .* interpretRatio 
-            push!(ret, (interpretedNode...))
+            push!(ret, (interpretedNode...,))
 
             # update accumulated node distance  
             accumulatedNodeDistance -= resampleDistance 

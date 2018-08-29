@@ -3,7 +3,11 @@ using RealNeuralNetworks.Utils.FakeSegmentations
 using RealNeuralNetworks.Neurons
 using RealNeuralNetworks.NodeNets
 using RealNeuralNetworks.SWCs
+
 using CSV
+using SparseArrays 
+using LinearAlgebra 
+using DataFrames 
 
 const NEURON_ID = 77625
 const ASSERT_DIR = joinpath(@__DIR__, "../asset")
@@ -152,7 +156,7 @@ end
     neuron1 = neuron
     densityMap1 = Neurons.translate_soma_to_coordinate_origin(neuron1, arborDensityMap, 
                                                              ARBOR_DENSITY_MAP_VOXEL_SIZE)
-    @show indices(densityMap1)
+    @show axes(densityMap1)
     println("compute arbor density map distance...")
     @time d = Neurons.get_arbor_density_map_distance(densityMap1, densityMap1)
     @test d == 0.0
@@ -163,7 +167,7 @@ end
     #@test norm(densityMap2[:]) ≈ 1.0                                               
     densityMap2 = Neurons.translate_soma_to_coordinate_origin(neuron2, densityMap2, 
                                                               ARBOR_DENSITY_MAP_VOXEL_SIZE)
-    @show indices(densityMap2) 
+    @show axes(densityMap2) 
     println("compute arbor density map distance...")                          
     @time d = Neurons.get_arbor_density_map_distance(densityMap1, densityMap2)
     println("arbor density map distance: $d")

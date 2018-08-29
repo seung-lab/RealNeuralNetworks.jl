@@ -2,17 +2,19 @@ module NodeNets
 include("DBFs.jl"); using .DBFs;
 include("PointArrays.jl"); using .PointArrays;
 using ..RealNeuralNetworks.SWCs
-using Base.Cartesian
+import LinearAlgebra: norm
 
 export NodeNet 
 
 import LightGraphs
 import BigArrays
+using SparseArrays 
+import DataStructures: IntSet 
 
-const DEFAULT_OFFSET = (zero(UInt32), zero(UInt32), zero(UInt32))
+const OFFSET = (zero(UInt32), zero(UInt32), zero(UInt32))
 
 # rescale the skeleton
-const DEFAULT_EXPANSION = (one(UInt32), one(UInt32), one(UInt32))
+const EXPANSION = (one(UInt32), one(UInt32), one(UInt32))
 
 # control the removing points around path based on DBF
 const REMOVE_PATH_SCALE = 3 
@@ -310,7 +312,7 @@ function get_neuroglancer_precomputed(self::NodeNet)
     @show get_edge_num(self)
     # total number of bytes
     num_bytes = 4 + 4 + 4*3*get_node_num(self) + 4*2*get_edge_num(self)
-    buffer = IOBuffer( num_bytes )
+    buffer = IOBuffer( read=false, write=true, maxsize=num_bytes )
     # write the number of vertex, and edges
     write(buffer, UInt32(get_node_num(self)))
     write(buffer, UInt32(get_edge_num(self)))
@@ -405,7 +407,7 @@ end
   record the offset and add it back after building the nodeNet
 """
 function translate_to_origin!( points )
-  offset = minimum( points, 1 ) -1 ;
+  offset = minimum( points, dims=1 ) .- 1 ;
   # transform to 1d vector
   offset = vec( offset )
   @assert length(offset) == 3
@@ -428,15 +430,13 @@ function create_node_lookup( points::Array{T,2} ) where T
 
   #need the max in order to define the bounds of that volume
   # tuple allows the point to be passed to fns as dimensions
-  max_dims = ( maximum( points, 1 )... ,);
+  max_dims = ( maximum( points, dims=1 )... ,);
   max_dims = map(Int, max_dims)
   num_points = size(points,1);
   #creating the sparse vector mapping indices -> node ids
-  volumeIndex2NodeIndex = sparsevec( [sub2ind(max_dims, Vector{UInt32}(points[i,:])... ) for i=1:num_points ],
-  	                    1:num_points,
-  	                    prod(max_dims),
-  	                    (x,y) -> x #ignore duplicates
-  	                    )
+  volumeIndex2NodeIndex = sparsevec( [
+                        (LinearIndices(max_dims))[Vector{UInt32}(points[i,:])...,] 
+                            for i=1:num_points ], 1:num_points, prod(max_dims), (x,y) -> x )
 
   volumeIndex2NodeIndex, max_dims
 end
@@ -480,14 +480,16 @@ function make_neighbor_graph( points::Array{T,2}, volumeIndex2NodeIndex=nothing,
   js = Vector{Int}();
   ws = Vector{Float64}();
 
-  dest_sub = Array{Int}((3,))
+  dest_sub = Array{Int}(undef, 3)
 
   for i in eachindex(nhood)
 
   	#only need to explicitly tell LightGraphs to add the edges in
   	# one direction (undirected), though doing this properly
     # can be tricky
-    direction = ind2sub((3,3,3),i)
+    #direction = ind2sub((3,3,3),i)
+    direction = Tuple(CartesianIndices((3,3,3))[i]) 
+
     if (direction[1] == 3 ||
        (direction[1] == 2 && 2*direction[2] + direction[3] >= 6)) continue end
 
@@ -506,7 +508,7 @@ function make_neighbor_graph( points::Array{T,2}, volumeIndex2NodeIndex=nothing,
       	  dest_sub[3] > max_dims[3] ) continue end
 
       #fetching the id of the proposed node location
-      dest_ind = sub2ind( max_dims, dest_sub[1],dest_sub[2],dest_sub[3] );
+      dest_ind = (LinearIndices(max_dims))[dest_sub[1:3]...,]
       dest_node = volumeIndex2NodeIndex[dest_ind];
 
       if dest_node != 0 #valid edge
@@ -539,12 +541,15 @@ end
 function alexs_penalty( weights, dbf, G, mult=true )
 
   # *1.01 ensures later quotient is >0
-  M = maximum(dbf,1)*1.01
+  M = maximum(dbf, dims=1)*1.01
 
-  p_v = (1 - dbf./M ).^(16);
+  p_v = (1 .- dbf./M ) .^ 16;
 
   #DBF penalty is defined by the destination node, only need js
-  is,js = findn(weights);
+  is, js = begin 
+      I = findall(!iszero, weights) 
+      (getindex.(I, 1), getindex.(I, 2))
+  end 
   ws = nonzeros(weights);
 
   if mult
@@ -761,7 +766,7 @@ function distill!(point_array::Array{T,2},
                   path_nodes::Vector, path_edges::Vector) where T 
     num_nodes = length(path_nodes) 
     num_edges = length(path_edges)
-    nodes = Array{T}(num_nodes, 3)
+    nodes = Array{T}(undef, num_nodes, 3)
     # map the old path node id to new id 
     id_map = Dict{T, T}()
     sizehint!(id_map, num_nodes)

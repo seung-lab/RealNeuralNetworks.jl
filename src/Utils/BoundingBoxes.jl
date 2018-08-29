@@ -1,5 +1,7 @@
 module BoundingBoxes
 
+import LinearAlgebra: norm 
+
 const ZERO_FLOAT32 = zero(Float32)
 
 export BoundingBox 

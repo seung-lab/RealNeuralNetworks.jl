@@ -1,5 +1,9 @@
 module Segments
 
+import SparseArrays: SparseVector, spzeros, findnz, nnz
+import LinearAlgebra: norm, dot
+import Statistics: mean
+
 using RealNeuralNetworks.Utils.BoundingBoxes
 include("Synapses.jl")
 using .Synapses
@@ -176,12 +180,16 @@ end
 end 
 
 ###################### Base functions ################
-function Base.start( self::Segment ) 1 end 
-function Base.next( self::Segment, state::Integer ) get_node_list(self)[state], state+1 end 
-function Base.done( self::Segment, state::Integer ) state > length(self) end 
+function Base.iterate(self::Segment, state::Int=1)
+    if state > length(self) 
+        return nothing 
+    else 
+        return get_node_list(self)[state], state+1  
+    end  
+end 
 
-function Base.endof(self::Segment) length(self) end
-function Base.isempty(self::Segment) isempty(self.nodeList) end 
+@inline function Base.lastindex(self::Segment) length(self) end 
+@inline function Base.isempty(self::Segment) isempty(self.nodeList) end 
 
 """
     Base.length(self::Segment)

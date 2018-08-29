@@ -90,7 +90,7 @@ function get_neuroglancer_precomputed(self::SWC)
     @show get_edge_num(self)
     # total number of bytes
     num_bytes = 4 + 4 + 4*3*get_node_num(self) + 4*2*get_edge_num(self)
-    buffer = IOBuffer( num_bytes )
+    buffer = IOBuffer( read=false, write=true, maxsize=num_bytes )
     # write the number of vertex, and edges
     write(buffer, UInt32(get_node_num(self)))
     write(buffer, UInt32(get_edge_num(self)))
@@ -135,7 +135,7 @@ function load(fileName::AbstractString)
 end
 
 function serialize(self::SWC)
-    io = IOBuffer( length(self)*21 )
+    io = IOBuffer( read=false, write=true, maxsize=length(self)*21 )
     for pointObj in self
         write(io, PointObjs.serialize(pointObj))
     end

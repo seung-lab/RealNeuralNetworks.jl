@@ -3,9 +3,9 @@ using RealNeuralNetworks.NodeNets.DBFs
 using Test
 
 seg = zeros(UInt32,(100,100,100))
-seg[48:52,48:52,:] = UInt32(1)
-seg[49:52, 49:52, 48:52] = 1
-seg[47:54, 47:54, 71:78] = 1
+seg[48:52,48:52, 1:end ] .= one(UInt32)
+seg[49:52, 49:52, 48:52] .= one(UInt32)
+seg[47:54, 47:54, 71:78] .= one(UInt32)
 
 
 points = RealNeuralNetworks.NodeNets.PointArrays.from_seg(seg)
