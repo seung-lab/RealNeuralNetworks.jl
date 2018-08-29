@@ -113,7 +113,7 @@ function NodeNet( points::Array{T,2}; dbf::DBF=DBFs.compute_DBF(points),
         dsp_dbf       = LightGraphs.dijkstra_shortest_paths(G, rootNodeId, dbf_weights);
 
         #remove reachable nodes from the disconnected ones
-        reachableNodeIdList = find(.!(isinf.(dsp_euclidean.dists)));
+        reachableNodeIdList = findall(.!(isinf.(dsp_euclidean.dists)));
         #another necessary precaution for duplicate nodes
         reachableNodeIdList = intersect(reachableNodeIdList, disconnectedNodeIdSet);
         setdiff!(disconnectedNodeIdSet, reachableNodeIdList);
@@ -347,7 +347,7 @@ end
 save nodeNet in google cloud storage for neuroglancer visualization
 the format is the same with meshes
 """
-function save(self::NodeNet, cellId::Integer, d_bin::Associative)
+function save(self::NodeNet, cellId::Integer, d_bin::AbstractDict)
     # get the bounding box of nodeNet and transfer to string representation
     # example string: 1432-1944_1264-1776_16400-16912
     rangeString = BigArrays.Indexes.unit_range2string( UnitRange(self) )
@@ -428,7 +428,7 @@ function create_node_lookup( points::Array{T,2} ) where T
 
   #need the max in order to define the bounds of that volume
   # tuple allows the point to be passed to fns as dimensions
-  max_dims = ( maximum( points, 1 )... );
+  max_dims = ( maximum( points, 1 )... ,);
   max_dims = map(Int, max_dims)
   num_points = size(points,1);
   #creating the sparse vector mapping indices -> node ids
@@ -609,7 +609,7 @@ end
 @inline function find_new_root_node_id(dbf::DBF, disconnectedNodeIdSet::IntSet)
     disconnectedNodeIndexList = [disconnectedNodeIdSet...]
     disconnectedNodeDBFList = dbf[disconnectedNodeIndexList]
-    rootIndexInDisconnectedList = indmax( disconnectedNodeDBFList )
+    rootIndexInDisconnectedList = argmax( disconnectedNodeDBFList )
     rootIndex = disconnectedNodeIndexList[rootIndexInDisconnectedList]
     return rootIndex
 end 

@@ -13,14 +13,14 @@ function main()
     @show args
     @assert args["idlistfile"] != nothing
      
-    idList = map( parse, split( readstring(args["idlistfile"]), "\n" ) )
+    idList = map( parse, split( read(args["idlistfile"], String), "\n" ) )
     messageList = Vector{String}()
     for id in idList 
         push!(messageList, string(id))
     end
 
     # put to AWS SQS queue
-    const queueUrl = SQS.get_queue_url( QueueName=args["sqsqueue"] )["QueueUrl"]
+    queueUrl = SQS.get_queue_url( QueueName=args["sqsqueue"] )["QueueUrl"]
 
 #    for message in messageList
 #        @show message

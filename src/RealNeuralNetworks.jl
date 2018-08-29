@@ -1,4 +1,3 @@
-__precompile__()
 module RealNeuralNetworks
 
 include("Utils/include.jl"); 

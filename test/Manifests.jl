@@ -1,6 +1,6 @@
 using BigArrays
 using BigArrays.GSDicts
-using Base.Test
+using Test
 using RealNeuralNetworks 
 using RealNeuralNetworks.Manifests
 using RealNeuralNetworks.NodeNets

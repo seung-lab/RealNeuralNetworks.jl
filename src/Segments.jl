@@ -168,7 +168,7 @@ the ratio of the actual path length to the euclidean distance between head and t
 end 
 
 @inline function get_center(nodeList::Vector{Node})
-    (map(i->mean(y->y[i], nodeList), 1:4)...)
+    (map(i->mean(y->y[i], nodeList), 1:4)...,)
 end
 
 @inline function get_center(self::Segment, range::UnitRange)

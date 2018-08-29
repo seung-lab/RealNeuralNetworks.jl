@@ -1,5 +1,5 @@
 using RealNeuralNetworks.SWCs
-using Base.Test
+using Test
 
 @testset "test SWC" begin 
     # read swc
@@ -11,7 +11,7 @@ using Base.Test
 
     println("save plain text swc ...")
     @time SWCs.save(swc, tempFile)
-    @test readstring(exampleFile) == readstring( tempFile )
+    @test read(exampleFile, String) == read( tempFile , String)
     rm(tempFile)
     
     println("save binary swc ...")

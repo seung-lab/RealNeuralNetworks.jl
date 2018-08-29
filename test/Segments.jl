@@ -1,7 +1,7 @@
 using RealNeuralNetworks
 using RealNeuralNetworks.Neurons
 using RealNeuralNetworks.Neurons.Segments
-using Base.Test
+using Test
 
 const SWC_BIN_PATH = joinpath(@__DIR__, "../asset/77625.swc.bin")
 

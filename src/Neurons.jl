@@ -175,7 +175,7 @@ function load(fileName::AbstractString)
 end
 
 function load_swc( fileName::AbstractString )
-    swcString = readstring( fileName )
+    swcString = read( fileName , String)
     Neuron( swcString )
 end
 
@@ -794,7 +794,7 @@ function get_mask(self::Neuron, voxelSize::Union{Tuple, Vector})
     voxelSet = Set{NTuple{3, Int}}()
     for node in nodeList 
         voxelCoordinate = map((x,y)->round(Int, x/y), node[1:3], voxelSize)
-        push!(voxelSet, (voxelCoordinate...))
+        push!(voxelSet, (voxelCoordinate...,))
     end 
     boundingBox = Segments.BoundingBox( voxelSet )
     range = BoundingBoxes.get_unit_range(boundingBox)
@@ -824,7 +824,7 @@ function get_2d_binary_projection(self::Neuron; axis=3, voxelSize=VOXEL_SIZE)
     voxelSet = Set{NTuple{3, Int}}()
     for node in nodeList 
         voxelCoordinate = map((x,y)->round(Int, x/y), node[1:3], voxelSize)
-        push!(voxelSet, (voxelCoordinate...))
+        push!(voxelSet, (voxelCoordinate...,))
     end 
     boundingBox = Segments.BoundingBox( voxelSet ) 
     range = Segments.BoundingBoxes.get_unit_range(boundingBox)[1:2]
@@ -1296,7 +1296,7 @@ function remove_terminal_blobs( self::Neuron )
             parentSegment = self[ get_parent_segment_id(self, index) ]
             distance2Parent = Segments.get_nodes_distance( segment[1], parentSegment[end] )
         catch err 
-            warn("this terminal segment is root segment!")
+            @warn("this terminal segment is root segment!")
             @assert get_parent_segment_id(self, index) < 1
         end 
         segmentInnerPathLength = Segments.get_path_length( segment )

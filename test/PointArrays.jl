@@ -1,7 +1,7 @@
 using RealNeuralNetworks
 using RealNeuralNetworks.NodeNets.PointArrays
 
-using Base.Test
+using Test
 
 @testset "test PointArray add_offset! operation" begin
     # build fake data

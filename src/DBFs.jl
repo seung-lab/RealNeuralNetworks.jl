@@ -1,7 +1,5 @@
 #!/usr/bin/env julia
 
-__precompile__()
-
 module DBFs
 
 const DBF = Vector{Float32}

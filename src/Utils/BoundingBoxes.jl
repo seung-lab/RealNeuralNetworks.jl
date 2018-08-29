@@ -21,7 +21,7 @@ function BoundingBox( minCorner::NTuple{3,Int}, maxCorner::NTuple{3,Int} )
 end 
 
 function BoundingBox( minCorner::Vector{Float32}, maxCorner::Vector{Float32} )
-    BoundingBox((minCorner...), (maxCorner...))
+    BoundingBox((minCorner...,), (maxCorner...,))
 end 
 
 """
