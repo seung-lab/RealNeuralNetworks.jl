@@ -9,3 +9,5 @@ OffsetArrays
 ImageFiltering
 Query
 JSON
+Memoize
+Serialization 

@@ -13,6 +13,7 @@ using DataFrames
 using SparseArrays
 #import LinearAlgebra: norm, dot, normalize 
 using LinearAlgebra 
+using Serialization  
 
 const EXPANSION = (one(UInt32), one(UInt32), one(UInt32))
 const VOXEL_SIZE = (500, 500, 500)
@@ -154,6 +155,7 @@ end
 
 function Neuron( swc::SWC )
     nodeNet = NodeNet( swc )
+    # respect the point class 
     Neuron( nodeNet )
 end 
 
@@ -172,31 +174,56 @@ function load(fileName::AbstractString)
         return load_swc(fileName)
     elseif endswith(fileName, ".swc.bin")
         return load_swc_bin(fileName)
+    elseif endswith(fileName, ".bin") 
+        return load_bin(fileName) 
     else 
         error("only support .swc or .swc.bin file: $fileName")
     end
 end
+
+function save(self::Neuron, fileName::AbstractString)
+    if endswith(fileName, ".swc")
+        save_swc(self, fileName)
+    elseif endswith(fileName, ".swc.bin")
+        save_swc_bin(self, fileName)
+    elseif endswith(fileName, ".bin")
+        save_bin(self, fileName) 
+    else 
+        error("unsupported format: $(fileName)")
+    end 
+end  
 
 function load_swc( fileName::AbstractString )
     swcString = read( fileName , String)
     Neuron( swcString )
 end
 
+function save_swc(self::Neuron, fileName::AbstractString)
+    swc = SWC(self)
+    SWCs.save( swc, fileName )
+end 
+
 function load_swc_bin( fileName::AbstractString )
     swc = SWCs.load_swc_bin( fileName )
     Neuron( swc )
 end 
 
-function save(self::Neuron, fileName::AbstractString)
-    swc = SWC(self)
-    SWCs.save( swc, fileName )
-end 
-save_swc = save
-
 function save_swc_bin( self::Neuron, fileName::AbstractString )
     SWCs.save_swc_bin( SWCs.SWC(self), fileName )
 end 
 
+function load_bin(fileName::AbstractString)
+    open(fileName) do f 
+        return Serialization.deserialize(f)
+    end 
+end  
+
+function save_bin(self::Neuron, fileName::AbstractString)
+    open(fileName, "w") do f 
+        Serialization.serialize(f, self) 
+    end  
+    nothing 
+end  
 ####################### properties ##############
 
 """
@@ -1157,7 +1184,7 @@ function remove_segments(self::Neuron, removeSegmentIdSet::Set{Int})
     newSegmentIdList = Vector{Int}()
     segmentIdMap = Dict{Int,Int}()
     # the first one is the root segment
-    seedSegmentIdList = [1]
+    seedSegmentIdList = [get_root_segment_id(self)]
     # build segmentList1 without the splitout segment, will deal with it later
     while !isempty( seedSegmentIdList )
         seedSegmentId = pop!( seedSegmentIdList )
@@ -1532,7 +1559,21 @@ function adjust_segment_class!(self::Neuron)
         end
     end 
     nothing
-end 
+end
+
+"""
+    postprocessing(self::Neuron)
+post process after skeletonization
+"""
+function postprocessing(self::Neuron)
+    self = remove_hair(self)
+    self = remove_redundent_nodes(self)
+    self = remove_subtree_in_soma(self)
+    self = remove_terminal_blobs(self)
+    self = resample(self, Float32(100))
+    self = merge_only_child(self)
+    return self
+end  
 
 """
     remove_segments_with_class(self::Neuron, class::UInt8)
@@ -1638,8 +1679,8 @@ function find_closest_node_id(self::Neuron, seedNode::NTuple{3,T}) where T
     segmentList = get_segment_list(self)
     
     # initialization 
-    mergingSegmentId = 0
-    mergingNodeIdInSegment = 0
+    closestSegmentId = 0
+    closestNodeIdInSegment = 0
     distance = typemax(T)
     
     @assert !isempty(segmentList)
@@ -1654,14 +1695,14 @@ function find_closest_node_id(self::Neuron, seedNode::NTuple{3,T}) where T
             d, nodeIdInSegment = Segments.distance_from(segment, seedNode )
             if d < distance 
                 distance = d
-                mergingSegmentId = segmentId 
-                mergingNodeIdInSegment = nodeIdInSegment 
+                closestSegmentId = segmentId 
+                closestNodeIdInSegment = nodeIdInSegment 
             end 
         end 
     end
-    @assert mergingNodeIdInSegment > 0
-    @assert mergingNodeIdInSegment <= length(segmentList[mergingSegmentId])
-    mergingSegmentId, mergingNodeIdInSegment, distance  
+    @assert closestNodeIdInSegment > 0 
+    @assert closestNodeIdInSegment <= length(segmentList[closestSegmentId])
+    closestSegmentId, closestNodeIdInSegment, distance 
 end 
 
 """

@@ -8,12 +8,22 @@ export SynapseTable
 const SynapseTable = DataFrame  
 
 function preprocessing!(self::SynapseTable, voxelSize::NTuple{3,Int})
+
 	DataFrames.dropmissing!(self)
+
+    # the ids should be integer 
 	for (key, value) in DataFrames.eachcol(self)
 		if key!=:presyn_wt && key!=:postsyn_wt
 			self[key] = round.(Int, value)
 		end
     end
+
+    # remove self connection 
+    self = @from i in self begin 
+        @where i.presyn_segid != i.postsyn_segid 
+        @select i 
+        @collect DataFrame 
+    end  
     
     #DataFrames.rename!(self, [  :centroid_x => :psd_x, 
     #                            :centroid_y => :psd_y,

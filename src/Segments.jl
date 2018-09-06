@@ -5,8 +5,9 @@ import LinearAlgebra: norm, dot
 import Statistics: mean
 
 using RealNeuralNetworks.Utils.BoundingBoxes
-include("Synapses.jl")
-using .Synapses
+include("Synapses.jl"); using .Synapses
+
+using Memoize 
 
 const Node = NTuple{4,Float32}
 const SynapseList = SparseVector{Synapse, Int}
@@ -22,7 +23,7 @@ mutable struct Segment
     # list of tuple (x,y,z,r)
     nodeList        ::Vector{Node}
     class           ::UInt8
-    boundingBox     ::BoundingBox
+    #boundingBox     ::BoundingBox
     preSynapseList  ::SynapseList 
     postSynapseList ::SynapseList 
 end 
@@ -32,11 +33,14 @@ function Segment()
     Segment(nodeList)
 end 
 function Segment(nodeList::Vector{Node}; 
-                 class::UInt8=UNDEFINED_CLASS, boundingBox=BoundingBox(nodeList),
+                 class::UInt8=UNDEFINED_CLASS,
                  preSynapseList::SynapseList  = spzeros(Synapse, length(nodeList)),
                  postSynapseList::SynapseList = spzeros(Synapse, length(nodeList)))
-    Segment(nodeList, class, boundingBox, preSynapseList, postSynapseList)
+    Segment(nodeList, class, preSynapseList, postSynapseList)
 end 
+
+###################### IO ###########################
+
 
 ###################### properties ###################
 """
@@ -48,7 +52,7 @@ compute the euclidean distance between two nodes
 end 
 @inline function get_node_list(self::Segment) self.nodeList end 
 @inline function get_connectivity_matrix( self::Segment ) self.connectivityMatrix end 
-@inline function get_bounding_box( self::Segment ) self.boundingBox end 
+@memoize function get_bounding_box( self::Segment ) BoundingBox(get_node_list(self)) end 
 @inline function get_class( self::Segment ) self.class end 
 @inline function get_pre_synapse_list( self::Segment ) self.preSynapseList end 
 @inline function get_post_synapse_list( self::Segment ) self.postSynapseList end
@@ -60,7 +64,8 @@ get_post_synapse_sparse_vec = get_post_synapse_list
 
 @inline function get_bounding_box_distance(self::Segment, point::Union{Tuple, Vector})
     @assert length(point) >= 3
-    BoundingBoxes.distance_from(self.boundingBox, point)
+    boundingBox = get_bounding_box(self) 
+    BoundingBoxes.distance_from(boundingBox, point)
 end 
 
 
@@ -211,7 +216,7 @@ function Base.merge(self::Segment, other::Segment)
     # winner taks all!
     class = length(nodeList1)>length(nodeList2) ? get_class(self) : get_class(other)
     boundingBox = union( get_bounding_box(self), get_bounding_box(other) )
-    Segment(mergedNodeList; class=class, boundingBox=boundingBox)
+    Segment(mergedNodeList; class=class)
 end 
 
 """
@@ -312,7 +317,7 @@ function add_offset(self::Segment, offset::Union{Tuple, Vector})
         newNode = map(+, node, [offset..., zero(Float32)])
         push!(nodeList, newNode)
     end
-    Segment(nodeList, self.class, self.boundingBox)    
+    Segment(nodeList, self.class)    
 end 
 
 @inline function remove_node(self::Segment, removeId::Int)

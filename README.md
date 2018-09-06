@@ -3,7 +3,7 @@ RealNeuralNetworks.jl
 3D neuron models extracted from EM image segmentation
 
 # Installation
-run this inside julia package REPL (hit `[` to enter package mode):
+run this inside julia package REPL (hit `]` to enter package mode):
 
     dev https://github.com/seung-lab/RealNeuralNetworks.jl.git 
 
