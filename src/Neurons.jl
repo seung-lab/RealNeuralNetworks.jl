@@ -14,6 +14,7 @@ using SparseArrays
 #import LinearAlgebra: norm, dot, normalize 
 using LinearAlgebra 
 using Serialization  
+using Statistics 
 
 const EXPANSION = (one(UInt32), one(UInt32), one(UInt32))
 const VOXEL_SIZE = (500, 500, 500)
@@ -154,6 +155,7 @@ function Neuron( seg::Array{T,3}; obj_id::T = convert(T,1),
 end
 
 function Neuron( swc::SWC )
+    @warn("this reading will ignore the point classes!")
     nodeNet = NodeNet( swc )
     # respect the point class 
     Neuron( nodeNet )
@@ -225,6 +227,25 @@ function save_bin(self::Neuron, fileName::AbstractString)
     nothing 
 end  
 ####################### properties ##############
+"""
+    get_path_length_normalized_features(self::Neuron)
+get feature vector, returned as NamedTuple
+Notethat some features were normalized using total path length 
+"""
+function get_path_length_normalized_features(self::Neuron)
+    totalPathLength = get_total_path_length(self)
+    return (
+     branchingAngle = mean(map(i->get_branching_angle(self,i), 1:length(self))),
+     tortuosity = mean(map(Segments.get_tortuosity, self)),
+     symmetry = get_asymmetry(self),
+     typicalRadius = get_typical_radius(self),
+     numBranchingPoints = get_num_branching_points(self) / totalPathLength,
+     medianBranchPathLength = median(get_segment_path_length_list(self)),
+     surfaceArea = get_surface_area(self) / totalPathLength,
+     volume = get_volume(self) / totalPathLength 
+    )
+end 
+
 
 """
     get_root_segment_id( self::Neuron )
@@ -619,7 +640,7 @@ function get_branching_angle( self::Neuron, segmentId::Integer; nodeDistance::Re
         end 
     end
     if parentNode == branchingNode
-        warn("parent node is the same with branching node: $(branchingNode)")
+        @warn("parent node is the same with branching node: $(branchingNode)")
         return 0.0
     end 
 
@@ -632,7 +653,7 @@ function get_branching_angle( self::Neuron, segmentId::Integer; nodeDistance::Re
         end 
     end 
     if childNode == branchingNode 
-        warn("child node is the same with branching node: $(branchingNode)")
+        @warn("child node is the same with branching node: $(branchingNode)")
         return 0.0 
     end 
 

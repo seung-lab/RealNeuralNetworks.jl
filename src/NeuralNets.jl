@@ -21,8 +21,8 @@ Return:
 """
 function NeuralNet(neuronId2neuron::Dict{Int, Neuron}; 
                    neuronIdList::Vector{Int} = collect(keys(neuronId2neuron)))
-    neuronIdSet = Set(keys(neuronId2neuron) |> collect)
-    net = NeuralNet(length(neuronId2neuron))
+    neuronIdSet = Set{Int}(neuronIdList)
+    net = NeuralNet(length(neuronIdList))
     
     # name the vertices 
     neuronId2vertexId = Dict{Int,Int}()
@@ -42,11 +42,9 @@ function NeuralNet(neuronId2neuron::Dict{Int, Neuron};
         for preSynapse in preSynapseList 
             postNeuronId = Synapses.get_post_synaptic_segmentation_id(preSynapse)
             if postNeuronId == neuronId 
-                #warn("skipping self connection edge of neuron: ", neuronId)
+                @warn("skipping self connection edge of neuron: ", neuronId)
                 push!(selfConnectNeuronIdSet, neuronId)
-                continue
-            end 
-            if postNeuronId in neuronIdSet 
+            elseif postNeuronId in neuronIdSet 
                 # this is an effective synaptic edge 
                 postNeuronVertexId = neuronId2vertexId[ postNeuronId ]
                 edge = (vertexId, postNeuronVertexId)
@@ -54,15 +52,20 @@ function NeuralNet(neuronId2neuron::Dict{Int, Neuron};
                 # get properties 
                 if has_prop(net, edge[1], edge[2], :synapses)
                     prop = get_prop(net, edge[1], edge[2], :synapses)
+                    totalPSDSize = get_prop(net, edge[1], edge[2], :total_psd_size)
                 else 
                     prop = Vector{Synapse}()
+                    totalPSDSize = 0
                 end 
                 push!(prop, preSynapse)
                 set_prop!(net, edge[1], edge[2], :synapses, prop)
+                set_prop!(net, edge[1], edge[2], :num_synapses, length(prop))
+                totalPSDSize += Synapses.get_psd_size(preSynapse)
+                set_prop!(net, edge[1], edge[2], :total_psd_size, totalPSDSize)
             end
         end 
     end 
-    warn("skipped self connection edges from $(length(selfConnectNeuronIdSet)) neurons.")
+    @warn("skipped self connection edges from $(length(selfConnectNeuronIdSet)) neurons.")
     net 
 end 
 
@@ -75,7 +78,7 @@ function NeuralNet( syn::DataFrame; neuronDict::Dict{Int, Neuron}=Dict{Int,Neuro
         if haskey(neuronDict, cellId)
             set_props!(net, i, Dict(:id=>cellId, :skeleton=>neuronDict[cellId]))
         else 
-            warn("no skeleton attatched: ", cellId)
+            @warn("no skeleton attatched: ", cellId)
         end 
     end 
 
@@ -99,7 +102,7 @@ function NeuralNet( syn::DataFrame; neuronDict::Dict{Int, Neuron}=Dict{Int,Neuro
         postId = round(Int, row[:postsyn_segid])
         if preId == postId 
             numSelfConnection += 1
-            warn("self connection synapse on neuron: $(preId), skipping the connection")
+            @warn("self connection synapse on neuron: $(preId), skipping the connection")
             continue
         end 
         edge = ( cellId2vertexIdMap[preId], cellId2vertexIdMap[postId] )
@@ -157,8 +160,8 @@ function get_synapse_size_connectivity_matrix(self::NeuralNet)
     ret 
 end 
 
-function synapse_num_weighted!(self::NeuralNet)
-    error("unimplemented")
+function remove_singletons(self::NeuralNet)
+    @error("unimplemented")
 end 
 
 end # end of module

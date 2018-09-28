@@ -7,7 +7,7 @@ using OffsetArrays
 export SynapseTable 
 const SynapseTable = DataFrame  
 
-function preprocessing!(self::SynapseTable, voxelSize::NTuple{3,Int})
+function preprocessing(self::SynapseTable, voxelSize::NTuple{3,Int})
 
 	DataFrames.dropmissing!(self)
 
@@ -49,10 +49,10 @@ function preprocessing!(self::SynapseTable, voxelSize::NTuple{3,Int})
     self[:postsyn_x]    = (self[:postsyn_x] .- 1) .* voxelSize[1]
     self[:postsyn_y]    = (self[:postsyn_y] .- 1) .* voxelSize[2]
     self[:postsyn_z]    = (self[:postsyn_z] .- 1) .* voxelSize[3]
-	nothing
+	return self 
 end
 
-function postprocessing!(self::SynapseTable, voxelSize::NTuple{3,Int})
+function postprocessing(self::SynapseTable, voxelSize::NTuple{3,Int})
     # transform to voxel coordinate
     self[:BBOX_bx]      = (self[:BBOX_bx]./voxelSize[1]) .+ 1
     self[:BBOX_by]      = (self[:BBOX_by]./voxelSize[2]) .+ 1
@@ -75,7 +75,7 @@ function postprocessing!(self::SynapseTable, voxelSize::NTuple{3,Int})
     self[:postsyn_y]     = (self[:postsyn_y]./voxelSize[2]) .+ 1
     self[:postsyn_z]     = (self[:postsyn_z]./voxelSize[3]) .+ 1
     
-    nothing
+    return self
 end 
 
 function get_coordinate_array(self::SynapseTable, prefix::String)

@@ -106,6 +106,7 @@ function indexmap(x::Vector)
     end 
     ret
 end
+
 function hclustplot(hc::Hclust, useheight::Bool)
     o = indexmap(hc.order)
     n = [x for x in 1:length(o)]

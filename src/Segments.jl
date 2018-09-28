@@ -2,7 +2,7 @@ module Segments
 
 import SparseArrays: SparseVector, spzeros, findnz, nnz
 import LinearAlgebra: norm, dot
-import Statistics: mean
+import Statistics: mean, std 
 
 using RealNeuralNetworks.Utils.BoundingBoxes
 include("Synapses.jl"); using .Synapses
@@ -43,6 +43,22 @@ end
 
 
 ###################### properties ###################
+
+"""
+    get_features(self::Segment) 
+aggregate features to a named tuple 
+"""
+function get_features(self::Segment)
+    (pathLength=get_path_length(self), 
+        surfaceArea=get_surface_area(self), 
+        volume=get_volume(self),
+        meanRadius=mean(get_radius_list(self)),
+        stdRadius=std(get_radius_list(self)),
+        numPreSynapses=get_num_pre_synapses(self),
+        numPostSynapses=get_num_post_synapses(self),
+        tortuosity=get_tortuosity(self))
+end  
+
 """
     get_nodes_distance(self::Node, other::Node)
 compute the euclidean distance between two nodes 
@@ -50,6 +66,7 @@ compute the euclidean distance between two nodes
 @inline function get_nodes_distance(self::Union{Vector,Tuple}, other::Union{Vector,Tuple})
     norm( [map((x,y)->x-y, self[1:3], other[1:3]) ...])
 end 
+
 @inline function get_node_list(self::Segment) self.nodeList end 
 @inline function get_connectivity_matrix( self::Segment ) self.connectivityMatrix end 
 @memoize function get_bounding_box( self::Segment ) BoundingBox(get_node_list(self)) end 
@@ -305,7 +322,9 @@ function adjust_class!(self::Segment)
             self.class = DENDRITE_CLASS   
         elseif nnz(self.postSynapseList) == 0 && get_path_length(self)>5000
             # a long segment without both pre and post synapses was considered axon 
-            self.class = AXON_CLASS 
+            self.class = AXON_CLASS
+        else 
+            self.class = DENDRITE_CLASS 
         end 
     end 
 end 

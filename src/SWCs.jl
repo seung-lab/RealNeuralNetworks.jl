@@ -24,7 +24,7 @@ function SWC( swcString::AbstractString )
             elseif isempty(line) || line == " " || line == "\n"
                 continue 
             else
-                warn("invalid line: $line")
+                @warn("invalid line: $line")
             end 
         end 
     end
