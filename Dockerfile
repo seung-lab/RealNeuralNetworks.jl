@@ -11,12 +11,12 @@ RUN julia -e 'import Pkg; Pkg.update()'
 RUN julia -e 'import Pkg; Pkg.clone("https://github.com/seung-lab/EMIRT.jl.git")'
 RUN julia -e 'import Pkg; Pkg.clone("https://github.com/seung-lab/BigArrays.jl.git")'
 
-WORKDIR /root/.julia/packages/
-RUN mkdir RealNeuralNetworks 
+#WORKDIR /root/.julia/packages/
+#RUN mkdir RealNeuralNetworks 
 ADD . RealNeuralNetworks/ 
 
-RUN julia -e 'import Pkg; Pkg.resolve("RealNeuralNetworks")'
+RUN julia -e 'import Pkg; Pkg.clone(pwd()); Pkg.test("RealNeuralNetworks")'
 
 RUN julia -e 'using RealNeuralNetworks'
-WORKDIR /root/.julia/v0.6/RealNeuralNetworks/scripts
+WORKDIR /root/.julia/packages/RealNeuralNetworks/scripts
 #CMD ["julia", "skeletonize.jl", "-h"]
