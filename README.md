@@ -1,6 +1,8 @@
 RealNeuralNetworks.jl
-[![Build Status](https://travis-ci.org/seung-lab/RealNeuralNetworks.jl.svg?branch=master)](https://travis-ci.org/seung-lab/RealNeuralNetworks.jl)
 ========================
+
+[![Build Status](https://travis-ci.org/seung-lab/RealNeuralNetworks.jl.svg?branch=master)](https://travis-ci.org/seung-lab/RealNeuralNetworks.jl)
+
 3D neuron models extracted from EM image segmentation
 
 # Installation
