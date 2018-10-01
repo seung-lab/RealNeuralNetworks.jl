@@ -2,16 +2,19 @@ language: julia
 os: linux
 
 julia: 
-    - release
+    - 0.7
     - nightly
 
 notifications: 
     email: false
 
-git: 
-    depth: false
 
 script:
-    - apt-get install -y hdf5-tools
-    - julia -e 'import Pkg; Pkg.add("HDF5")'
     - julia -e 'import Pkg; Pkg.clone(pwd()); Pkg.test("RealNeuralNetworks")'
+    - julia -e 'using Pkg; Pkg.add("Documenter")'
+    - julia -e 'using Pkg; cd(Pkg.dir("RealNeuralNetworks")); include(joinpath("docs", "make.jl"))'
+
+
+matrix:
+    allow_failures:
+        - julia: nightly
