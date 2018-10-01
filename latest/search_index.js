@@ -1,39 +1,151 @@
 var documenterSearchIndex = {"docs": [
 
 {
-    "location": "lib/internals.html#",
-    "page": "Internal Documentation",
-    "title": "Internal Documentation",
+    "location": "#",
+    "page": "Home",
+    "title": "Home",
     "category": "page",
     "text": ""
 },
 
 {
-    "location": "lib/internals.html#Internal-Documentation-1",
-    "page": "Internal Documentation",
+    "location": "#RealNeuralNetworks.jl-1",
+    "page": "Home",
+    "title": "RealNeuralNetworks.jl",
+    "category": "section",
+    "text": "A Skeletonization, morphological and connectivity analysis tool. "
+},
+
+{
+    "location": "#Features-1",
+    "page": "Home",
+    "title": "Features",
+    "category": "section",
+    "text": "Skeletonization using TEASAR algorithm. \nSkeleton IO with format of SWC and neuroglancer precomputed. \nA lot of morphological analysis functions. \nSynaptic distribution analysis in/between neurons.\nNeuron connectivity analysis.The Getting Started provides a tutorial explaning how to get started.Some examples of packages could be found on the Examples page. See the Index for the complete list of functions and types. "
+},
+
+{
+    "location": "#Manual-Outline-1",
+    "page": "Home",
+    "title": "Manual Outline",
+    "category": "section",
+    "text": "Pages = [\n    \"man/getting_started.md\",\n    \"man/examples.md\",\n    \"man/contributing.md\",\n    \"man/references.md\"\n]\nDepth=1"
+},
+
+{
+    "location": "#Library-Outline-1",
+    "page": "Home",
+    "title": "Library Outline",
+    "category": "section",
+    "text": "Pages = [\n    \"lib/public.md\",\n    \"lib/internals.md\"\n]\n\n###[Index](@id main-index)\n@index  Pages = [\"lib/public.md\"] ```"
+},
+
+{
+    "location": "man/getting_started/#",
+    "page": "Getting Started",
+    "title": "Getting Started",
+    "category": "page",
+    "text": "using RealNeuralNetworks.NodeNets\nusing RealNeuralNetworks.Neurons\nusing RealNeuralNetworks.SWCs\n\n# skeletonization\nnodeNet = NodeNet(seg::Array{UInt32,3}; obj_id = convert(UInt32,77605))\nneuron = Neuron( nodeNet )\nswc = SWC(neuron)\nSWCs.save(swc, tempname()*\".swc\")"
+},
+
+{
+    "location": "man/examples/#",
+    "page": "Examples",
+    "title": "Examples",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "man/examples/#Examples-1",
+    "page": "Examples",
+    "title": "Examples",
+    "category": "section",
+    "text": "show some usage examples. "
+},
+
+{
+    "location": "man/references/#",
+    "page": "-",
+    "title": "-",
+    "category": "page",
+    "text": "Sümbül U, Song S, McCulloch K, Becker M, Lin B, Sanes JR, Masland RH, Seung HS. A genetic and computational approach to structurally classify neuronal types. Nature communications. 2014 Mar 24;5:3512. link\nSchierwagen A, Villmann T, Alpár A, Gärtner U. Cluster analysis of cortical pyramidal neurons using som. InIAPR Workshop on Artificial Neural Networks in Pattern Recognition 2010 Apr 11 (pp. 120-130). Springer, Berlin, Heidelberg.\nCuntz H, Forstner F, Borst A, H\\äusser M. The TREES Toolbox—Probing the Basis of Axonal and Dendritic Segmenting. Neuroinformatics. 2011;1–6. \nSchierwagen A. Neuronal morphology: Shape characteristics and models. Neurophysiology. 2008;40(4):310–315. \nUylings HB., van Pelt J. Measures for quantifying dendritic arborizations. Network: Computation in Neural Systems. 2002;13(3):397–414. a good review paper\nWanner AA, Genoud C, Masudi T, Siksou L, Friedrich RW. Dense EM-based reconstruction of the interglomerular projectome in the zebrafish olfactory bulb. Nature neuroscience. 2016 Jun 1;19(6):816-25. also have clustering methods\nSato, M., I. Bitter, M. A. Bender, A. E. Kaufman, and M. Nakajima. “TEASAR: Tree-Structure Extraction Algorithm for Accurate and Robust Skeletons.” In Proceedings the Eighth Pacific Conference on Computer Graphics and Applications, 281–449, 2000. doi:10.1109/PCCGA.2000.883951."
+},
+
+{
+    "location": "lib/public/#",
+    "page": "Public",
+    "title": "Public",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "lib/public/#Public-Documentation-1",
+    "page": "Public",
+    "title": "Public Documentation",
+    "category": "section",
+    "text": "Documentation for RealNeuralNetworks.jl\'s public interface. See Internal Documentation for internal package docs covering all submodules. "
+},
+
+{
+    "location": "lib/public/#Contents-1",
+    "page": "Public",
+    "title": "Contents",
+    "category": "section",
+    "text": "Pages = [\"public.md\"]"
+},
+
+{
+    "location": "lib/public/#Index-1",
+    "page": "Public",
+    "title": "Index",
+    "category": "section",
+    "text": "Pages = [\"public.md\"]"
+},
+
+{
+    "location": "lib/public/#Public-Interface-1",
+    "page": "Public",
+    "title": "Public Interface",
+    "category": "section",
+    "text": "RealNeuralNetworks\nNeurons\nSegments\nSynapses\nSWCs\nNeuralNets\nSynapseTables"
+},
+
+{
+    "location": "lib/internals/#",
+    "page": "Internals",
+    "title": "Internals",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "lib/internals/#Internal-Documentation-1",
+    "page": "Internals",
     "title": "Internal Documentation",
     "category": "section",
     "text": "This page lists all the documented internals of the RealNeuralNetworks module and submodules."
 },
 
 {
-    "location": "lib/internals.html#Contents-1",
-    "page": "Internal Documentation",
+    "location": "lib/internals/#Contents-1",
+    "page": "Internals",
     "title": "Contents",
     "category": "section",
     "text": "Pages = [joinpath(\"internals\", f) for f in readdir(\"internals\")]"
 },
 
 {
-    "location": "lib/internals.html#Index-1",
-    "page": "Internal Documentation",
+    "location": "lib/internals/#Index-1",
+    "page": "Internals",
     "title": "Index",
     "category": "section",
     "text": "A list of all internal documentation sorted by module. Pages = [joinpath(\"internals\", f) for f in readdir(\"internals\")]"
 },
 
 {
-    "location": "lib/internals/Manifests.html#",
+    "location": "lib/internals/Manifests/#",
     "page": "Manifests",
     "title": "Manifests",
     "category": "page",
@@ -41,7 +153,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/Manifests.html#RealNeuralNetworks.Manifests.Manifest-Tuple{AbstractString,AbstractString,AbstractString}",
+    "location": "lib/internals/Manifests/#RealNeuralNetworks.Manifests.Manifest-Tuple{AbstractString,AbstractString,AbstractString}",
     "page": "Manifests",
     "title": "RealNeuralNetworks.Manifests.Manifest",
     "category": "method",
@@ -49,7 +161,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/Manifests.html#RealNeuralNetworks.Manifests.Manifest-Tuple{Dict{Symbol,Any},BigArrays.AbstractBigArray}",
+    "location": "lib/internals/Manifests/#RealNeuralNetworks.Manifests.Manifest-Tuple{Dict{Symbol,Any},BigArrays.AbstractBigArray}",
     "page": "Manifests",
     "title": "RealNeuralNetworks.Manifests.Manifest",
     "category": "method",
@@ -57,7 +169,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/Manifests.html#RealNeuralNetworks.Manifests.Manifest-Union{Tuple{C}, Tuple{N}, Tuple{T}, Tuple{D}, Tuple{Array{T,1} where T,BigArray{D,T,N,C}}} where C where N where T where D",
+    "location": "lib/internals/Manifests/#RealNeuralNetworks.Manifests.Manifest-Union{Tuple{C}, Tuple{N}, Tuple{T}, Tuple{D}, Tuple{Array{T,1} where T,BigArray{D,T,N,C}}} where C where N where T where D",
     "page": "Manifests",
     "title": "RealNeuralNetworks.Manifests.Manifest",
     "category": "method",
@@ -65,7 +177,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/Manifests.html#RealNeuralNetworks.Manifests.get_voxel_offset-Tuple{RealNeuralNetworks.Manifests.Manifest}",
+    "location": "lib/internals/Manifests/#RealNeuralNetworks.Manifests.get_voxel_offset-Tuple{RealNeuralNetworks.Manifests.Manifest}",
     "page": "Manifests",
     "title": "RealNeuralNetworks.Manifests.get_voxel_offset",
     "category": "method",
@@ -73,7 +185,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/Manifests.html#RealNeuralNetworks.Manifests.trace-Tuple{RealNeuralNetworks.Manifests.Manifest,Any}",
+    "location": "lib/internals/Manifests/#RealNeuralNetworks.Manifests.trace-Tuple{RealNeuralNetworks.Manifests.Manifest,Any}",
     "page": "Manifests",
     "title": "RealNeuralNetworks.Manifests.trace",
     "category": "method",
@@ -81,7 +193,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/Manifests.html#Manifests-1",
+    "location": "lib/internals/Manifests/#Manifests-1",
     "page": "Manifests",
     "title": "Manifests",
     "category": "section",
@@ -89,7 +201,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#",
+    "location": "lib/internals/NodeNets/#",
     "page": "NodeNets",
     "title": "NodeNets",
     "category": "page",
@@ -97,7 +209,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.NodeNet-Tuple{Union{Array{Bool,3}, BitArray}}",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.NodeNet-Tuple{Union{Array{Bool,3}, BitArray}}",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.NodeNet",
     "category": "method",
@@ -105,7 +217,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.NodeNet-Union{Tuple{Array{T,2}}, Tuple{T}} where T",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.NodeNet-Union{Tuple{Array{T,2}}, Tuple{T}} where T",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.NodeNet",
     "category": "method",
@@ -113,7 +225,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.NodeNet-Union{Tuple{Array{T,3}}, Tuple{T}} where T",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.NodeNet-Union{Tuple{Array{T,3}}, Tuple{T}} where T",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.NodeNet",
     "category": "method",
@@ -121,7 +233,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.alexs_penalty",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.alexs_penalty",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.alexs_penalty",
     "category": "function",
@@ -129,7 +241,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.consolidate_paths-Tuple{Array{T,1} where T}",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.consolidate_paths-Tuple{Array{T,1} where T}",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.consolidate_paths",
     "category": "method",
@@ -137,7 +249,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.create_node_lookup-Union{Tuple{Array{T,2}}, Tuple{T}} where T",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.create_node_lookup-Union{Tuple{Array{T,2}}, Tuple{T}} where T",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.create_node_lookup",
     "category": "method",
@@ -145,7 +257,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.distill!-Union{Tuple{T}, Tuple{Array{T,2},Array{T,1} where T,Array{T,1} where T}} where T",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.distill!-Union{Tuple{T}, Tuple{Array{T,2},Array{T,1} where T,Array{T,1} where T}} where T",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.distill!",
     "category": "method",
@@ -153,7 +265,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.find_new_root_node_V1-Union{Tuple{Array{T,2}}, Tuple{T}} where T",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.find_new_root_node_V1-Union{Tuple{Array{T,2}}, Tuple{T}} where T",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.find_new_root_node_V1",
     "category": "method",
@@ -161,7 +273,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.find_new_root_node_id-Tuple{Array{Float32,1},DataStructures.IntSet}",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.find_new_root_node_id-Tuple{Array{Float32,1},DataStructures.IntSet}",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.find_new_root_node_id",
     "category": "method",
@@ -169,7 +281,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.get_connectivity_matrix-Tuple{Array{T,1} where T}",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.get_connectivity_matrix-Tuple{Array{T,1} where T}",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.get_connectivity_matrix",
     "category": "method",
@@ -177,7 +289,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.get_neuroglancer_precomputed-Tuple{RealNeuralNetworks.NodeNets.NodeNet}",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.get_neuroglancer_precomputed-Tuple{RealNeuralNetworks.NodeNets.NodeNet}",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.get_neuroglancer_precomputed",
     "category": "method",
@@ -185,7 +297,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.get_num_segment_point-Tuple{RealNeuralNetworks.NodeNets.NodeNet}",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.get_num_segment_point-Tuple{RealNeuralNetworks.NodeNets.NodeNet}",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.get_num_segment_point",
     "category": "method",
@@ -193,7 +305,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.get_num_segmentes-Tuple{RealNeuralNetworks.NodeNets.NodeNet}",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.get_num_segmentes-Tuple{RealNeuralNetworks.NodeNets.NodeNet}",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.get_num_segmentes",
     "category": "method",
@@ -201,7 +313,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.get_sholl_number-Tuple{RealNeuralNetworks.NodeNets.NodeNet,AbstractFloat}",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.get_sholl_number-Tuple{RealNeuralNetworks.NodeNets.NodeNet,AbstractFloat}",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.get_sholl_number",
     "category": "method",
@@ -209,7 +321,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.local_max_multiplicative_penalty-Tuple{Any,Any,Any}",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.local_max_multiplicative_penalty-Tuple{Any,Any,Any}",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.local_max_multiplicative_penalty",
     "category": "method",
@@ -217,7 +329,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.make_neighbor_graph-Union{Tuple{Array{T,2}}, Tuple{T}, Tuple{Array{T,2},Any}, Tuple{Array{T,2},Any,Any}} where T",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.make_neighbor_graph-Union{Tuple{Array{T,2}}, Tuple{T}, Tuple{Array{T,2},Any}, Tuple{Array{T,2},Any,Any}} where T",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.make_neighbor_graph",
     "category": "method",
@@ -225,7 +337,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.nodes_within_radius-Union{Tuple{T}, Tuple{Array{T,1},Any,Any,Array{T,1} where T}} where T",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.nodes_within_radius-Union{Tuple{T}, Tuple{Array{T,1},Any,Any,Array{T,1} where T}} where T",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.nodes_within_radius",
     "category": "method",
@@ -233,7 +345,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.remove_path_from_rns!",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.remove_path_from_rns!",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.remove_path_from_rns!",
     "category": "function",
@@ -241,7 +353,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.save-Tuple{RealNeuralNetworks.NodeNets.NodeNet,Integer,AbstractDict}",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.save-Tuple{RealNeuralNetworks.NodeNets.NodeNet,Integer,AbstractDict}",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.save",
     "category": "method",
@@ -249,7 +361,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.save_edges-Tuple{RealNeuralNetworks.NodeNets.NodeNet,String}",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.save_edges-Tuple{RealNeuralNetworks.NodeNets.NodeNet,String}",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.save_edges",
     "category": "method",
@@ -257,7 +369,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.translate_to_origin!-Tuple{Any}",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.translate_to_origin!-Tuple{Any}",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.translate_to_origin!",
     "category": "method",
@@ -265,7 +377,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.DBFs.compute_DBF-Union{Tuple{Array{T,2}}, Tuple{T}} where T",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.DBFs.compute_DBF-Union{Tuple{Array{T,2}}, Tuple{T}} where T",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.DBFs.compute_DBF",
     "category": "method",
@@ -273,7 +385,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.DBFs.compute_DBF-Union{Tuple{T}, Tuple{Array{T,2},Array{T,1} where T}} where T",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.DBFs.compute_DBF-Union{Tuple{T}, Tuple{Array{T,2},Array{T,1} where T}} where T",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.DBFs.compute_DBF",
     "category": "method",
@@ -281,7 +393,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.DBFs.compute_DBF-Union{Tuple{T}, Tuple{Array{T,2},Union{Array{Bool,3}, BitArray}}} where T",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.DBFs.compute_DBF-Union{Tuple{T}, Tuple{Array{T,2},Union{Array{Bool,3}, BitArray}}} where T",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.DBFs.compute_DBF",
     "category": "method",
@@ -289,7 +401,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.DBFs.compute_DBF-Union{Tuple{T}, Tuple{Array{T,3},T}} where T",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.DBFs.compute_DBF-Union{Tuple{T}, Tuple{Array{T,3},T}} where T",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.DBFs.compute_DBF",
     "category": "method",
@@ -297,7 +409,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.DBFs.create_binary_image-Union{Tuple{Array{T,2}}, Tuple{T}} where T",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.DBFs.create_binary_image-Union{Tuple{Array{T,2}}, Tuple{T}} where T",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.DBFs.create_binary_image",
     "category": "method",
@@ -305,7 +417,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.DBFs.create_binary_image-Union{Tuple{Array{T,3}}, Tuple{T}} where T",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.DBFs.create_binary_image-Union{Tuple{Array{T,3}}, Tuple{T}} where T",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.DBFs.create_binary_image",
     "category": "method",
@@ -313,7 +425,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.DBFs.distance_transform-Union{Tuple{AbstractArray{T,N}}, Tuple{N}, Tuple{T}, Tuple{AbstractArray{T,N},Array{Float32,1}}} where N where T",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.DBFs.distance_transform-Union{Tuple{AbstractArray{T,N}}, Tuple{N}, Tuple{T}, Tuple{AbstractArray{T,N},Array{Float32,1}}} where N where T",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.DBFs.distance_transform",
     "category": "method",
@@ -321,7 +433,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.DBFs.extract_dbf_values-Union{Tuple{N}, Tuple{Array{Float32,N},Any}} where N",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.DBFs.extract_dbf_values-Union{Tuple{N}, Tuple{Array{Float32,N},Any}} where N",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.DBFs.extract_dbf_values",
     "category": "method",
@@ -329,7 +441,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.DBFs.fill_f0!-Union{Tuple{N}, Tuple{T}, Tuple{Array{Float32,N},AbstractArray{T,N}}} where N where T",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.DBFs.fill_f0!-Union{Tuple{N}, Tuple{T}, Tuple{Array{Float32,N},AbstractArray{T,N}}} where N where T",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.DBFs.fill_f0!",
     "category": "method",
@@ -337,7 +449,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.DBFs.fv_isfurther-Tuple{Float32,Int64,Float32,Int64,Int64}",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.DBFs.fv_isfurther-Tuple{Float32,Int64,Float32,Int64,Int64}",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.DBFs.fv_isfurther",
     "category": "method",
@@ -345,7 +457,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.DBFs.remove_euclidean_distance_transform-Tuple{Float32,Float32,Float32,Int64,Int64,Int64}",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.DBFs.remove_euclidean_distance_transform-Tuple{Float32,Float32,Float32,Int64,Int64,Int64}",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.DBFs.remove_euclidean_distance_transform",
     "category": "method",
@@ -353,7 +465,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.DBFs.row_voronoi_edt!-Union{Tuple{N}, Tuple{Array{Float32,N},Tuple,Array{Float32,1},Array{Int64,1},Float32}} where N",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.DBFs.row_voronoi_edt!-Union{Tuple{N}, Tuple{Array{Float32,N},Tuple,Array{Float32,1},Array{Int64,1},Float32}} where N",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.DBFs.row_voronoi_edt!",
     "category": "method",
@@ -361,7 +473,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#RealNeuralNetworks.NodeNets.DBFs.vol_voronoi_edt!-Union{Tuple{N}, Tuple{Array{Float32,N},Float32}} where N",
+    "location": "lib/internals/NodeNets/#RealNeuralNetworks.NodeNets.DBFs.vol_voronoi_edt!-Union{Tuple{N}, Tuple{Array{Float32,N},Float32}} where N",
     "page": "NodeNets",
     "title": "RealNeuralNetworks.NodeNets.DBFs.vol_voronoi_edt!",
     "category": "method",
@@ -369,7 +481,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/NodeNets.html#NodeNets-1",
+    "location": "lib/internals/NodeNets/#NodeNets-1",
     "page": "NodeNets",
     "title": "NodeNets",
     "category": "section",
@@ -377,7 +489,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/PointArrays.html#",
+    "location": "lib/internals/PointArrays/#",
     "page": "PointArrays",
     "title": "PointArrays",
     "category": "page",
@@ -385,7 +497,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/PointArrays.html#RealNeuralNetworks.NodeNets.PointArrays.add_offset!-Union{Tuple{T}, Tuple{Array{T,2},Tuple{T,T,T}}} where T",
+    "location": "lib/internals/PointArrays/#RealNeuralNetworks.NodeNets.PointArrays.add_offset!-Union{Tuple{T}, Tuple{Array{T,2},Tuple{T,T,T}}} where T",
     "page": "PointArrays",
     "title": "RealNeuralNetworks.NodeNets.PointArrays.add_offset!",
     "category": "method",
@@ -393,7 +505,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/PointArrays.html#RealNeuralNetworks.NodeNets.PointArrays.from_binary_image-Tuple{Array{Bool,3}}",
+    "location": "lib/internals/PointArrays/#RealNeuralNetworks.NodeNets.PointArrays.from_binary_image-Tuple{Array{Bool,3}}",
     "page": "PointArrays",
     "title": "RealNeuralNetworks.NodeNets.PointArrays.from_binary_image",
     "category": "method",
@@ -401,7 +513,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/PointArrays.html#RealNeuralNetworks.NodeNets.PointArrays.from_seg-Union{Tuple{Array{T,3}}, Tuple{T}} where T",
+    "location": "lib/internals/PointArrays/#RealNeuralNetworks.NodeNets.PointArrays.from_seg-Union{Tuple{Array{T,3}}, Tuple{T}} where T",
     "page": "PointArrays",
     "title": "RealNeuralNetworks.NodeNets.PointArrays.from_seg",
     "category": "method",
@@ -409,7 +521,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/PointArrays.html#RealNeuralNetworks.NodeNets.PointArrays.get_boundary_point_indexes-Union{Tuple{TSeg}, Tuple{T}, Tuple{Array{T,2},Array{TSeg,3}}, Tuple{Array{T,2},Array{TSeg,3},TSeg}} where TSeg where T",
+    "location": "lib/internals/PointArrays/#RealNeuralNetworks.NodeNets.PointArrays.get_boundary_point_indexes-Union{Tuple{TSeg}, Tuple{T}, Tuple{Array{T,2},Array{TSeg,3}}, Tuple{Array{T,2},Array{TSeg,3},TSeg}} where TSeg where T",
     "page": "PointArrays",
     "title": "RealNeuralNetworks.NodeNets.PointArrays.get_boundary_point_indexes",
     "category": "method",
@@ -417,7 +529,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/PointArrays.html#RealNeuralNetworks.NodeNets.PointArrays.merge-Union{Tuple{T}, Tuple{Array{T,2},Array{T,2}}} where T",
+    "location": "lib/internals/PointArrays/#RealNeuralNetworks.NodeNets.PointArrays.merge-Union{Tuple{T}, Tuple{Array{T,2},Array{T,2}}} where T",
     "page": "PointArrays",
     "title": "RealNeuralNetworks.NodeNets.PointArrays.merge",
     "category": "method",
@@ -425,7 +537,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/internals/PointArrays.html#PointArrays-1",
+    "location": "lib/internals/PointArrays/#PointArrays-1",
     "page": "PointArrays",
     "title": "PointArrays",
     "category": "section",
@@ -433,67 +545,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lib/public.html#",
-    "page": "Public Documentation",
-    "title": "Public Documentation",
-    "category": "page",
-    "text": ""
-},
-
-{
-    "location": "lib/public.html#Public-Documentation-1",
-    "page": "Public Documentation",
-    "title": "Public Documentation",
-    "category": "section",
-    "text": "Documentation for RealNeuralNetworks.jl\'s public interface. See Internal Documentation for internal package docs covering all submodules. "
-},
-
-{
-    "location": "lib/public.html#Contents-1",
-    "page": "Public Documentation",
-    "title": "Contents",
-    "category": "section",
-    "text": "Pages = [\"public.md\"]"
-},
-
-{
-    "location": "lib/public.html#Index-1",
-    "page": "Public Documentation",
-    "title": "Index",
-    "category": "section",
-    "text": "Pages = [\"public.md\"]"
-},
-
-{
-    "location": "lib/public.html#Public-Interface-1",
-    "page": "Public Documentation",
-    "title": "Public Interface",
-    "category": "section",
-    "text": "RealNeuralNetworks\nNeurons\nSegments\nSynapses\nSWCs\nNeuralNets\nSynapseTables"
-},
-
-{
-    "location": "man/contributing.html#",
+    "location": "man/contributing/#",
     "page": "-",
     "title": "-",
     "category": "page",
     "text": "Please fork and create pull requests in github."
-},
-
-{
-    "location": "man/getting_started.html#",
-    "page": "-",
-    "title": "-",
-    "category": "page",
-    "text": "using RealNeuralNetworks.NodeNets\nusing RealNeuralNetworks.Neurons\nusing RealNeuralNetworks.SWCs\n\n# skeletonization\nnodeNet = NodeNet(seg::Array{UInt32,3}; obj_id = convert(UInt32,77605))\nneuron = Neuron( nodeNet )\nswc = SWC(neuron)\nSWCs.save(swc, tempname()*\".swc\")"
-},
-
-{
-    "location": "man/references.html#",
-    "page": "-",
-    "title": "-",
-    "category": "page",
-    "text": "Sümbül U, Song S, McCulloch K, Becker M, Lin B, Sanes JR, Masland RH, Seung HS. A genetic and computational approach to structurally classify neuronal types. Nature communications. 2014 Mar 24;5:3512. link\nSchierwagen A, Villmann T, Alpár A, Gärtner U. Cluster analysis of cortical pyramidal neurons using som. InIAPR Workshop on Artificial Neural Networks in Pattern Recognition 2010 Apr 11 (pp. 120-130). Springer, Berlin, Heidelberg.\nCuntz H, Forstner F, Borst A, H\\äusser M. The TREES Toolbox—Probing the Basis of Axonal and Dendritic Segmenting. Neuroinformatics. 2011;1–6. \nSchierwagen A. Neuronal morphology: Shape characteristics and models. Neurophysiology. 2008;40(4):310–315. \nUylings HB., van Pelt J. Measures for quantifying dendritic arborizations. Network: Computation in Neural Systems. 2002;13(3):397–414. a good review paper\nWanner AA, Genoud C, Masudi T, Siksou L, Friedrich RW. Dense EM-based reconstruction of the interglomerular projectome in the zebrafish olfactory bulb. Nature neuroscience. 2016 Jun 1;19(6):816-25. also have clustering methods\nSato, M., I. Bitter, M. A. Bender, A. E. Kaufman, and M. Nakajima. “TEASAR: Tree-Structure Extraction Algorithm for Accurate and Robust Skeletons.” In Proceedings the Eighth Pacific Conference on Computer Graphics and Applications, 281–449, 2000. doi:10.1109/PCCGA.2000.883951."
 },
 
 ]}
