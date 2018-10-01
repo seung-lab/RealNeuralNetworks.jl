@@ -128,7 +128,7 @@ function initialize_mask(self::SynapseTable, voxelSize::NTuple{3,Int};
 	@assert !isempty(self)
     range = mapreduce(x->BoundingBox(self,x), union, coordinatePrefixList) |> BoundingBoxes.get_unit_range
     range = map((r,s)->fld(r.start, s):cld(r.stop, s), range, voxelSize)
-    mask = OffsetArray{T}(range...)
+    mask = OffsetArray{T}(undef, range...)
     fill!(mask, zero(T))
     mask
 end
