@@ -8,6 +8,10 @@ julia:
 notifications: 
     email: false
 
+sudo: required 
+
+install:
+    - sudo apt-get install -y -qq hdf5-tools
 
 script:
     - julia -e 'import Pkg; Pkg.clone("https://github.com/seung-lab/BigArrays.jl.git")'
