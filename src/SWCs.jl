@@ -19,7 +19,7 @@ function SWC( swcString::AbstractString )
             pointObj = PointObj( numbers[2:7]... )
             push!(swc, pointObj)
         catch err 
-            if contains(line, "#")
+            if occursin(r"^\s*#", line)
                 println("comment in swc file: $line")
             elseif isempty(line) || line == " " || line == "\n"
                 continue 
