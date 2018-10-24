@@ -1,21 +1,44 @@
 #!/usr/bin/env julia
-include("Common.jl")
-using .Common 
 using JSON
 using AWSSDK.SQS 
 using AWSCore
 using ProgressMeter
+using ArgParse 
 
 const AWS_CREDENTIAL = AWSCore.aws_config()
 
+
+function parse_commandline()
+    s = ArgParseSettings()
+    @add_arg_table s begin 
+        "--jsonfile", "-j"
+            help = "the id list was contained in the consensus json file"
+            arg_type = String
+        "--sqsqueue", "-q"
+            help = "AWS SQS queue name"
+            arg_type = String 
+            default = "zfish"
+    end 
+    return parse_args(s)
+end 
+
+
 function main()
+    
     args = parse_commandline()
     @show args
-    @assert args["idlistfile"] != nothing
      
-    idList = map( parse, split( read(args["idlistfile"], String), "\n" ) )
+    d = JSON.parsefile(args["jsonfile"] |> expanduser) 
+    neuronIdSet = Set{Int}()
+    for v in d |> values  
+        for neuronIdStr in keys(v) 
+            neuronId = Meta.parse(neuronIdStr)
+            push!(neuronIdSet, neuronId)
+        end
+    end 
+
     messageList = Vector{String}()
-    for id in idList 
+    for id in neuronIdSet 
         push!(messageList, string(id))
     end
 
