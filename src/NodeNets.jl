@@ -204,6 +204,9 @@ end
 # the connectivity matrix is symmetric, so the connection is undirected
 @inline function get_edge_num(self::NodeNet) div(nnz(self.connectivityMatrix), 2) end
 
+get_num_nodes = get_node_num
+get_num_edges = get_edge_num 
+
 function get_edges(self::NodeNet) 
     edges = Vector{Tuple{UInt32,UInt32}}()
     conn = get_connectivity_matrix(self)
@@ -277,6 +280,10 @@ function get_sholl_number(self::NodeNet, radius::AbstractFloat; rootNodeIndex::I
         end 
     end 
     shollNum
+end 
+
+@inline function Base.length(self::NodeNet)
+    length(self.nodeList)
 end 
 
 @inline function Base.getindex(self::NodeNet, i::Integer)

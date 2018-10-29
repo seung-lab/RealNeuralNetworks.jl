@@ -8,4 +8,6 @@ include("NodeNets.jl")
 
 include("Segments.jl")
 include("Neurons.jl")
+include("NBLASTs.jl")
+
 include("Utils/include.jl")

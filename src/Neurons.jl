@@ -36,7 +36,7 @@ function Neuron(nodeNet::NodeNet)
     nodes = NodeNets.get_node_list(nodeNet)
     radii = NodeNets.get_radii(nodeNet)
     # flags labeling whether this node was collected to the net
-    collectedFlagVec = zeros(Bool, length(nodes))
+    collectedFlagVec = falses(length(nodes))
     # connectivity matrix of nodes in nodeNet 
     nodesConnectivityMatrix  = NodeNets.get_connectivity_matrix(nodeNet)
     # locate the root node with largest radius
@@ -74,13 +74,12 @@ function Neuron(nodeNet::NodeNet)
 end 
 
 """
-    Neuron!(seedNodeId::Integer, nodeNet::NodeNet, collectedFlagVec::Vector{Bool})
+    Neuron!(seedNodeId::Integer, nodeNet::NodeNet, collectedFlagVec::BitArray)
 
 build a net from a seed node using connected component
 mark the nodes in this new net as collected, so the collectedFlagVec was changed.
 """
-function Neuron!(seedNodeId::Integer, nodeNet::NodeNet, 
-                                            collectedFlagVec::Vector{Bool})
+function Neuron!(seedNodeId::Integer, nodeNet::NodeNet, collectedFlagVec::BitArray)
     # initialization
     segmentList = Vector{Segment}()
     parentSegmentIdList = Vector{Int}()

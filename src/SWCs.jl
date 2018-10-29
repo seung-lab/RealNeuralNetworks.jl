@@ -14,7 +14,7 @@ function SWC( swcString::AbstractString )
             continue 
         end 
         try 
-            numbers = map(parse, split(line))
+            numbers = map(Meta.parse, split(line))
             # construct a point object
             pointObj = PointObj( numbers[2:7]... )
             push!(swc, pointObj)
@@ -29,7 +29,7 @@ function SWC( swcString::AbstractString )
         end 
     end
     swc
-end 
+end
 
 ################## properties #######################
 function get_node_num(self::SWC) length(self) end
@@ -121,36 +121,6 @@ function Base.String(self::SWC)
     str 
 end 
 
-function save(self::SWC, file_name::AbstractString)
-    f = open(file_name, "w")
-    for (index, pointObj) in enumerate(self)
-        write(f, "$index $(String(pointObj)) \n")
-    end
-    close(f)
-end 
-
-function load(fileName::AbstractString)
-    swcString = read( fileName , String)
-    SWC( swcString )    
-end
-
-function serialize(self::SWC)
-    io = IOBuffer( read=false, write=true, maxsize=length(self)*21 )
-    for pointObj in self
-        write(io, PointObjs.serialize(pointObj))
-    end
-    data = take!(io)   
-end 
-
-"""
-    save_swc_bin( self::SWC, fileName::AbstractString )
-represent swc file as binary file. the data structure is the same with swc.
-"""
-function save_swc_bin( self::SWC, fileName::AbstractString )
-    data = serialize(self)
-    write(fileName, data)
-end 
-
 function deserialize(data::Vector{UInt8})
     # a pointObj is 21 byte
     @assert mod(length(data), 21) == 0 "the binary file do not match the byte layout of pointObj."
@@ -170,6 +140,56 @@ load binary swc file
 """
 function load_swc_bin( fileName::AbstractString )
     read( fileName ) |> deserialize
+end 
+
+function load_swc(fileName::AbstractString)
+    swcString = read( fileName , String)
+    SWC( swcString )    
+end
+
+function load(fileName::AbstractString)
+    if endswith(fileName, ".swc")
+        return load_swc(fileName)
+    elseif endswith(fileName, ".swc.bin")
+        return load_swc_bin(fileName)
+    else 
+        error("only support .swc and .swc.bin, but this file is: ", fileName)
+    end 
+end 
+
+function serialize(self::SWC)
+    io = IOBuffer( read=false, write=true, maxsize=length(self)*21 )
+    for pointObj in self
+        write(io, PointObjs.serialize(pointObj))
+    end
+    data = take!(io)   
+end 
+
+"""
+    save_swc_bin( self::SWC, fileName::AbstractString )
+represent swc file as binary file. the data structure is the same with swc.
+"""
+function save_swc_bin( self::SWC, fileName::AbstractString )
+    data = serialize(self)
+    write(fileName, data)
+end 
+
+function save_swc(self::SWC, file_name::AbstractString)
+    f = open(file_name, "w")
+    for (index, pointObj) in enumerate(self)
+        write(f, "$index $(String(pointObj)) \n")
+    end
+    close(f)
+end 
+
+function save(self::SWC, fileName::AbstractString)
+    if endswith(fileName, ".swc")
+        save_swc(self, fileName)
+    elseif endswith(fileName, ".swc.bin")
+        save_swc_bin(self, fileName)
+    else 
+        error("only support .swc and .swc.bin, but this file is: ", fileName)
+    end 
 end 
 
 #################### manipulate ######################
