@@ -45,9 +45,11 @@ function Neuron(nodeNet::NodeNet)
     seedNodeIdList::Vector = [rootNodeId]
     # grow the main net
     neuron = Neuron!(rootNodeId, nodeNet, collectedFlagVec)
+    println(sum(collectedFlagVec), " visited voxels in ", length(collectedFlagVec))
     #return neuron # only use the main segment for evaluation
 
     while !all(collectedFlagVec)
+        # println(sum(collectedFlagVec), " visited voxels in ", length(collectedFlagVec))
         # there exist some uncollected nodes 
         # find the uncollected node that is closest to the terminal nodes as seed
         # terminal node should have high priority than normal nodes. 
@@ -66,20 +68,27 @@ function Neuron(nodeNet::NodeNet)
 
         # grow a new net from seed, and mark the collected nodes 
         subnet = Neuron!(seedNodeId2, nodeNet, collectedFlagVec) 
-        # merge the subnet to main net 
+        # merge the subnet to main net
+        #@show get_num_nodes(neuron)
+        #@show get_num_nodes(subnet)
+        totalNumNodes = get_num_nodes(neuron) + get_num_nodes(subnet)
         neuron = merge( neuron, subnet, 
                         mergingSegmentId1, mergingNodeIdInSegment1)
-    end 
+        @assert totalNumNodes == get_num_nodes(neuron)
+        #@show get_num_nodes(neuron)
+    end
+    @assert length(nodeNet) == get_num_nodes(neuron) 
+                    "$(length(nodeNet)) !== $(get_num_nodes(neuron))"
     neuron     
 end 
 
 """
-    Neuron!(seedNodeId::Integer, nodeNet::NodeNet, collectedFlagVec::BitArray)
+    Neuron!(seedNodeId::Integer, nodeNet::NodeNet, collectedFlagVec::BitArray{1})
 
 build a net from a seed node using connected component
 mark the nodes in this new net as collected, so the collectedFlagVec was changed.
 """
-function Neuron!(seedNodeId::Integer, nodeNet::NodeNet, collectedFlagVec::BitArray)
+function Neuron!(seedNodeId::Integer, nodeNet::NodeNet, collectedFlagVec::BitArray{1})
     # initialization
     segmentList = Vector{Segment}()
     parentSegmentIdList = Vector{Int}()
@@ -87,6 +96,7 @@ function Neuron!(seedNodeId::Integer, nodeNet::NodeNet, collectedFlagVec::BitArr
 
     nodes = NodeNets.get_node_list(nodeNet)
     nodesConnectivityMatrix = NodeNets.get_connectivity_matrix( nodeNet )
+    @assert length(collectedFlagVec) == length(nodes)
     
     # the seed of segment should record both seed node index 
     # and the the parent segment index
@@ -105,6 +115,7 @@ function Neuron!(seedNodeId::Integer, nodeNet::NodeNet, collectedFlagVec::BitArr
             push!(nodeListInSegment, nodes[seedNodeId])
             # label this node index as collected
             collectedFlagVec[ seedNodeId ] = true 
+            # println(sum(collectedFlagVec), " visited voxels in ", length(collectedFlagVec))
 
             # find the connected nodes
             connectedNodeIdList,_ = findnz(nodesConnectivityMatrix[:, seedNodeId])
@@ -113,7 +124,6 @@ function Neuron!(seedNodeId::Integer, nodeNet::NodeNet, collectedFlagVec::BitArr
 
             if length(connectedNodeIdList) == 1
                 # belong to the same segment
-                push!(nodeListInSegment, nodes[ connectedNodeIdList[1] ])
                 push!(seedNodeIdList, connectedNodeIdList[1])
             else
                 # terminal branching point or multiple branching points
@@ -1774,13 +1784,11 @@ function find_merging_terminal_node_id(self::Neuron, seedNode2::NTuple{4, Float3
 end 
 
 """
-find_seed_node_id(neuron::Neuron, nodeNet::NodeNets, 
-                    collectedFlagVec::Vector{Bool})
+    find_seed_node_id(neuron::Neuron, nodeNet::NodeNets, collectedFlagVec::BitArray{1})
 
 find the closest terminal node in uncollected node set as new growing seed.  
 """
-function find_seed_node_id(neuron::Neuron, nodeNet::NodeNet, 
-                           collectedFlagVec::Vector{Bool})
+function find_seed_node_id(neuron::Neuron, nodeNet::NodeNet, collectedFlagVec::BitArray{1})
     # number 1 means the alread grown neuron 
     # number 2 means the id in the raw node net 
     segmentList1 = get_segment_list(neuron)
@@ -1819,13 +1827,11 @@ end
 
 
 """
-    find_closest_node_id(neuron::Neuron, nodeNet::NodeNet, 
-                            collectedFlagVec)
+    find_closest_node_id(neuron::Neuron, nodeNet::NodeNet, collectedFlagVec::BitArray{1})
 
 find the uncollected node which is closest to the segment list 
 """
-function find_closest_node_id(neuron::Neuron, nodeNet::NodeNet, 
-                                 collectedFlagVec::Vector{Bool})
+function find_closest_node_id(neuron::Neuron, nodeNet::NodeNet, collectedFlagVec::BitArray{1})
     segmentList = get_segment_list(neuron)
     nodes = NodeNets.get_node_list(nodeNet)
 

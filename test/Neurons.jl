@@ -14,13 +14,6 @@ const ASSERT_DIR = joinpath(@__DIR__, "../asset")
 const SWC_BIN_PATH = joinpath(ASSERT_DIR, "$(NEURON_ID).swc.bin") 
 const ARBOR_DENSITY_MAP_VOXEL_SIZE = (2000,2000,2000)
 
-@testset "test basic functions of Neurons..." begin 
-    swc = SWCs.load(joinpath(ASSERT_DIR, "example.swc"))
-    nodeNet = NodeNet(swc)
-    neuron = Neuron(nodeNet)
-    @test length(swc) == length(nodeNet) == Neurons.get_num_nodes(neuron)
-end 
-
 @testset "test Neurons" begin
     println("load swc of a real neuron...")
     @time swc = SWCs.load_swc_bin( SWC_BIN_PATH )
@@ -203,6 +196,13 @@ end
     tempFile = tempname() * ".swc"
     SWCs.save(swc, tempFile)
     rm(tempFile)
+end 
+
+@testset "test basic functions of Neurons..." begin 
+    swc = SWCs.load(joinpath(ASSERT_DIR, "example.swc"))
+    nodeNet = NodeNet(swc)
+    neuron = Neuron(nodeNet)
+    @test length(swc) == length(nodeNet) == Neurons.get_num_nodes(neuron)
 end 
 
 
