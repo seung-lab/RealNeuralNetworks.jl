@@ -19,11 +19,14 @@ RUN julia -e 'import Pkg; \
                 Pkg.add("OffsetArrays"); \
                 Pkg.add("Query")'
 
+# https://discourse.julialang.org/t/pkg-add-ijulia-can-not-work/13341/2
+#RUN julia -e 'rm(joinpath(homedir(), ".julia", "registries"); recursive=true)'
+
 # RUN julia -e 'import Pkg; Pkg.clone("https://github.com/seung-lab/EMIRT.jl.git")'
-RUN julia -e 'import Pkg; Pkg.clone("https://github.com/JuliaCloud/GoogleCloud.jl.git")'
+#RUN julia -e 'import Pkg; Pkg.clone("https://github.com/JuliaCloud/GoogleCloud.jl.git")'
+RUN julia -e 'import Pkg; Pkg.clone("https://github.com/jingpengw/GoogleCloud.jl.git")'
 RUN julia -e 'import Pkg; Pkg.clone("https://github.com/seung-lab/BigArrays.jl.git")'
 RUN julia -e 'import Pkg; Pkg.clone("https://github.com/seung-lab/RealNeuralNetworks.jl.git")'
-
 
 #WORKDIR /root/.julia/dev/
 #RUN mkdir RealNeuralNetworks 
