@@ -4,7 +4,8 @@ include("PointArrays.jl"); using .PointArrays;
 
 # using JLD2
 using BigArrays
-using BigArrays.BinDicts 
+using BigArrays.GSDicts
+
 using ..RealNeuralNetworks.NodeNets
 #import ..RealNeuralNetworks.NodeNets.DBFs
 #import ..RealNeuralNetworks.NodeNets.PointArrays
@@ -30,10 +31,9 @@ Parameters:
     dir 
 """
 function Manifest( manifestDirPath::AbstractString, manifestKey::AbstractString, bigArrayPath::AbstractString )
-    ba = BigArray( BinDict( bigArrayPath ) )
-    h = BinDict( manifestDirPath)
-    str = String(h[manifestKey])
-    d = JSON.parse(str; dicttype=Dict{Symbol, Any})
+    ba = BigArray( GSDict( bigArrayPath ) )
+    h = GSDict( manifestDirPath; valueType=Dict{Symbol,Any})
+    d = h[manifestKey]
     Manifest( d, ba )
 end
 

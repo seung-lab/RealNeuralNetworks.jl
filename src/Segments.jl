@@ -7,8 +7,6 @@ import Statistics: mean, std
 using RealNeuralNetworks.Utils.BoundingBoxes
 include("Synapses.jl"); using .Synapses
 
-using Memoize 
-
 const Node = NTuple{4,Float32}
 const SynapseList = SparseVector{Synapse, Int}
 
@@ -69,7 +67,7 @@ end
 
 @inline function get_node_list(self::Segment) self.nodeList end 
 @inline function get_connectivity_matrix( self::Segment ) self.connectivityMatrix end 
-@memoize function get_bounding_box( self::Segment ) BoundingBox(get_node_list(self)) end 
+@inline function get_bounding_box( self::Segment ) BoundingBox(get_node_list(self)) end 
 @inline function get_class( self::Segment ) self.class end 
 @inline function get_pre_synapse_list( self::Segment ) self.preSynapseList end 
 @inline function get_post_synapse_list( self::Segment ) self.postSynapseList end

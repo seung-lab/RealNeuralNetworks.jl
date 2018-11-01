@@ -14,8 +14,8 @@ const MAX_BOUNDARY_DISTANCE = 100000
 parameter:
     bin_im: binary array. object voxels are false, non-object voxels are true!
 """
-function from_binary_image(bin_im::Array{Bool,3})
-    N = length(bin_im) - countnz(bin_im)
+function from_binary_image(bin_im::Union{Array{Bool,3}, BitArray{3}})
+    N = length(bin_im) - count(bin_im)
     ret = zeros(UInt32, (N,3))
     i = 0
     for z in ONE_UINT32:UInt32(size(bin_im, 3))

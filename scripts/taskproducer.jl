@@ -17,7 +17,11 @@ function parse_commandline()
         "--sqsqueue", "-q"
             help = "AWS SQS queue name"
             arg_type = String 
-            default = "zfish"
+            default = "skeleton"
+        "--skip", "-s"
+            help="skip some huge neurons which will explode memory. example: 34,45,78"
+            arg_type = String 
+            default = ""
     end 
     return parse_args(s)
 end 
@@ -28,14 +32,19 @@ function main()
     args = parse_commandline()
     @show args
      
+    skipNeuronIdSet = map(Meta.parse, split(args["skip"], ",")) |> Set{Int}
+    println("skipping some neuron ids: ", skipNeuronIdSet)
+
     d = JSON.parsefile(args["jsonfile"] |> expanduser) 
     neuronIdSet = Set{Int}()
     for v in d |> values  
         for neuronIdStr in keys(v) 
             neuronId = Meta.parse(neuronIdStr)
-            push!(neuronIdSet, neuronId)
+            if !(neuronId in skipNeuronIdSet)
+                push!(neuronIdSet, neuronId)
+            end 
         end
-    end 
+    end
 
     messageList = Vector{String}()
     for id in neuronIdSet 

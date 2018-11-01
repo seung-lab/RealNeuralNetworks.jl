@@ -19,7 +19,8 @@ RUN julia -e 'import Pkg; \
                 Pkg.add("OffsetArrays"); \
                 Pkg.add("Query")'
 
-#RUN julia -e 'import Pkg; Pkg.clone("https://github.com/seung-lab/EMIRT.jl.git")'
+# RUN julia -e 'import Pkg; Pkg.clone("https://github.com/seung-lab/EMIRT.jl.git")'
+RUN julia -e 'import Pkg; Pkg.clone("https://github.com/JuliaCloud/GoogleCloud.jl.git")'
 RUN julia -e 'import Pkg; Pkg.clone("https://github.com/seung-lab/BigArrays.jl.git")'
 RUN julia -e 'import Pkg; Pkg.clone("https://github.com/seung-lab/RealNeuralNetworks.jl.git")'
 
