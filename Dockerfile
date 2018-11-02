@@ -9,6 +9,14 @@ ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so
 
 RUN julia -e 'import Pkg; Pkg.update()'
 
+# install latest packages first to make sure that we are using the latest 
+# RUN julia -e 'import Pkg; Pkg.clone("https://github.com/seung-lab/EMIRT.jl.git")'
+#RUN julia -e 'import Pkg; Pkg.clone("https://github.com/JuliaCloud/GoogleCloud.jl.git")'
+RUN julia -e 'import Pkg; Pkg.clone("https://github.com/jingpengw/GoogleCloud.jl.git")'
+RUN julia -e 'import Pkg; Pkg.clone("https://github.com/seung-lab/BigArrays.jl.git")'
+RUN julia -e 'import Pkg; Pkg.clone("https://github.com/seung-lab/RealNeuralNetworks.jl.git")'
+
+# install registered packages later
 RUN julia -e 'import Pkg; \ 
                 Pkg.add("LightGraphs");  \
                 Pkg.add("MetaGraphs"); \
@@ -17,18 +25,12 @@ RUN julia -e 'import Pkg; \
                 Pkg.add("DataFrames");\
                 Pkg.add("ImageFiltering");\
                 Pkg.add("OffsetArrays"); \
-                Pkg.add("Query")'; \
+                Pkg.add("Query"); \
                 Pkg.add("JSON");\ 
-                Pkg.add("AWSSDK")
+                Pkg.add("AWSSDK"); '
 
 # https://discourse.julialang.org/t/pkg-add-ijulia-can-not-work/13341/2
 #RUN julia -e 'rm(joinpath(homedir(), ".julia", "registries"); recursive=true)'
-
-# RUN julia -e 'import Pkg; Pkg.clone("https://github.com/seung-lab/EMIRT.jl.git")'
-#RUN julia -e 'import Pkg; Pkg.clone("https://github.com/JuliaCloud/GoogleCloud.jl.git")'
-RUN julia -e 'import Pkg; Pkg.clone("https://github.com/jingpengw/GoogleCloud.jl.git")'
-RUN julia -e 'import Pkg; Pkg.clone("https://github.com/seung-lab/BigArrays.jl.git")'
-RUN julia -e 'import Pkg; Pkg.clone("https://github.com/seung-lab/RealNeuralNetworks.jl.git")'
 
 #WORKDIR /root/.julia/dev/
 #RUN mkdir RealNeuralNetworks 
