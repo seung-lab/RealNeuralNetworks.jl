@@ -350,6 +350,15 @@ construct sparse connectivity matrix accordint to the edges
 end 
 
 ###################### IO #################################
+function save(self::NodeNet, fileName::AbstractString)
+    if endswith(fileName, ".swc") || endswith(fileName, ".swc.bin")
+        swc = SWC(self)
+        SWCs.save(swc, fileName)
+    else 
+        error("only support format of swc and swc.bin, but getting: ", fileName)
+    end 
+end 
+
 """
     save(self::NodeNet, cellId::UInt32, d_json::Associative, d_bin::Associative)
 

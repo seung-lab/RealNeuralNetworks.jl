@@ -21,47 +21,48 @@ if !haskey(ENV, "AWS_ACCESS_KEY_ID") && isfile("/secrets/aws-secret.json")
     end 
 end 
 
-@everywhere function trace(cellId::Integer; swcDir      ::AbstractString = "/tmp/", 
+@everywhere function trace(neuronId::Integer; swcDir      ::AbstractString = "/tmp/", 
                                 mip         ::Integer        = MIP, 
                                 meshName    ::String = "mesh_mip_$MIP",
                                 voxelSize   ::Union{Tuple,Vector} = VOXEL_SIZE,
                                 segmentationLayer::AbstractString = SEGMENTATION_LAYER)
-    
-    manifest = Manifest(joinpath(segmentationLayer, meshName), "$(cellId):0", 
+    println("fetching manifest...")
+    manifest = Manifest(joinpath(segmentationLayer, meshName), "$(neuronId):0", 
                         joinpath(segmentationLayer, 
                             "$(2^mip*voxelSize[1])_$(2^mip*voxelSize[2])_$(voxelSize[3])"))
     
-    nodeNet = Manifests.trace(manifest, cellId)
-    
+    println("skeletonizing the point cloud...")
+    nodeNet = Manifests.trace(manifest)
     # transform to physical coordinate system
     NodeNets.stretch_coordinates!( nodeNet, mip )
     NodeNets.stretch_coordinates!( nodeNet, voxelSize)
+    NodeNets.save(nodeNet, "/tmp/$(neuronId).swc")
  
-    # reconnect the broken pieces and reset root to the soma center
+    # reconnect the broken pieces and reset root to the soma center 
     neuron = Neuron( nodeNet )
     #neuron = Neurons.remove_subtree_in_soma(neuron)
     #neuron = Neurons.remove_hair( neuron )
 
     swc = SWCs.SWC( neuron )
-    SWCs.save(swc, joinpath(swcDir, "$(cellId).swc"))
+    SWCs.save(swc, joinpath(swcDir, "$(neuronId).swc"))
     
     # save to neuroglancer
     d_bin  = GSDict(joinpath(segmentationLayer, "skeleton_mip_$(mip)"))
     d_str  = GSDict(joinpath(segmentationLayer, "swc"); valueType=String)
     d_swc_bin  = GSDict(joinpath(segmentationLayer, "swc_bin"))
-    d_bin["$cellId"] = SWCs.get_neuroglancer_precomputed( swc )
-    d_str["$(cellId).swc"] = String(swc)
-    d_swc_bin["$(cellId).swc.bin"] = SWCs.serialize(swc)
+    d_bin["$neuronId"] = SWCs.get_neuroglancer_precomputed( swc )
+    d_str["$(neuronId).swc"] = String(swc)
+    d_swc_bin["$(neuronId).swc.bin"] = SWCs.serialize(swc)
     
-
+    println("preprocessing the neuron...")
     neuron = Neurons.postprocessing(neuron)
     # save to neuroglancer
     d_bin  = GSDict(joinpath(segmentationLayer, "skeleton_mip_$(mip)_postprocessed"))
     d_str  = GSDict(joinpath(segmentationLayer, "postprocessed_swc"); valueType=String)
     d_swc_bin  = GSDict(joinpath(segmentationLayer, "postprocessed_swc_bin"))
-    d_bin["$cellId"] = SWCs.get_neuroglancer_precomputed( swc )
-    d_str["$(cellId).swc"] = String(swc)
-    d_swc_bin["$(cellId).swc.bin"] = SWCs.serialize(swc)
+    d_bin["$neuronId"] = SWCs.get_neuroglancer_precomputed( swc )
+    d_str["$(neuronId).swc"] = String(swc)
+    d_swc_bin["$(neuronId).swc.bin"] = SWCs.serialize(swc)
 end 
 
 """

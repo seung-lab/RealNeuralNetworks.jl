@@ -74,32 +74,26 @@ function get_voxel_offset(self::Manifest)
 end 
 
 """
-iterate the chunks containing the neuron with specified cellId
+iterate the chunks containing the neuron with specified neuronId
 build point cloud and dbf when iterating the chunks 
 """
-function trace(self::Manifest, cellId)
+function trace(self::Manifest)
     println("extract point clouds and distance from boundary fields ...")
-    @time pointCloudDBFList = pmap( identity, self );
+    pointCloudDBFList = pmap(x->_get_point_cloud_dbf(self, x), self.rangeList )
+
     pointClouds = map( x->x[1], pointCloudDBFList )
     pointCloud = vcat(pointClouds ...)
     dbfs = map(x->x[2], pointCloudDBFList)
     dbf = vcat(dbfs ...)
     # save temporal variables for debug
-    # @save "/tmp/$(cellId).jld" pointClouds, pointCloud, dbf
+    # @save "/tmp/$(neuronId).jld" pointClouds, pointCloud, dbf
     println("skeletonization from global point cloud and dbf using RealNeuralNetworks algorithm...")
     @time nodeNet = NodeNet(pointCloud; dbf=dbf) 
     return nodeNet
 end 
 
-function Base.iterate(self::Manifest, state=1)
-    if state > length( self.rangeList )
-        # finish iteration 
-        return nothing 
-    end 
-    
-    println("manifest index: $state in $(length(self.rangeList))")
+function _get_point_cloud_dbf(self::Manifest, ranges)
     # example: [2456:2968, 1776:2288, 16400:16912]
-    ranges = self.rangeList[state]
     offset = (map(x-> UInt32(x.start-1), ranges)...,)
     seg = self.ba[ranges...] |> parent
     bin_im = DBFs.create_binary_image( seg; obj_id = self.obj_id )
@@ -110,8 +104,7 @@ function Base.iterate(self::Manifest, state=1)
     PointArrays.add_offset!(point_cloud, offset)
     # no need to use voxel_offset since the file name encoded the global coordinate
     # PointArrays.add_offset!(point_cloud, get_voxel_offset(self)) 
-    return (point_cloud, dbf), state+1
-
+    return point_cloud, dbf
 end  
 
 end # module

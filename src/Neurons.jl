@@ -594,7 +594,10 @@ function get_parent_segment_id( connectivityMatrix::SparseMatrixCSC, childSegmen
     if isempty( parentSegmentIdList ) 
         # no parent, this is a root segment
         return 0
-    else 
+    else
+        if length(parentSegmentIdList) > 1
+            @show parentSegmentIdList 
+        end
         @assert length(parentSegmentIdList) <= 1
         return parentSegmentIdList[1]
     end 
@@ -1110,6 +1113,15 @@ function Base.merge(self::Neuron, other::Neuron,
 
         # establish the connection between two nets
         mergedConnectivityMatrix[mergingSegmentId, num_segments1+2] = true
+        
+        # assert the parent number to ensure that this is a tree structure without loop
+        for i in 1:size(mergedConnectivityMatrix,1)
+            parentSegmentIdList, _ = findnz(mergedConnectivityMatrix[:,i])
+            if length(parentSegmentIdList) > 1 
+                @show parentSegmentIdList 
+            end 
+            @assert length(parentSegmentIdList) <= 1
+        end 
 
         # create new merged net
         return Neuron(mergedSegmentList, mergedConnectivityMatrix)
@@ -1744,6 +1756,7 @@ function find_closest_node_id(self::Neuron, seedNode::NTuple{3,T}) where T
     closestSegmentId, closestNodeIdInSegment, distance 
 end 
 
+
 """
     find_merging_terminal_node_id(self::Neuron, seedNode2::NTuple{4, Float32}) 
 
@@ -1773,7 +1786,8 @@ function find_merging_terminal_node_id(self::Neuron, seedNode2::NTuple{4, Float3
         # get angle θ
         a = [ [terminalNode1[1:3]...] .- [terminalNode0[1:3]...] ]
         b = [ [seedNode2[1:3]...] .- [terminalNode1[1:3]...] ]
-        theta = acos(dot(a,b) / (norm(a)*norm(b)))
+        # sometimes the value could be larger than 1.0 due to numerical precision stabilities
+        theta = acos(min(one(Float32), dot(a,b) / (norm(a)*norm(b))))
         
         # euclidean distance
         if theta <= pi/2
