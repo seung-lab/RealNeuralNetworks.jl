@@ -17,7 +17,9 @@ RUN julia -e 'import Pkg; \
                 Pkg.add("DataFrames");\
                 Pkg.add("ImageFiltering");\
                 Pkg.add("OffsetArrays"); \
-                Pkg.add("Query")'
+                Pkg.add("Query")'; \
+                Pkg.add("JSON");\ 
+                Pkg.add("AWSSDK")
 
 # https://discourse.julialang.org/t/pkg-add-ijulia-can-not-work/13341/2
 #RUN julia -e 'rm(joinpath(homedir(), ".julia", "registries"); recursive=true)'
@@ -33,6 +35,7 @@ RUN julia -e 'import Pkg; Pkg.clone("https://github.com/seung-lab/RealNeuralNetw
 #ADD . RealNeuralNetworks/ 
 #RUN julia -e 'import Pkg; Pkg.clone(pwd()); Pkg.test("RealNeuralNetworks")'
 
+# precompile the package
 RUN julia -e 'using RealNeuralNetworks'
-WORKDIR /root/.julia/packages/RealNeuralNetworks/scripts
+WORKDIR /root/.julia/dev/RealNeuralNetworks/scripts
 #CMD ["julia", "skeletonize.jl", "-h"]

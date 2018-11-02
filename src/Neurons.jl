@@ -91,6 +91,7 @@ mark the nodes in this new net as collected, so the collectedFlagVec was changed
 function Neuron!(seedNodeId::Integer, nodeNet::NodeNet, collectedFlagVec::BitArray{1})
     # initialization
     segmentList = Vector{Segment}()
+
     parentSegmentIdList = Vector{Int}()
     childSegmentIdList  = Vector{Int}()
 
@@ -120,40 +121,48 @@ function Neuron!(seedNodeId::Integer, nodeNet::NodeNet, collectedFlagVec::BitArr
             # find the connected nodes
             connectedNodeIdList,_ = findnz(nodesConnectivityMatrix[:, seedNodeId])
             # exclude the collected nodes
-            connectedNodeIdList = connectedNodeIdList[ .!collectedFlagVec[connectedNodeIdList] ] 
+            connectedNodeIdList = connectedNodeIdList[ .!collectedFlagVec[connectedNodeIdList] ]
 
             if length(connectedNodeIdList) == 1
                 # belong to the same segment
                 push!(seedNodeIdList, connectedNodeIdList[1])
             else
-                # terminal branching point or multiple branching points
                 # finish constructing this segment
+                # because this is the terminal branching point or multiple branching points
                 segment = Segment(nodeListInSegment)
                 push!(segmentList, segment)
                 if segmentParentId != -1
                     # this is not the root segment, establish the segment connection
+                    # @assert length(segment) > 1
                     push!(parentSegmentIdList, segmentParentId)
                     push!(childSegmentIdList,  length(segmentList))
                 end 
                 # seed new segments
                 # if this is terminal segment, no seed will be pushed
-                for index in connectedNodeIdList 
-                    push!(segmentSeedList, (index, length(segmentList)))
+                for connectedNodeId in connectedNodeIdList
+                    # the length of segmentList will be the parent segment ID of the seeded segment
+                    parentSegmentId = length(segmentList)
+                    push!(segmentSeedList, (connectedNodeId, parentSegmentId))
                 end 
                 break
             end 
         end 
     end
-    @assert length(parentSegmentIdList) == length(childSegmentIdList)
-    # note that the connectivity matrix should be a square matrix for easier use
-    connectivityMatrix = spzeros(Bool, length(segmentList), length(segmentList))
-    tempConnectivityMatrix = sparse(parentSegmentIdList, childSegmentIdList, 
-                                ones(Bool,length(childSegmentIdList)))
-    connectivityMatrix[1:size(tempConnectivityMatrix,1), 
-                       1:size(tempConnectivityMatrix,2)] = tempConnectivityMatrix
+    
     for segment in segmentList 
         @assert !isempty(segment)
     end
+    @assert length(parentSegmentIdList) == length(childSegmentIdList)
+
+    # note that the connectivity matrix should be a square matrix for easier use
+    connectivityMatrix = sparse(parentSegmentIdList, childSegmentIdList, true, 
+                                length(segmentList), length(segmentList))
+    
+    for childSegmentId in 1:length(childSegmentIdList)
+        parentSegmentIdList,_ = findnz(connectivityMatrix[:, childSegmentId])
+        # segment should only have one parent 
+        @assert length(parentSegmentIdList) <= 1 
+    end 
     Neuron(segmentList, connectivityMatrix)
 end 
 
@@ -586,7 +595,7 @@ function get_parent_segment_id( connectivityMatrix::SparseMatrixCSC, childSegmen
         # no parent, this is a root segment
         return 0
     else 
-        @assert length(parentSegmentIdList) == 1
+        @assert length(parentSegmentIdList) <= 1
         return parentSegmentIdList[1]
     end 
 end

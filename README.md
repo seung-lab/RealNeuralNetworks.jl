@@ -52,7 +52,8 @@ SWCs.save(swc, tempname()*".swc")
 - [x] Asymmetry is the distance of the soma node to the dendritic arbor (skeleton) centre of mass (in nm). 
 - [x] Typical radius (λ) is the root-mean-square distance of dendritic arbor points to the centre of mass (in nm). 
 - [x] fractal dimension.
-- [x] longest neurite length. 
+- [x] longest neurite length.
+- [ ] [Strahler number](https://en.wikipedia.org/wiki/Strahler_number)
 - [ ] distribution of Euclidian distance of segmentes from soma (third principal component)
 - [ ] distribution of Euclidian distance of segmentes from soma as a function of segment order (third principal component)
 - [ ] number of segmentes per segment order (second principal component)
