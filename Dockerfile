@@ -12,9 +12,10 @@ RUN julia -e 'import Pkg; Pkg.update()'
 # install latest packages first to make sure that we are using the latest 
 # RUN julia -e 'import Pkg; Pkg.clone("https://github.com/seung-lab/EMIRT.jl.git")'
 #RUN julia -e 'import Pkg; Pkg.clone("https://github.com/JuliaCloud/GoogleCloud.jl.git")'
-RUN julia -e 'import Pkg; Pkg.clone("https://github.com/jingpengw/GoogleCloud.jl.git")'
-RUN julia -e 'import Pkg; Pkg.clone("https://github.com/seung-lab/BigArrays.jl.git")'
-RUN julia -e 'import Pkg; Pkg.clone("https://github.com/seung-lab/RealNeuralNetworks.jl.git")'
+RUN julia -e 'using Pkg; \ 
+    Pkg.add(PackageSpec(url="https://github.com/jingpengw/GoogleCloud.jl.git")); \
+    Pkg.add(PackageSpec(url="https://github.com/seung-lab/BigArrays.jl.git")); \
+    Pkg.add(PackageSpec(url="https://github.com/seung-lab/RealNeuralNetworks.jl.git")); '
 
 # install registered packages later
 RUN julia -e 'import Pkg; \ 

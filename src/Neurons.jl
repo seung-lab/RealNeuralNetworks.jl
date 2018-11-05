@@ -1617,8 +1617,8 @@ end
 post process after skeletonization
 """
 function postprocessing(self::Neuron)
-    self = remove_hair(self)
     self = remove_redundent_nodes(self)
+    self = remove_hair(self)
     self = remove_subtree_in_soma(self)
     self = remove_terminal_blobs(self)
     self = resample(self, Float32(100))
