@@ -1425,7 +1425,14 @@ transform to NodeNet, the first node is the root node.
 function NodeNets.NodeNet(self::Neuron)
     nodeList = get_node_list( self )
     edges = get_edge_list( self )
-    error("not fully implemented")
+    
+    I = map(x->x[1], edges)
+    J = map(x->x[2], edges)
+    
+    # the connectivity matrix should be symmetric
+    connectivityMatrix = sparse([I..., J...,], [J..., I...,],true, 
+                                length(nodeList), length(nodeList))
+    NodeNet(nodeList, connectivityMatrix)    
 end 
 
 function SWCs.SWC(self::Neuron)
@@ -1668,7 +1675,10 @@ end
 
 """
     resample( self::Neuron, resampleDistance::Float32 )
-resampling the segments by a fixed point distance 
+resampling the segments by a fixed point distance.
+Note that the distance is physical rather than point number.
+For example, if the neuron coordinate is based on nm, and the 
+resample distance is 1000.0, then the resample distance is 1000 nm.
 """
 function resample(self::Neuron, resampleDistance::Float32) 
     newSegmentList = Vector{Segment}()

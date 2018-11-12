@@ -2,6 +2,7 @@ using Test
 
 using RealNeuralNetworks.SWCs
 using RealNeuralNetworks.NodeNets 
+using RealNeuralNetworks.Neurons 
 using RealNeuralNetworks.NBLASTs
 using RealNeuralNetworks.Utils.VectorClouds 
 using RealNeuralNetworks.Utils.RangeIndexingArrays 
@@ -21,6 +22,10 @@ NEURON_ID2 = 77641
 
     vectorCloud1 = NBLASTs.VectorCloud(neuron1)
     vectorCloud2 = NBLASTs.VectorCloud(neuron2)
+
+    println("test data structure transformation...")
+    NBLASTs.VectorCloud(Neuron(neuron1))
+    NodeNet(neuron1) |> NBLASTs.VectorCloud 
 
     # transform to micron
     vectorCloud1[1:3, :] ./= 1000
@@ -51,5 +56,17 @@ NEURON_ID2 = 77641
     @time similarityMatrix = NBLASTs.nblast_allbyall(ria, vectorCloudList; normalisation=:raw)
     @show similarityMatrix
     @test isapprox.(similarityMatrix,  RNBLAST_RESULT) |> all
+ 
+    RNBLAST_RESULT = Float32[1.0 0.5622509 ; 0.6210238 1.0]
+    println("compute normalised similarity matrix...")
+    @time similarityMatrix = NBLASTs.nblast_allbyall(ria, vectorCloudList; normalisation=:normalised)
+    @show similarityMatrix
+    @test isapprox.(similarityMatrix,  RNBLAST_RESULT) |> all
+
     
+    RNBLAST_RESULT = Float32[1.0 0.5916374; 0.5916374 1.0]
+    println("compute mean similarity matrix...")
+    @time similarityMatrix = NBLASTs.nblast_allbyall(ria, vectorCloudList; normalisation=:mean)
+    @show similarityMatrix
+    @test isapprox.(similarityMatrix,  RNBLAST_RESULT) |> all
 end 

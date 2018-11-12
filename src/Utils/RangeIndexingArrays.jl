@@ -45,11 +45,36 @@ end
 function RangeIndexingArray(df::DataFrame)
     table = convert( Matrix{Float32}, df[1:end, 2:end] )
     
-    septaList1 = range_string_list2septa_list(df[:,1])
+    septaList1 = range_string_list2septa_list(df[:Column1])
     rangeStringList = map(string, names(df)[2:end] )
     septaList2 = range_string_list2septa_list( rangeStringList )
     
     RangeIndexingArray{Float32, 2}(tuple(septaList1, septaList2), table)
+end 
+
+"""
+    DataFrame(ria::RangeIndexingArray{T,N})
+transform a RangeIndexingArray to DataFrame 
+"""
+function DataFrame(ria::RangeIndexingArray{T,N}) where {T,N}
+    distRangeList = Vector{Symbol}()
+    for i in 1:length(ria.septaListTuple[1])-1
+        start = ria.septaListTuple[1][i]
+        stop = ria.septaListTuple[1][i+1]
+        range = Symbol("($(start),$(stop)]")
+        push!(distRangeList, range)
+    end
+
+    df = DataFrame(Column1=distRangeList)
+
+    for i in 1:length(ria.septaListTuple[2])-1
+        start = ria.septaListTuple[2][i]
+        stop = ria.septaListTuple[2][i+1]
+        range = Symbol("($(start),$(stop)]")
+        df[range] = ria.table[:,i]
+    end
+
+    df
 end 
 
 @inline function get_septa_list_tuple(self::RangeIndexingArray)
@@ -78,6 +103,10 @@ function _float_index2table_index(floatIndex::T, septaList::Vector{T}) where T
     return length(septaList)-1
 end 
 
+@inline function Base.fill!(self::RangeIndexingArray{T,N}, x::T) where {T,N}
+    fill!(self.table, x)
+end 
+
 """
     Base.getindex(self::RangeIndexingArray{T,N}, idx::T...)
 
@@ -103,5 +132,15 @@ function Base.getindex(self::RangeIndexingArray{T,N}, floatIndexList::AbstractFl
 
     return get_table_array(self)[tableIndexList...,]
 end 
+
+function Base.setindex!(self::RangeIndexingArray{T,N}, value::T, 
+                       inds::AbstractFloat...) where {T,N}
+    tableIndexList = map((x,y)->_float_index2table_index(x,y), inds, get_septa_list_tuple(self))
+    table = get_table_array(self)
+    table[tableIndexList...,] = value 
+end 
+
+
+
 
 end # end of module 

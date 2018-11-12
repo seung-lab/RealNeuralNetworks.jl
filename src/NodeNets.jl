@@ -30,6 +30,7 @@ mutable struct NodeNet
     connectivityMatrix  :: SparseMatrixCSC{Bool,UInt32}
 end 
 
+
 """
     NodeNet( seg, obj_id; penalty_fn=alexs_penalty)
 Perform the teasar algorithm on the passed binary array.

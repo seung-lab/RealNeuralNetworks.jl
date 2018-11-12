@@ -3,15 +3,21 @@ module NBLASTs
 using ..RealNeuralNetworks.Utils.VectorClouds 
 using ..RealNeuralNetworks.NodeNets
 using ..RealNeuralNetworks.SWCs 
+using ..RealNeuralNetworks.Neurons 
 using ..RealNeuralNetworks.Utils.Mathes
 using ..RealNeuralNetworks.Utils.RangeIndexingArrays 
 
 using NearestNeighbors 
 using LinearAlgebra 
+using ProgressMeter 
 
 export nblast, nblast_allbyall
 
 @inline function VectorCloud(neuron::SWC; k::Integer=20)
+    VectorCloud(NodeNet(neuron); k=k)
+end 
+
+@inline function VectorCloud(neuron::Neuron; k::Integer=20)
     VectorCloud(NodeNet(neuron); k=k)
 end 
 
@@ -100,29 +106,26 @@ function nblast_allbyall(ria::RangeIndexingArray{TR, N},
 
     treeList = map(VectorClouds.to_kd_tree, vectorCloudList) 
 
-    for targetIndex in 1:num 
-        for queryIndex in 1:num 
+    @showprogress 1 "computing similarity matrix..." for targetIndex in 1:num 
+        Threads.@threads for queryIndex in 1:num 
             similarityMatrix[targetIndex, queryIndex] = nblast(ria, 
                     vectorCloudList[targetIndex], vectorCloudList[queryIndex]; 
                     targetTree=treeList[targetIndex] )
         end 
     end 
    
-    if normalisation == :raw 
-        return similarityMatrix 
-    elseif normalisation==:normalised || normalisation==:mean 
+    if normalisation==:normalised || normalisation==:mean 
         for i in 1:num
             similarityMatrix[:,i] ./= similarityMatrix[i,i]
-        end 
-    elseif normalisation==:mean 
+        end
+    end 
+    if normalisation==:mean 
         for i in 1:num 
             for j in i+1:num 
                 similarityMatrix[i,j] = (similarityMatrix[i,j] + similarityMatrix[j,i])/Float32(2)
-                similarityMatrix[i,j] = similarityMatrix[j,i]
+                similarityMatrix[j,i] = similarityMatrix[i,j]
             end 
         end 
-    else 
-        error("only support normalisation method of raw|normalised|mean, but getting: $(normalisation)")
     end
     similarityMatrix
 end 
