@@ -25,7 +25,7 @@ NEURON_ID2 = 77641
 
     println("test data structure transformation...")
     NBLASTs.VectorCloud(Neuron(neuron1))
-    NodeNet(neuron1) |> NBLASTs.VectorCloud 
+    NBLASTs.VectorCloud(neuron1)
 
     # transform to micron
     vectorCloud1[1:3, :] ./= 1000

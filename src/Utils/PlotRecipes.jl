@@ -2,10 +2,10 @@ module PlotRecipes
 using RealNeuralNetworks.Neurons
 using Colors, ColorSchemes, Clustering
 using Plots
+using Statistics 
 
 import PyPlot
 PyPlot.svg(true)
-
 
 function plot_synapse_distributions( cellList;  
         synapseDistribution = map(get_synapse_to_soma_path_length_lists, cellList),
@@ -123,7 +123,7 @@ function hclustplot(hc::Hclust, useheight::Bool)
 
         y1 = pos[hc.merge[i,1]][2]
         y2 = pos[hc.merge[i,2]][2]
-        useheight ? h = hc.height[i] : h = 1
+        useheight ? h = hc.heights[i] : h = 1
         newy = maximum([y1,y2]) + h
         append!(ys, [y1,newy,newy,y2])
     end
@@ -139,9 +139,9 @@ function treepositions(hc::Hclust, useheight::Bool)
     for i in 1:size(hc.merge,1)
         xpos = mean([positions[hc.merge[i,1]][1], positions[hc.merge[i,2]][1]])
         if hc.merge[i,1] < 0 && hc.merge[i,2] < 0
-            useheight ? ypos = hc.height[i] : ypos = 1
+            useheight ? ypos = hc.heights[i] : ypos = 1
         else
-            useheight ? h = hc.height[i] : h = 1
+            useheight ? h = hc.heights[i] : h = 1
             ypos = maximum([positions[hc.merge[i,1]][2], positions[hc.merge[i,2]][2]]) + h
         end
 
@@ -151,6 +151,7 @@ function treepositions(hc::Hclust, useheight::Bool)
 end 
 
 function plot(clust::Hclust)
+	#Plots.gr()
 	Plots.plotly()
 	Plots.plot(hclustplot(clust, true), seriestype=:path, color=:black,
     yaxis=nothing,  grid=false, legend=false) #,  xticks=classificationIdList[clust.order])

@@ -45,7 +45,7 @@ function Neuron(nodeNet::NodeNet)
     seedNodeIdList::Vector = [rootNodeId]
     # grow the main net
     neuron = Neuron!(rootNodeId, nodeNet, collectedFlagVec)
-    println(sum(collectedFlagVec), " visited voxels in ", length(collectedFlagVec))
+    # println(sum(collectedFlagVec), " visited voxels in ", length(collectedFlagVec))
     #return neuron # only use the main segment for evaluation
 
     while !all(collectedFlagVec)
@@ -450,10 +450,14 @@ end
 
 
 """
-    get_segment_path_length_list(self::Neuron)
+get_segment_path_length_list(self::Neuron; 
+                                segmentList::Vector{Segment}=get_segment_list(self),
+                                class::{Nothing,UInt8}=nothing)
 get euclidean path length of each segment 
 """
-function get_segment_path_length_list( self::Neuron; segmentList = get_segment_list(self) )
+function get_segment_path_length_list( self::Neuron; 
+                                      segmentList::Vector{Segment} = get_segment_list(self),
+                                      class::Union{Nothing,UInt8}=nothing )
     ret = Vector{Float64}()
     for (index, segment) in enumerate( segmentList )
         segmentPathLength = Segments.get_path_length( segment )
@@ -464,8 +468,13 @@ function get_segment_path_length_list( self::Neuron; segmentList = get_segment_l
             parentNode = parentSegment[ end ]
             node = segment[1]
             segmentPathLength += norm( [map((x,y)->x-y, node[1:3], parentNode[1:3])...] )
-        end 
-        push!(ret, segmentPathLength)
+        end
+
+        if class == nothing || class==Segments.get_class(segment)
+            # include all segment 
+            # the class matchs
+            push!(ret, segmentPathLength)
+        end
     end 
     ret 
 end 
@@ -482,8 +491,12 @@ function get_node_distance_list(neuron::Neuron)
     nodeDistanceList
 end 
 
-function get_total_path_length(self::Neuron)
-    get_segment_path_length_list(self) |> sum
+"""
+    get_total_path_length(self::Neuron; class::Union{Nothing,UInt8}=nothing)
+the default class=nothing will include all of the segments
+"""
+@inline function get_total_path_length(self::Neuron; class::Union{Nothing,UInt8}=nothing)
+    get_segment_path_length_list(self; class=class) |> sum
 end 
 
 """
@@ -1508,9 +1521,7 @@ function get_all_pre_synapse_list(self::Neuron)
     for segment in self 
         preSynapseSparseVec = Segments.get_pre_synapse_sparse_vec(segment)
         I, synapseList = findnz(preSynapseSparseVec)
-        if !isempty(I)
-            append!(ret, synapseList)
-        end 
+        append!(ret, synapseList)
     end
     ret 
 end 
@@ -1523,9 +1534,7 @@ function get_all_post_synapse_list(self::Neuron)
     for segment in self 
         postSynapseSparseVec = Segments.get_post_synapse_sparse_vec(segment)
         I, synapseList = findnz(postSynapseSparseVec)
-        if !isempty(I)
-            append!(ret, synapseList)
-        end 
+        append!(ret, synapseList)
     end
     ret 
 end 
@@ -1547,6 +1556,30 @@ function get_num_post_synapses(self::Neuron)
 end 
 
 ############################### manipulations ##########################################
+
+"""
+    attach_pre_synapses!(self::Neuron, synapseList::Vector{Synapse})
+
+"""
+function attach_pre_synapses!(self::Neuron, synapseList::Vector{Synapse})
+    map(x->attach_pre_synapse!(self, x), synapseList)
+
+    for segment in self 
+        Segments.adjust_class!(segment)
+    end 
+end
+
+"""
+    attach_post_synapses!(self::Neuron, synapseList::Vector{Synapse})
+"""
+function attach_post_synapses!(self::Neuron, synapseList::Vector{Synapse})
+    map(x->attach_pre_synapse!(self, x), synapseList)
+
+    for segment in self 
+        Segments.adjust_class!(segment)
+    end 
+end 
+
 """
     attach_pre_synapses!(self::Neuron, synapseTable::DataFrame)
 make sure that the synapse table contains *only* the presynapses of this neuron 
@@ -1683,6 +1716,8 @@ resample distance is 1000.0, then the resample distance is 1000 nm.
 function resample(self::Neuron, resampleDistance::Float32) 
     newSegmentList = Vector{Segment}()
     segmentList = get_segment_list(self)
+    preSynapseList = get_all_pre_synapse_list(self)
+    postSynapseList = get_all_post_synapse_list(self)
     local nodeList::Vector 
     for (index, segment) in enumerate(segmentList)
         parentSegmentId = get_parent_segment_id(self, index)
@@ -1700,7 +1735,12 @@ function resample(self::Neuron, resampleDistance::Float32)
             push!(newSegmentList, newSegment)
         end 
     end 
-    Neuron(newSegmentList, get_connectivity_matrix(self))
+    neuron = Neuron(newSegmentList, get_connectivity_matrix(self))
+
+    # reattach synapses 
+    attach_pre_synapses!(neuron, preSynapseList)
+    attach_post_synapses!(neuron, postSynapseList)
+    neuron
 end
 
 function resample(nodeList::Vector{NTuple{4,T}}, resampleDistance::T) where T
