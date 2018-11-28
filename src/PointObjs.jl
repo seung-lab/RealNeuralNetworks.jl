@@ -2,7 +2,7 @@ module PointObjs
 export PointObj
 
 mutable struct PointObj
-    point_type  :: UInt8 
+    class       :: UInt8 
     x           :: Float32 
     y           :: Float32 
     z           :: Float32 
@@ -31,7 +31,7 @@ end
 
 function serialize(self::PointObj)
     io = IOBuffer(read=false, write=true, maxsize=21)
-    write(io, self.point_type)
+    write(io, self.class)
     write(io, self.x)
     write(io, self.y)
     write(io, self.z)
@@ -41,11 +41,11 @@ function serialize(self::PointObj)
 end 
 
 function Base.String(self::PointObj)
-    "$(self.point_type) $(self.x) $(self.y) $(self.z) $(self.radius) $(self.parent)"
+    "$(self.class) $(self.x) $(self.y) $(self.z) $(self.radius) $(self.parent)"
 end
 
 function Base.isequal(self::PointObj, other::PointObj)
-    self.point_type == other.point_type && 
+    self.class == other.class && 
     self.x == other.x &&
     self.y == other.y &&
     self.z == other.z &&

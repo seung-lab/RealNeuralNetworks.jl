@@ -24,12 +24,17 @@ const REMOVE_PATH_CONST = 4
 mutable struct NodeNet 
     # x,y,z,r
     nodeList            :: Vector{NTuple{4,Float32}}
+    nodeClassList       :: Vector{UInt8}
     # connectivity matrix to represent edges
     # conn[2,3]=true means node 2 and 3 connected with each other
     # conn[3,2] should also be true since this is undirected graph
     connectivityMatrix  :: SparseMatrixCSC{Bool,UInt32}
 end 
 
+@inline function NodeNet(nodeList::Vector{NTuple{4,Float32}}, connectivityMatrix::SparseMatrixCSC{Bool, UInt32})
+    nodeClassList = zeros(UInt8, length(nodeList))
+    NodeNet(nodeList, nodeClassList, connectivityMatrix)
+end 
 
 """
     NodeNet( seg, obj_id; penalty_fn=alexs_penalty)
@@ -157,7 +162,8 @@ function NodeNet( points::Array{T,2}; dbf::DBF=DBFs.compute_DBF(points),
     sizehint!(nodeList, length(node_radii))
     for i in 1:length(node_radii)
         push!(nodeList, (map(Float32,nodes[i,:])..., node_radii[i]))
-    end 
+    end
+
     nodeNet = NodeNet(nodeList, conn)
     # add the offset from shift bounding box function
     @show bbox_offset
@@ -167,25 +173,28 @@ end
 
 function NodeNet(swc::SWC)
     nodeList = Vector{NTuple{4, Float32}}()
+    nodeClassList = Vector{UInt8}()
     connectivityMatrix = spzeros(Bool, length(swc), length(swc))
     for (index, point) in enumerate(swc) 
         push!(nodeList, (point.x, point.y, point.z, point.radius))
+        push!(nodeClassList, point.class)
         if point.parent != -1
             # the connectivity matrix is symetric
             connectivityMatrix[index, point.parent] = true
             connectivityMatrix[point.parent, index] = true
         end 
     end 
-    NodeNet(nodeList, connectivityMatrix)
+    NodeNet(nodeList, nodeClassList, connectivityMatrix)
 end 
 
 function SWCs.SWC(nodeNet::NodeNet)
     edges = NodeNets.get_edges(nodeNet)
     swc = SWC()
     sizehint!(swc, NodeNets.get_node_num(nodeNet))
+    nodeClassList = get_node_class_list(nodeNet) 
 
-    for node in NodeNets.get_node_list(nodeNet)
-        point = SWCs.PointObj(0, node[1], node[2], node[3], node[4], -1)
+    for (i, node) in NodeNets.get_node_list(nodeNet) |> enumerate 
+        point = SWCs.PointObj(nodeClassList[i], node[1], node[2], node[3], node[4], -1)
         push!(swc, point)
     end
     # assign parents according to edge 
@@ -199,14 +208,21 @@ end
 ##################### properties ###############################
 @inline function get_node_list(self::NodeNet) self.nodeList end 
 @inline function get_connectivity_matrix(self::NodeNet) self.connectivityMatrix end
+@inline function get_node_class_list(self::NodeNet) self.nodeClassList end 
 @inline function get_xyz(self::NodeNet) map(x->x[1:3], self.nodeList) end
 @inline function get_radii(self::NodeNet) map(x->x[4],  self.nodeList) end 
-@inline function get_node_num(self::NodeNet) length(self.nodeList) end
-# the connectivity matrix is symmetric, so the connection is undirected
-@inline function get_edge_num(self::NodeNet) div(nnz(self.connectivityMatrix), 2) end
+@inline function get_node_num(self::NodeNet; class::Union{Nothing, UInt8}=nothing)
+    if class == nothing 
+        return length(self.nodeList) 
+    else 
+        return count(self.nodeClassList .== class)
+    end 
+end
 
-get_num_nodes = get_node_num
-get_num_edges = get_edge_num 
+""" 
+the connectivity matrix is symmetric, so the connection is undirected
+"""
+@inline function get_edge_num(self::NodeNet) div(nnz(self.connectivityMatrix), 2) end
 
 function get_edges(self::NodeNet) 
     edges = Vector{Tuple{UInt32,UInt32}}()

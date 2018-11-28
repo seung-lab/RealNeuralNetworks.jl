@@ -22,45 +22,45 @@ const ARBOR_DENSITY_MAP_VOXEL_SIZE = (2000,2000,2000)
 end 
 
 @testset "test Neurons" begin
-    println("load swc of a real neuron...")
+    println("\nload swc of a real neuron...")
     @time swc = SWCs.load_swc_bin( SWC_BIN_PATH )
 
     neuron = Neuron( swc )
     #neuron = Neurons.resample(neuron, Float32(40))
-    println("get node list ...")
+    println("\nget node list ...")
     @time nodeList = Neurons.get_node_list(neuron)
     @test !isempty(nodeList) 
-    println("get edge list ...")
+    println("\nget edge list ...")
     @time edgeList = Neurons.get_edge_list(neuron)
     @test !isempty(edgeList)
-    println("get segment order list...")
+    println("\nget segment order list...")
     @time segmentOrderList = Neurons.get_segment_order_list( neuron )
     @test !isempty(segmentOrderList) 
 
-    println("clean up the neuron ...")
+    println("\nclean up the neuron ...")
     println("original number of segments: $(Neurons.get_num_segments(neuron))")
     println("remove subtree in soma ...")
     @time neuron = Neurons.remove_subtree_in_soma(neuron)
     println("after remove subtree in soma: $(Neurons.get_num_segments(neuron))")
 
-    println("remove hair segments ...")
+    println("\nremove hair segments ...")
     @time neuron = Neurons.remove_hair(neuron)
     println("after remove hair: $(Neurons.get_num_segments(neuron))")
  
-    println("remove terminal blobs ...")
+    println("\nremove terminal blobs ...")
     @time neuron = Neurons.remove_terminal_blobs(neuron)
     println("after remove terminal blobs: $(Neurons.get_num_segments(neuron))") 
 
-    println("get principle direction based on the furthest terminal node pair...")
+    println("\nget principle direction based on the furthest terminal node pair...")
     @time vec, maxDistance = Neurons.get_furthest_terminal_node_pair_direction(neuron)
     @test maxDistance > 0
   
-    println("remove redundent nodes...")
+    println("\nremove redundent nodes...")
     @time neuron = Neurons.remove_redundent_nodes(neuron)
     println("after remove redundent nodes: $(Neurons.get_num_segments(neuron))")
 
    
-    println("resampling ...")
+    println("\nresampling ...")
     @time neuron = Neurons.resample(neuron, Float32(100))
     println("after resampling of 100 nm: $(Neurons.get_num_segments(neuron))")
     
@@ -69,44 +69,45 @@ end
     #@time fractalDimension, _,_ = Neurons.get_fractal_dimension( neuron )
     #@show fractalDimension 
 
-    println("get surface area which is frustum based")
+    println("\nget surface area which is frustum based")
     @test Neurons.get_surface_area(neuron) > 0
     
-    println("get frustum based volume")
+    println("\nget frustum based volume")
     @test Neurons.get_volume(neuron) > 0
 
-    println("get typical radius ...")
+    println("\nget typical radius ...")
     @test Neurons.get_typical_radius( neuron ) > 0
 
-    println("get asymmetry ...")
+    println("\nget asymmetry ...")
     @test Neurons.get_asymmetry( neuron ) > 0
  
-    println("get mass center ...")
+    println("\nget mass center ...")
     @show Neurons.get_mass_center( neuron )
 
-    println("get branching angle ...")
+    println("\nget branching angle ...")
     @test Neurons.get_branching_angle( neuron, 5 ) > 0
 
-    println("get path to root length ...")
+    println("\nget path to root length ...")
     @test Neurons.get_path_to_soma_length( neuron, 5; nodeId=4 ) > 0
 
-    println("sholl analysis ...")
+    println("\nsholl analysis ...")
     @time shollNumList = Neurons.get_sholl_number_list(neuron, 10000 )
     @test !isempty(shollNumList)
 
-    println("get segment path length list ...")
+    println("\nget segment path length list ...")
     @time segmentPathLengthList = Neurons.get_segment_path_length_list( neuron )
     @show length( segmentPathLengthList )
     @test length( segmentPathLengthList ) == Neurons.get_num_segments(neuron)
 
-    println("get terminal segment index list...")
+    println("\nget terminal segment index list...")
     @time terminalSegmentIdList = Neurons.get_terminal_segment_id_list( neuron )
     @test !isempty( terminalSegmentIdList )
-    println("get terminal node list ...")
+    
+    println("\nget terminal node list ...")
     @time terminalNodeList = Neurons.get_terminal_node_list( neuron )
     @test !isempty( terminalNodeList )
 
-    println("test split a tree...")
+    println("\ntest split a tree...")
     @time tree1, tree2 = split(neuron, 4; nodeIdInSegment = 5)
     @test !isempty(tree1)
     @test !isempty(tree2)
@@ -114,25 +115,53 @@ end
 
 
 @testset "test synapse attaching functions" begin
-    println("load swc of a real neuron...")
+    println("\nload swc of a real neuron...")
     @time swc = SWCs.load_swc_bin( SWC_BIN_PATH )
     neuron = Neuron( swc )
 
-    println("downsample node number...")
+    println("\ndownsample node number...")
     Neurons.downsample_nodes(neuron)
 
-    println("attaching presynapses...")
+    println("\nattaching presynapses...")
     preSynapses = CSV.read( joinpath(ASSERT_DIR, "$(NEURON_ID).pre.synapses.csv") )
     Neurons.attach_pre_synapses!(neuron, preSynapses)
     @test Neurons.get_num_pre_synapses(neuron) <= DataFrames.nrow(preSynapses) 
     @test Neurons.get_num_pre_synapses(neuron) > 0 
     
-    println("attaching postsynapses...")
+    println("\nattaching postsynapses...")
     postSynapses = CSV.read( joinpath(ASSERT_DIR, "$(NEURON_ID).post.synapses.csv") ) 
     Neurons.attach_post_synapses!(neuron, postSynapses)
     numPostSynapses = Neurons.get_num_post_synapses(neuron)
     @test numPostSynapses <= DataFrames.nrow(postSynapses)
     @test numPostSynapses > 0 
+
+    println("\nattaching presynapse list...")
+    preSynapseList = Neurons.get_all_pre_synapse_list(neuron)
+    neuronx = Neuron(swc)
+    Neurons.attach_pre_synapses!(neuronx, preSynapseList)
+    numPreSynapses = Neurons.get_num_pre_synapses(neuronx)
+    @test numPreSynapses > 0
+
+    println("\nattaching postsynapse list...")
+    preSynapseList = Neurons.get_all_post_synapse_list(neuron)
+    Neurons.attach_post_synapses!(neuronx, preSynapseList)
+    numPostSynapses = Neurons.get_num_post_synapses(neuronx)
+    @test numPostSynapses > 0
+
+    println("\nresample neuron and double check the synapses.")
+    neuron2 = Neurons.resample(neuron, Float32(1000))
+    numPostSynapses2 = Neurons.get_num_post_synapses(neuron2)
+    numPreSynapses2 = Neurons.get_num_pre_synapses(neuron2)
+    @test numPostSynapses == numPostSynapses2
+    @test numPreSynapses == numPreSynapses2 
+
+    println("\npostprocessing neuron and make sure that the synapses are still there.")
+    neuron2 = Neurons.postprocessing(neuron)
+    numPostSynapses2 = Neurons.get_num_post_synapses(neuron2)
+    numPreSynapses2 = Neurons.get_num_pre_synapses(neuron2)
+    @test numPostSynapses == numPostSynapses2
+    @test numPreSynapses == numPreSynapses2
+
 
     Neurons.adjust_segment_class!(neuron)
     
@@ -148,14 +177,14 @@ end
 end 
 
 @testset "test Neuron IO and resampling " begin 
-    println("load swc of a real neuron...")
+    println("\nload swc of a real neuron...")
     @time swc = SWCs.load_swc_bin( SWC_BIN_PATH )
     neuron = Neuron( swc )
 
-    println("downsample node number...")
+    println("\ndownsample node number...")
     Neurons.downsample_nodes(neuron)
 
-    println("compute arbor density map...")
+    println("\ncompute arbor density map...")
     @time arborDensityMap = Neurons.get_arbor_density_map(neuron, 
                                                 ARBOR_DENSITY_MAP_VOXEL_SIZE, 8.0)
     #@test norm(arborDensityMap[:]) ≈ Neurons.get_total_path_length(neuron)

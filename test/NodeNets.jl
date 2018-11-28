@@ -2,7 +2,7 @@ using RealNeuralNetworks
 using Test
 using HDF5
 using BigArrays
-using BigArrays.BinDicts 
+using BigArrays.GSDicts 
 using RealNeuralNetworks.NodeNets
 using RealNeuralNetworks.SWCs
 
@@ -10,8 +10,6 @@ using LinearAlgebra
 
 const CELL_ID = UInt32(76880)
 const EXPANSION= (UInt32(80), UInt32(80), UInt32(40))
-const SEG_PATH = "/neuroglancer/zfish_v1/consensus-20170829/80_80_45"
-#const SKELETON_PATH = "/neuroglancer/zfish_v1/consensus-20170829/nodeNet_mip_4"
 const MIP = 4
 
 function get_seg_from_h5()
@@ -32,7 +30,7 @@ function get_seg_from_h5()
 end
 
 function get_seg_from_gs()
-    ba = BigArray(BinDict( SEG_PATH ))
+    ba = BigArray(GSDict( SEG_PATH ))
     seg = ba[2457:2968, 1777:2288, 16401:16912]
 end 
 

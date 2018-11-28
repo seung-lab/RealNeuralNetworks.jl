@@ -1,5 +1,6 @@
 module RangeIndexingArrays
 using DataFrames 
+using CSV
 
 export RangeIndexingArray
 
@@ -27,7 +28,7 @@ Example:
 """
 function range_string_list2septa_list(rangeStringList::Vector)
     septaList = Vector{Float32}(undef, length(rangeStringList)+1)
-    for (i, distRangeString) in rangeStringList |> enumerate
+    @inbounds for (i, distRangeString) in rangeStringList |> enumerate
         distRangeString = replace(distRangeString, "("=>"")
         distRangeString = replace(distRangeString, "]"=>"")
         start, stop = map(x->Meta.parse(x)|>Float32, split(distRangeString, ","))
@@ -42,14 +43,29 @@ function range_string_list2septa_list(rangeStringList::Vector)
     septaList
 end 
 
-function RangeIndexingArray(df::DataFrame)
-    table = convert( Matrix{Float32}, df[1:end, 2:end] )
+"""
+    RangeIndexingArray{T}(df::DataFrame) 
+
+The dataframe is a matrix, so the result is 2D 
+"""
+function RangeIndexingArray{T}(df::DataFrame) where {T}
+    table = convert( Matrix{T}, df[1:end, 2:end] )
     
     septaList1 = range_string_list2septa_list(df[:Column1])
     rangeStringList = map(string, names(df)[2:end] )
     septaList2 = range_string_list2septa_list( rangeStringList )
     
-    RangeIndexingArray{Float32, 2}(tuple(septaList1, septaList2), table)
+    RangeIndexingArray{T, 2}(tuple(septaList1, septaList2), table)
+end 
+
+"""
+    RangeIndexingArray(; fileName::AbstractString=joinpath(@__DIR__, "../asset/zfish_score_table.csv"))
+
+read default zfish score table
+"""
+function RangeIndexingArray{T}(; fileName::AbstractString=joinpath(@__DIR__, "../../asset/zfish_score_table.csv")) where {T}
+    df = CSV.read(fileName)
+    RangeIndexingArray{T}(df)
 end 
 
 """
@@ -58,7 +74,7 @@ transform a RangeIndexingArray to DataFrame
 """
 function DataFrame(ria::RangeIndexingArray{T,N}) where {T,N}
     distRangeList = Vector{Symbol}()
-    for i in 1:length(ria.septaListTuple[1])-1
+    @inbounds for i in 1:length(ria.septaListTuple[1])-1
         start = ria.septaListTuple[1][i]
         stop = ria.septaListTuple[1][i+1]
         range = Symbol("($(start),$(stop)]")
@@ -67,7 +83,7 @@ function DataFrame(ria::RangeIndexingArray{T,N}) where {T,N}
 
     df = DataFrame(Column1=distRangeList)
 
-    for i in 1:length(ria.septaListTuple[2])-1
+    @inbounds for i in 1:length(ria.septaListTuple[2])-1
         start = ria.septaListTuple[2][i]
         stop = ria.septaListTuple[2][i+1]
         range = Symbol("($(start),$(stop)]")
@@ -94,7 +110,7 @@ function _float_index2table_index(floatIndex::T, septaList::Vector{T}) where T
     if floatIndex<septaList[1]
         return 1
     end 
-    for i in 1:length(septaList)-1
+    @inbounds for i in 1:length(septaList)-1
         if floatIndex <= septaList[i+1] 
             return i 
         end 

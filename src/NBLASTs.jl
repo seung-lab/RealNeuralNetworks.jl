@@ -6,6 +6,7 @@ using ..RealNeuralNetworks.SWCs
 using ..RealNeuralNetworks.Neurons 
 using ..RealNeuralNetworks.Utils.Mathes
 using ..RealNeuralNetworks.Utils.RangeIndexingArrays 
+using ..RealNeuralNetworks.Neurons.Segments 
 
 using NearestNeighbors 
 using LinearAlgebra 
@@ -13,39 +14,71 @@ using ProgressMeter
 
 export nblast, nblast_allbyall
 
-@inline function VectorCloud(neuron::SWC; k::Integer=20)
-    VectorCloud(NodeNet(neuron); k=k)
-end 
-
-@inline function VectorCloud(neuron::Neuron; k::Integer=20)
-    VectorCloud(NodeNet(neuron); k=k)
+"""
+    VectorCloud(neuron::SWC; k::Integer=20, class::Union{Nothing, UInt8}=nothing) 
+"""
+@inline function VectorCloud(neuron::SWC; k::Integer=20, 
+                             class::Union{Nothing, UInt8}=nothing) 
+    VectorCloud(NodeNet(neuron); k=k, class=class)
 end 
 
 """
-    VectorCloud(neuron::NodeNet; k::Integer=20) 
+    VectorCloud(neuron::Neuron; k::Integer=20, class::Union{Nothing, UInt8}=nothing) 
+"""
+@inline function VectorCloud(neuron::Neuron; k::Integer=20, 
+                             class::Union{Nothing, UInt8}=nothing)
+    VectorCloud(NodeNet(neuron); k=k, class=class)
+end 
+
+"""
+    VectorCloud(neuron::NodeNet; k::Integer=20, class::Union{Nothing, UInt8}=nothing) 
+
 Parameters: 
     neurons: input neuron 
-    k::Integer: the number of neighboring nodes to use for principle vector computation
+    k: the number of neighboring nodes to use for principle vector computation
+    class: the node type/class. The type/class was defined in SWC format.
 
 Return: 
     ret::Matrix{Float32}: the vector cloud 
 """
-function VectorCloud(neuron::NodeNet; k::Integer=20) 
-    # transform neuron to xyzmatrix
-    xyzmatrix = Matrix{Float32}(undef, 3, NodeNets.get_num_nodes(neuron))
+function VectorCloud(neuron::NodeNet; k::Integer=20, class::Union{Nothing, UInt8}=nothing) 
+    nodeClassList = NodeNets.get_node_class_list(neuron) 
 
-    for (j, node) in NodeNets.get_node_list(neuron) |> enumerate
-        xyzmatrix[:, j] = [node[1:3]...,]
-    end
+    # transform neuron to xyzmatrix
+    N = NodeNets.get_node_num(neuron; class=class) 
+    if N < k 
+        @warn("the number of node $N is less than than the number of neighborhood points k=$k")
+        return zeros(Float32, 0, 0)
+    end 
+
+    xyzmatrix = Matrix{Float32}(undef, 3, N)
+
+    if class == nothing 
+        # all the nodes should be included 
+        @inbounds for (i, node) in NodeNets.get_node_list(neuron) |> enumerate 
+            xyzmatrix[:,i] = [node[1:3]...,]
+        end 
+    else 
+        # only nodes match the class should be included 
+        @assert isa(nodeClassList, Vector{UInt8})
+        j = 0
+        @inbounds for (i, node) in NodeNets.get_node_list(neuron) |> enumerate 
+            if nodeClassList[i] == class 
+                j += 1
+                xyzmatrix[:, j] = [node[1:3]...,]
+            end 
+        end
+    end 
+
     tree = KDTree(xyzmatrix; leafsize=k)
 
-    # the first 3 column will be X,Y,Z, and the last 3 columns will be X,Y,Z of direction vector
-    ret = Matrix{Float32}(undef, 6, NodeNets.get_num_nodes(neuron))
+    # the first 3 rows will be X,Y,Z, and the last 3 rows will be X,Y,Z of direction vector
+    ret = Matrix{Float32}(undef, 6, N)
 
     idxs, dists = knn(tree, xyzmatrix, k, false)
 
     data = Matrix{Float32}(undef, 3, k)
-    for (nodeIndex, indexList) in idxs |> enumerate
+    @inbounds for (nodeIndex, indexList) in idxs |> enumerate
         data = xyzmatrix[:, indexList]
         PCs, eigenValueList = Mathes.pca(data)
         # use the first principle component as the direction vector
@@ -55,22 +88,27 @@ function VectorCloud(neuron::NodeNet; k::Integer=20)
 end 
 
 """
-    nblast(ria::RangeIndexingArray, target::VectorCloud, query::VectorCloud; 
-                                                targetTree=KDTree(targetVectorCloud[1:3, :]))
+    nblast( target::VectorCloud, query::VectorCloud;
+            ria::RangeIndexingArray{T,2}=RangeIndexingArray{T,2}(),
+            targetTree=KDTree(targetVectorCloud[1:3, :]))
 
 measure the similarity of two neurons using NBLAST algorithm 
 Reference:
 Costa, Marta, et al. "NBLAST: rapid, sensitive comparison of neuronal structure and construction of neuron family databases." Neuron 91.2 (2016): 293-311.
 """
-function nblast(ria::RangeIndexingArray{T,N}, 
-                target::Matrix{T}, query::Matrix{T}; 
-                targetTree::KDTree=VectorClouds.to_kd_tree(target)) where {T,N}
-    
+function nblast(target::Matrix{T}, query::Matrix{T}; 
+                ria::RangeIndexingArray{TR}=RangeIndexingArray{Float32}(), 
+                targetTree::Union{Nothing, KDTree}=VectorClouds.to_kd_tree(target)) where {T, TR, N}
+
+    if isempty(target) || isempty(query) || targetTree==nothing
+        # if one of them is empty, return zero 
+        return zero(T)
+    end 
     totalScore = zero(Float32)
 
     idxs, dists = knn(targetTree, query[1:3, :], 1, false)
 
-    for (i, nodeIndexList) in idxs |> enumerate
+    @inbounds for (i, nodeIndexList) in idxs |> enumerate
         targetNodeIndex = nodeIndexList[1]
         # physical distance
         dist = dists[i][1]
@@ -86,8 +124,9 @@ function nblast(ria::RangeIndexingArray{T,N},
 end
 
 """
-    nblast_allbyall(ria::RangeIndexingArray{TR, N}, vectorCloudList::Vector{VectorCloud{T}};
-                         normalisation::Symbol=:raw) 
+    nblast_allbyall(vectorCloudList::Vector{Matrix{T}};
+                    ria::RangeIndexingArray{TR,N}=RangeIndexingArray{Float32}(),
+                    normalisation::Symbol=:raw) 
 
 pairwise computation of similarity score and return a similarity matrix 
 
@@ -98,31 +137,32 @@ Parameters:
 Return: 
     similarityMatrix::Matrix{TR}: the similarity matrix 
 """
-function nblast_allbyall(ria::RangeIndexingArray{TR, N}, 
-                         vectorCloudList::Vector{Matrix{T}};
-                         normalisation::Symbol=:raw) where {TR, N, T}
+function nblast_allbyall(vectorCloudList::Vector{Matrix{T}};
+                         ria::RangeIndexingArray{TR}=RangeIndexingArray{Float32}(), 
+                         normalisation::Symbol=:raw) where {T, TR, N}
     num = length(vectorCloudList)
     similarityMatrix = Matrix{TR}(undef, num, num)
 
     treeList = map(VectorClouds.to_kd_tree, vectorCloudList) 
 
-    @showprogress 1 "computing similarity matrix..." for targetIndex in 1:num 
-        Threads.@threads for queryIndex in 1:num 
-            similarityMatrix[targetIndex, queryIndex] = nblast(ria, 
-                    vectorCloudList[targetIndex], vectorCloudList[queryIndex]; 
-                    targetTree=treeList[targetIndex] )
+    @inbounds @showprogress 1 "computing similarity matrix..." for targetIndex in 1:num 
+        #Threads.@threads for queryIndex in 1:num 
+        for queryIndex in 1:num 
+            similarityMatrix[targetIndex, queryIndex] = nblast( 
+                        vectorCloudList[targetIndex], vectorCloudList[queryIndex];
+                        ria=ria, targetTree=treeList[targetIndex] )
         end 
     end 
    
     if normalisation==:normalised || normalisation==:mean 
-        for i in 1:num
+        @inbounds for i in 1:num
             similarityMatrix[:,i] ./= similarityMatrix[i,i]
         end
     end 
     if normalisation==:mean 
-        for i in 1:num 
+        @inbounds for i in 1:num 
             for j in i+1:num 
-                similarityMatrix[i,j] = (similarityMatrix[i,j] + similarityMatrix[j,i])/Float32(2)
+                similarityMatrix[i,j] = (similarityMatrix[i,j] + similarityMatrix[j,i])/T(2)
                 similarityMatrix[j,i] = similarityMatrix[i,j]
             end 
         end 

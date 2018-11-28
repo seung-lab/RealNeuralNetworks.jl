@@ -1,4 +1,5 @@
 module NeuralNets
+using SparseArrays
 using DataFrames
 using LightGraphs
 using MetaGraphs
@@ -137,6 +138,13 @@ function get_cell_id_list(self::NeuralNet)
     cellIdList 
 end 
 
+"""
+    get_synapse_number_connectivity_matrix(self::NeuralNet)
+Return: 
+    sparse matrix representing the connectivity matrix. 
+    The rows are presynase and the columns are post synapses.
+    For example, [i,j] means the axon of neuron i innervate the dendrite of neuron j
+"""
 function get_synapse_number_connectivity_matrix(self::NeuralNet)
     N = nv(self)
     ret = spzeros(Int, N,N)
@@ -147,7 +155,15 @@ function get_synapse_number_connectivity_matrix(self::NeuralNet)
     ret 
 end
 
-function get_synapse_size_connectivity_matrix(self::NeuralNet)
+"""
+    get_psd_size_connectivity_matrix(self::NeuralNet)
+Return: 
+    sparse matrix representing the connectivity matrix.
+    The rows are presynapse and the columns are post synapses.
+    For example [i,j] means the axon of neuron i innvervate the dendrite of neuron j.
+    The value represent the total volume of psd
+"""
+function get_psd_size_connectivity_matrix(self::NeuralNet)
     N = nv(self)
     ret = spzeros(Int, N,N)
     for edge in edges(self)
@@ -162,8 +178,67 @@ function get_synapse_size_connectivity_matrix(self::NeuralNet)
     ret 
 end 
 
+"""
+    labels2orders(label::Vector)
+
+transform clustering label to orders 
+    
+Parameters:
+    labels: the assignment of each neuron. The label must start from 1 to N, where N is the maximum number of groups. 
+"""
+function labels2orders(labels::Vector)
+    orders = zero(labels)
+    i = 0
+    @inbounds for l in unique(labels)
+        idxes = findall(x->x==l, labels)
+        for idx in idxes
+            i += 1
+            orders[idx] = i
+        end
+    end 
+    return orders
+end 
+
+"""
+reorder_connectivity_matrix(connMatrix::Union{SparseMatrixCSC{T}, Matrix{T}}, orders::Vector) 
+
+reorder the rows and columns of the connectivity matrix for visualization.
+
+Parameters:
+    connMatrix: the connectivity matrix
+    orders: the rearranged order of samples. 
+
+Return:
+    a reordered connectivity matrix which is also a SparseMatrixCSC 
+"""
+function reorder_matrix(connMatrix::Union{SparseMatrixCSC{T},Matrix{T}}, orders::Vector) where T 
+
+    # the reordered connectivity Matrix
+    if isa(connMatrix, SparseMatrixCSC)
+        ret = spzeros(T, size(connMatrix)...,)
+    else 
+        ret = zeros(T, size(connMatrix))
+    end
+    
+    @inbounds for (i, o1) in enumerate(orders)
+        for (j, o2) in enumerate(orders)
+            if connMatrix[o1,o2] !== zero(T)
+                ret[i,j] = connMatrix[o1,o2]
+            end 
+        end
+    end 
+    return ret
+end 
+
 function remove_singletons(self::NeuralNet)
     @error("unimplemented")
 end 
+
+
+function get_nblast_similarity_matrix(self::NeuralNet)
+    error("not implemented.")
+end 
+
+
 
 end # end of module

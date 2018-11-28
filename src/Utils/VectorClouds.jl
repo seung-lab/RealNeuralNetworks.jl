@@ -9,7 +9,11 @@ const VectorCloud{T} = Matrix{T}
 export VectorCloud
 
 @inline function to_kd_tree(self::VectorCloud)
-    KDTree(self[1:3, :])
+    if isempty(self)
+        return nothing 
+    else 
+        return KDTree(self[1:3, :])
+    end 
 end 
 
 """

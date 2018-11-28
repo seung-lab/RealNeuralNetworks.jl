@@ -300,12 +300,14 @@ end
 
 @inline function attach_pre_synapse!(self::Segment, nodeId::Int, 
                                      synapse::Synapse)
-    self.preSynapseList[ nodeId ] = synapse 
+    self.preSynapseList[ nodeId ] = synapse
+    nothing 
 end 
 
 @inline function attach_post_synapse!(self::Segment, nodeId::Int, 
                                       synapse::Synapse)
     self.postSynapseList[ nodeId ] = synapse
+    nothing
 end 
 
 function adjust_class!(self::Segment) 

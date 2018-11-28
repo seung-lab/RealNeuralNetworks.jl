@@ -173,7 +173,6 @@ function Neuron( seg::Array{T,3}; obj_id::T = convert(T,1),
 end
 
 function Neuron( swc::SWC )
-    @warn("this reading will ignore the point classes!")
     nodeNet = NodeNet( swc )
     # respect the point class 
     Neuron( nodeNet )
@@ -344,7 +343,7 @@ function get_segment_length_list( self::Neuron ) map(length, get_segment_list(se
     get_node_num( self::Neuron )
 get total number of nodes  
 """
-function get_node_num( self::Neuron )
+@inline function get_node_num( self::Neuron )
     sum(map(length, get_segment_list(self)))
 end 
 
@@ -353,12 +352,33 @@ end
 get the node list. the first one is root node.
 """
 function get_node_list( self::Neuron )
-    nodeList = Vector{NTuple{4, Float32}}()
-    sizehint!(nodeList, get_node_num(self))
+    nodeList = Vector{NTuple{4, Float32}}(undef, get_node_num(self))
+    
+    i = 0
     for segment in get_segment_list(self)
-        append!(nodeList, Segments.get_node_list(segment))
+        for node in Segments.get_node_list(segment)
+            i += 1
+            nodeList[i] = node 
+        end
     end 
     nodeList
+end 
+
+"""
+    get_node_class_list(self::Neuron)
+the class defines the type of node, such as axon, dendrite and soma.
+"""
+function get_node_class_list( self::Neuron )
+    nodeClassList = Vector{UInt8}(undef, get_node_num(self))
+    
+    i = 0
+    for segment in get_segment_list(self)
+        nodeNumInSegment = length(segment)
+        class = Segments.get_class(segment)
+        nodeClassList[i+1:i+nodeNumInSegment] .= class
+        i += nodeNumInSegment
+    end 
+    nodeClassList
 end 
 
 """
@@ -1438,14 +1458,15 @@ transform to NodeNet, the first node is the root node.
 function NodeNets.NodeNet(self::Neuron)
     nodeList = get_node_list( self )
     edges = get_edge_list( self )
+    nodeClassList = get_node_class_list(self)
     
-    I = map(x->x[1], edges)
-    J = map(x->x[2], edges)
+    I = map(x->UInt32(x[1]), edges)
+    J = map(x->UInt32(x[2]), edges)
     
     # the connectivity matrix should be symmetric
     connectivityMatrix = sparse([I..., J...,], [J..., I...,],true, 
                                 length(nodeList), length(nodeList))
-    NodeNet(nodeList, connectivityMatrix)    
+    NodeNet(nodeList, nodeClassList, connectivityMatrix)    
 end 
 
 function SWCs.SWC(self::Neuron)
@@ -1562,22 +1583,28 @@ end
 
 """
 function attach_pre_synapses!(self::Neuron, synapseList::Vector{Synapse})
-    map(x->attach_pre_synapse!(self, x), synapseList)
+    for synapse in synapseList 
+        attach_pre_synapse!(self, synapse)
+    end 
 
     for segment in self 
         Segments.adjust_class!(segment)
-    end 
+    end
+    nothing 
 end
 
 """
     attach_post_synapses!(self::Neuron, synapseList::Vector{Synapse})
 """
 function attach_post_synapses!(self::Neuron, synapseList::Vector{Synapse})
-    map(x->attach_pre_synapse!(self, x), synapseList)
+    for synapse in synapseList 
+        attach_post_synapse!(self, synapse)
+    end 
 
     for segment in self 
         Segments.adjust_class!(segment)
     end 
+    nothing 
 end 
 
 """
@@ -1608,6 +1635,7 @@ function attach_post_synapses!(self::Neuron, synapseTable::DataFrame)
     for segment in get_segment_list(self)
         Segments.adjust_class!(segment)
     end 
+    nothing
 end 
 
 function attach_pre_synapse!(self::Neuron, synapse::Segments.Synapse)
@@ -1615,7 +1643,8 @@ function attach_pre_synapse!(self::Neuron, synapse::Segments.Synapse)
     segmentId, nodeIdInSegment = find_closest_node_id( self, 
                                                         preSynapticCoordinate )
     segmentList = get_segment_list(self)
-    Segments.attach_pre_synapse!(segmentList[segmentId], nodeIdInSegment, synapse) 
+    Segments.attach_pre_synapse!(segmentList[segmentId], nodeIdInSegment, synapse)
+    nothing 
 end 
 
 function attach_post_synapse!(self::Neuron, synapse::Segments.Synapse)
@@ -1718,7 +1747,6 @@ function resample(self::Neuron, resampleDistance::Float32)
     segmentList = get_segment_list(self)
     preSynapseList = get_all_pre_synapse_list(self)
     postSynapseList = get_all_post_synapse_list(self)
-    local nodeList::Vector 
     for (index, segment) in enumerate(segmentList)
         parentSegmentId = get_parent_segment_id(self, index)
         if parentSegmentId > 0 
