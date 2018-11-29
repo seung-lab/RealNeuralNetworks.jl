@@ -10,7 +10,7 @@ RealNeuralNetworks.jl
 # Installation
 run this inside julia package REPL (hit `]` to enter package mode):
 
-    dev https://github.com/seung-lab/RealNeuralNetworks.jl.git 
+    add RealNeuralNetworks 
 
 # Usage
 
