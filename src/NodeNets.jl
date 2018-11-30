@@ -21,9 +21,9 @@ const REMOVE_PATH_SCALE = 3
 const REMOVE_PATH_CONST = 4
 
 
-mutable struct NodeNet 
+mutable struct NodeNet{T}  
     # x,y,z,r
-    nodeList            :: Vector{NTuple{4,Float32}}
+    nodeList            :: Vector{NTuple{4,T}}
     nodeClassList       :: Vector{UInt8}
     # connectivity matrix to represent edges
     # conn[2,3]=true means node 2 and 3 connected with each other
@@ -31,9 +31,10 @@ mutable struct NodeNet
     connectivityMatrix  :: SparseMatrixCSC{Bool,UInt32}
 end 
 
-@inline function NodeNet(nodeList::Vector{NTuple{4,Float32}}, connectivityMatrix::SparseMatrixCSC{Bool, UInt32})
+@inline function NodeNet(nodeList::Vector{NTuple{4,T}}, 
+                         connectivityMatrix::SparseMatrixCSC{Bool, UInt32}) where {T}
     nodeClassList = zeros(UInt8, length(nodeList))
-    NodeNet(nodeList, nodeClassList, connectivityMatrix)
+    NodeNet{T}(nodeList, nodeClassList, connectivityMatrix)
 end 
 
 """
@@ -79,7 +80,7 @@ end
 
   Perform the teasar algorithm on the passed Nxd array of points
 """
-function NodeNet( points::Array{T,2}; dbf::DBF=DBFs.compute_DBF(points),
+function NodeNet( points::Matrix{T}; dbf::DBF=DBFs.compute_DBF(points),
                          penalty_fn::Function = alexs_penalty,
                          expansion::NTuple{3, UInt32} = EXPANSION) where T
     @assert length(dbf) == size(points, 1)
@@ -150,7 +151,7 @@ function NodeNet( points::Array{T,2}; dbf::DBF=DBFs.compute_DBF(points),
         end #while reachable nodes from root
     end #while disconnected nodes
 
-    println("Consolidating Paths")
+    println("Consolidating Paths...")
     path_nodes, path_edges = consolidate_paths( pathList );
     node_radii = dbf[path_nodes];
 
@@ -166,6 +167,7 @@ function NodeNet( points::Array{T,2}; dbf::DBF=DBFs.compute_DBF(points),
 
     nodeNet = NodeNet(nodeList, conn)
     # add the offset from shift bounding box function
+    bbox_offset = map(Float32, bbox_offset)
     @show bbox_offset
     add_offset!(nodeNet, bbox_offset)
     return nodeNet
@@ -174,16 +176,20 @@ end
 function NodeNet(swc::SWC)
     nodeList = Vector{NTuple{4, Float32}}()
     nodeClassList = Vector{UInt8}()
-    connectivityMatrix = spzeros(Bool, length(swc), length(swc))
+    I = Vector{UInt32}()
+    J = Vector{UInt32}()
     for (index, point) in enumerate(swc) 
         push!(nodeList, (point.x, point.y, point.z, point.radius))
         push!(nodeClassList, point.class)
-        if point.parent != -1
+        if point.parent != -one(typeof(point.parent))
             # the connectivity matrix is symetric
-            connectivityMatrix[index, point.parent] = true
-            connectivityMatrix[point.parent, index] = true
+            push!(I, index)
+            push!(J, point.parent)
+            push!(I, point.parent)
+            push!(J, index)
         end 
     end 
+    connectivityMatrix = sparse(I,J,true, length(swc), length(swc))
     NodeNet(nodeList, nodeClassList, connectivityMatrix)
 end 
 
@@ -406,7 +412,7 @@ function save_edges(self::NodeNet, fileName::String)
 end 
 
 ##################### manipulate ############################
-@inline function add_offset!(self::NodeNet, offset::Union{Vector,Tuple} )
+@inline function add_offset!(self::NodeNet{T}, offset::Union{Vector{T},NTuple{3,T}} ) where T
     @assert length(offset) == 3
     for i in 1:get_node_num(self)
         xyz = map((x,y)->x+y, self.nodeList[i][1:3],offset)
@@ -432,24 +438,24 @@ end
 
 """
 
-    translate_to_origin!( points )
+    translate_to_origin!( points::Matrix{T} )
 
   Normalize the point dimensions by subtracting the min
   across each dimension. This step isn't extremely necessary,
   but might be useful for compatibility with the MATLAB code.
   record the offset and add it back after building the nodeNet
 """
-function translate_to_origin!( points )
-  offset = minimum( points, dims=1 ) .- 1 ;
-  # transform to 1d vector
-  offset = vec( offset )
-  @assert length(offset) == 3
-  @assert offset[3] < 20000
-  points[:,1] .-= offset[1]
-  points[:,2] .-= offset[2]
-  points[:,3] .-= offset[3]
+function translate_to_origin!( points::Matrix{T} ) where T
+    offset = minimum( points, dims=1 ) .- one(T) ;
+    # transform to 1d vector
+    offset = vec( offset )
+    @assert length(offset) == 3
+    @assert offset[3] < T(20000)
+    points[:,1] .-= offset[1]
+    points[:,2] .-= offset[2]
+    points[:,3] .-= offset[3]
   
-  points, offset
+    points, offset
 end 
 
 """
@@ -459,7 +465,7 @@ end
   Abstractly represent the points as a volume by means of
   linear indexes into a sparse vector.
 """
-function create_node_lookup( points::Array{T,2} ) where T
+function create_node_lookup( points::Matrix{T} ) where T
 
   #need the max in order to define the bounds of that volume
   # tuple allows the point to be passed to fns as dimensions

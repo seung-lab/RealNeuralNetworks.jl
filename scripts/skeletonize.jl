@@ -34,6 +34,8 @@ end
     println("skeletonizing the point cloud...")
     nodeNet = Manifests.trace(manifest)
     # transform to physical coordinate system
+    # the mesh coordinate start from 0 rather then 1
+    NodeNets.add_offset!(nodeNet, (-one(Float32), -one(Float32), -one(Float32)))
     NodeNets.stretch_coordinates!( nodeNet, mip )
     NodeNets.stretch_coordinates!( nodeNet, voxelSize)
     NodeNets.save(nodeNet, "/tmp/$(neuronId).swc")

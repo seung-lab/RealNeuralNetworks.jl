@@ -49,7 +49,7 @@ end
     println("building nodeNet ...")
     #@time nodeNet = NodeNet( seg; obj_id = CELL_ID )
     @time nodeNet = NodeNet( seg; obj_id = one(UInt32) )
-    NodeNets.add_offset!(nodeNet, (-1,-1,-1))
+    NodeNets.add_offset!(nodeNet, (-one(Float32),-one(Float32),-one(Float32)))
     bin = NodeNets.get_neuroglancer_precomputed(nodeNet)
     # open("/tmp/fake.bin", "w") do f write(f, bin)  end 
     @time swc = SWCs.SWC( nodeNet )
