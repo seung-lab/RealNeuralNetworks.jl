@@ -154,7 +154,7 @@ function plot(clust::Hclust)
 	Plots.gr()
 	#Plots.plotlyjs()
 	Plots.plot(hclustplot(clust, true), seriestype=:path, color=:black,
-    yaxis=nothing,  grid=false, legend=false) #,  xticks=classificationIdList[clust.order])
+    grid=false, legend=false) #,  xticks=classificationIdList[clust.order])
 end 
 
 end # module

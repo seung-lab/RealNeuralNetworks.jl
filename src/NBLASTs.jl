@@ -14,6 +14,7 @@ using ProgressMeter
 
 export nblast, nblast_allbyall
 
+
 """
     VectorCloud(neuron::SWC; k::Integer=20, class::Union{Nothing, UInt8}=nothing) 
 """
@@ -139,7 +140,7 @@ Return:
 """
 function nblast_allbyall(vectorCloudList::Vector{Matrix{T}};
                          ria::RangeIndexingArray{TR}=RangeIndexingArray{Float32}(), 
-                         normalisation::Symbol=:raw) where {T, TR, N}
+                         normalisation::Symbol=:raw) where {T, TR}
     num = length(vectorCloudList)
     similarityMatrix = Matrix{TR}(undef, num, num)
 
@@ -168,6 +169,24 @@ function nblast_allbyall(vectorCloudList::Vector{Matrix{T}};
         end 
     end
     similarityMatrix
+end 
+
+"""
+    nblast_allbyall(neuronList::Vector{Neuron}; ria::RangeIndexingArray{TR}=RangeIndexingArray{Float32}(),
+                    normalisation::Symbol=:raw) where {TR}
+"""
+function nblast_allbyall(neuronList::Vector{Neuron}; ria::RangeIndexingArray{TR}=RangeIndexingArray{Float32}(),
+                        normalisation::Symbol=:raw) where {TR}
+    # transforming to vector cloud list     
+    vectorCloudList = Vector{Matrix{Float32}}()
+    @inbounds @showprogress 1 "tranforming to vector cloud..." for neuron in neuronList
+        vectorCloud = VectorCloud(neuron)
+        # use micron instead of nanometer
+        vectorCloud[1:3,:] ./= Float32(1000)
+        push!(vectorCloudList, vectorCloud)
+    end
+    
+    nblast_allbyall(vectorCloudList; ria=ria, normalisation=normalisation)
 end 
 
 end # end of module

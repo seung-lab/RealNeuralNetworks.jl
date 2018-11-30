@@ -629,9 +629,9 @@ function get_parent_segment_id( connectivityMatrix::SparseMatrixCSC, childSegmen
         return 0
     else
         if length(parentSegmentIdList) > 1
-            @show parentSegmentIdList 
+            @show parentSegmentIdList
+            error("the neuron is supposed to be a tree, can not have loop with multiple parent segments.")
         end
-        @assert length(parentSegmentIdList) <= 1
         return parentSegmentIdList[1]
     end 
 end
@@ -1041,6 +1041,8 @@ end
 end
 
 """
+    Base.merge(self::Neuron, other::Neuron, mergingSegmentId::Integer, mergingNodeIdInSegment::Integer)
+
 merge two nets at a specific segment location.
 the root node of second net will be connected to the first net
 """
@@ -1112,18 +1114,19 @@ function Base.merge(self::Neuron, other::Neuron,
             end 
         end 
     else 
-        println("need to break the closest segment and rebuild connectivity matrix")
+        println("need to break the segment and rebuild connectivity matrix")
         total_num_segments = num_segments1 + 1 + num_segments2 
         mergedSegmentList = segmentList1 
         mergedConnectivityMatrix = spzeros(Bool, total_num_segments, total_num_segments)
         
         # need to break the segment and then stitch the new segments
-        segmentPart1, segmentPart2 = split(segmentList1[mergingSegmentId], 
-                                                    mergingNodeIdInSegment)
-        mergedSegmentList[mergingSegmentId] = segmentPart1 
+        segmentPart1, segmentPart2 = split(segmentList1[mergingSegmentId], mergingNodeIdInSegment)
+
+        mergedSegmentList[mergingSegmentId] = segmentPart1
+        # the connectivity is the same with old net
         mergedConnectivityMatrix[1:size(self.connectivityMatrix,1), 
-                                 1:size(self.connectivityMatrix,2)] = 
-                                                        self.connectivityMatrix 
+                                 1:size(self.connectivityMatrix,2)] = self.connectivityMatrix 
+
         # reconnect the breaked two segments
         push!(mergedSegmentList, segmentPart2)
         mergedConnectivityMatrix[mergingSegmentId, num_segments1+1] = true 
@@ -1140,13 +1143,15 @@ function Base.merge(self::Neuron, other::Neuron,
         # merge the other net
         mergedSegmentList = vcat(mergedSegmentList, segmentList2)
         mergedConnectivityMatrix[
-                num_segments1+2 : num_segments1+2+size(other.connectivityMatrix,1)-1, 
-                num_segments1+2 : num_segments1+2+size(other.connectivityMatrix,2)-1] = 
-                                                                other.connectivityMatrix
+            num_segments1+2 : num_segments1+2+size(other.connectivityMatrix,1)-1, 
+            num_segments1+2 : num_segments1+2+size(other.connectivityMatrix,2)-1] = other.connectivityMatrix
 
         # establish the connection between two nets
         mergedConnectivityMatrix[mergingSegmentId, num_segments1+2] = true
-        
+
+        # remove the false elements 
+        dropzeros!(mergedConnectivityMatrix) 
+
         # assert the parent number to ensure that this is a tree structure without loop
         for i in 1:size(mergedConnectivityMatrix,1)
             parentSegmentIdList, _ = findnz(mergedConnectivityMatrix[:,i])

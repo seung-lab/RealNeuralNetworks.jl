@@ -54,7 +54,7 @@ end
     d_str["$(neuronId).swc"] = String(swc)
     d_swc_bin["$(neuronId).swc.bin"] = SWCs.serialize(swc)
     
-    println("preprocessing the neuron...")
+    println("postprocessing the neuron...")
     neuron = Neurons.postprocessing(neuron)
     # save to neuroglancer
     d_bin  = GSDict(joinpath(segmentationLayer, "skeleton_mip_$(mip)_postprocessed"))
@@ -63,6 +63,17 @@ end
     d_bin["$neuronId"] = SWCs.get_neuroglancer_precomputed( swc )
     d_str["$(neuronId).swc"] = String(swc)
     d_swc_bin["$(neuronId).swc.bin"] = SWCs.serialize(swc)
+
+    println("resample the neuron...")
+    neuron = Neurons.resample(neuron, Float32(500))
+    # save to neuroglancer
+    d_bin  = GSDict(joinpath(segmentationLayer, "skeleton_mip_$(mip)_resampled"))
+    d_str  = GSDict(joinpath(segmentationLayer, "resampled_swc"); valueType=String)
+    d_swc_bin  = GSDict(joinpath(segmentationLayer, "resampled_swc_bin"))
+    d_bin["$neuronId"] = SWCs.get_neuroglancer_precomputed( swc )
+    d_str["$(neuronId).swc"] = String(swc)
+    d_swc_bin["$(neuronId).swc.bin"] = SWCs.serialize(swc)
+
 end 
 
 """
