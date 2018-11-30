@@ -14,7 +14,7 @@ RUN julia -e 'import Pkg; Pkg.update()'
 #RUN julia -e 'import Pkg; Pkg.clone("https://github.com/JuliaCloud/GoogleCloud.jl.git")'
 RUN julia -e 'using Pkg; \ 
     Pkg.add(PackageSpec(url="https://github.com/seung-lab/BigArrays.jl.git")); \
-    Pkg.add(PackageSpec(url="https://github.com/seung-lab/RealNeuralNetworks.jl.git")); '
+    Pkg.develop(PackageSpec(url="https://github.com/seung-lab/RealNeuralNetworks.jl.git")); '
 
 # install registered packages later
 RUN julia -e 'import Pkg; \ 
