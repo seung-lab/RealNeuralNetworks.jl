@@ -60,7 +60,7 @@ function Neuron(nodeNet::NodeNet)
         # for some spine like structures, they should connect to nearest node
         # rather than terminal point. 
         closestSegmentId1, closestNodeIdInSegment1, closestDistance = 
-                                find_closest_node_id(neuron, nodeNet[seedNodeId2][1:3])
+                                find_closest_node(neuron, nodeNet[seedNodeId2][1:3])
         if closestDistance < weightedTerminalDistance
             mergingSegmentId1 = closestSegmentId1 
             mergingNodeIdInSegment1 = closestNodeIdInSegment1 
@@ -413,7 +413,7 @@ function get_edge_list( self::Neuron )
 end 
 
 function get_path_to_soma_length(self::Neuron, synapse::Synapse)
-    mergingSegmentId, closestNodeId = find_closest_node_id( self, synapse )
+    mergingSegmentId, closestNodeId = find_closest_node( self, synapse )
     get_path_to_soma_length( self, mergingSegmentId; nodeId=closestNodeId )
 end 
 
@@ -1645,7 +1645,7 @@ end
 
 function attach_pre_synapse!(self::Neuron, synapse::Segments.Synapse)
     preSynapticCoordinate = Synapses.get_pre_synaptic_coordinate( synapse )
-    segmentId, nodeIdInSegment = find_closest_node_id( self, 
+    segmentId, nodeIdInSegment = find_closest_node( self, 
                                                         preSynapticCoordinate )
     segmentList = get_segment_list(self)
     Segments.attach_pre_synapse!(segmentList[segmentId], nodeIdInSegment, synapse)
@@ -1654,7 +1654,7 @@ end
 
 function attach_post_synapse!(self::Neuron, synapse::Segments.Synapse)
     postSynapticCoordinate = Synapses.get_post_synaptic_coordinate( synapse )
-    segmentId, nodeIdInSegment = find_closest_node_id( self, 
+    segmentId, nodeIdInSegment = find_closest_node( self, 
                                                         postSynapticCoordinate )
     segmentList = get_segment_list(self)
     Segments.attach_post_synapse!(segmentList[segmentId], nodeIdInSegment, synapse) 
@@ -1809,7 +1809,7 @@ function resample(nodeList::Vector{NTuple{4,T}}, resampleDistance::T) where T
     ret 
 end
 
-function find_closest_node_id(self::Neuron, seedNode::NTuple{3,T}) where T 
+function find_closest_node(self::Neuron, seedNode::NTuple{3,T}) where T 
     segmentList = get_segment_list(self)
     
     # initialization 
@@ -1869,13 +1869,21 @@ function find_merging_terminal_node_id(self::Neuron, seedNode2::NTuple{4, Float3
         # get angle θ
         a = [ [terminalNode1[1:3]...] .- [terminalNode0[1:3]...] ]
         b = [ [seedNode2[1:3]...] .- [terminalNode1[1:3]...] ]
-        # sometimes the value could be larger than 1.0 due to numerical precision stabilities
-        theta = acos(min(one(Float32), dot(a,b) / (norm(a)*norm(b))))
-        
+        # sometimes the value could be larger than 1.0 or less than -1.0 due to numerical precision stabilities
+        dp = dot(a,b) / (norm(a)*norm(b))
+                
         # euclidean distance
-        if theta <= pi/2
-            physicalDistance = norm([map(-, terminalNode1[1:3], seedNode2[1:3])...])
-            distance = physicalDistance * tan(theta)
+        #if theta > pi/2
+        if dp < zero(Float32)
+            # if we use one(Float32)), the tan value will become positive due to numerical precision. 
+            # acos(-one(Float32)) |> tan = 8.7422784f-8 
+            dp = max(-0.9999999f0, dp)
+            theta = acos(dp)
+            #@show theta
+
+            physicalDistance = norm(b)
+            distance = physicalDistance * (-tan(theta))
+            #@assert distance > zero(typeof(distance))
             if distance < weightedDistance
                 weightedDistance = distance 
                 closestTerminalSegmentId1 = terminalSegmentId1
@@ -1933,11 +1941,11 @@ end
 
 
 """
-    find_closest_node_id(neuron::Neuron, nodeNet::NodeNet, collectedFlagVec::BitArray{1})
+    find_closest_node(neuron::Neuron, nodeNet::NodeNet, collectedFlagVec::BitArray{1})
 
 find the uncollected node which is closest to the segment list 
 """
-function find_closest_node_id(neuron::Neuron, nodeNet::NodeNet, collectedFlagVec::BitArray{1})
+function find_closest_node(neuron::Neuron, nodeNet::NodeNet, collectedFlagVec::BitArray{1})
     segmentList = get_segment_list(neuron)
     nodes = NodeNets.get_node_list(nodeNet)
 
