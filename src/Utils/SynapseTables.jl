@@ -7,7 +7,8 @@ using OffsetArrays
 export SynapseTable 
 const SynapseTable = DataFrame  
 
-function preprocessing(self::SynapseTable, voxelSize::NTuple{3,Int})
+function preprocessing(self::SynapseTable, voxelSize::Tuple)
+    @assert length(voxelSize) == 3
 
 	DataFrames.dropmissing!(self)
 

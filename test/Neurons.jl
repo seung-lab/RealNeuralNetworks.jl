@@ -117,20 +117,20 @@ end
 @testset "test synapse attaching functions" begin
     println("\nload swc of a real neuron...")
     @time swc = SWCs.load_swc_bin( SWC_BIN_PATH )
-    neuron = Neuron( swc )
+    @time neuron = Neuron( swc )
 
     println("\ndownsample node number...")
-    Neurons.downsample_nodes(neuron)
+    @time Neurons.downsample_nodes(neuron)
 
     println("\nattaching presynapses...")
     preSynapses = CSV.read( joinpath(ASSERT_DIR, "$(NEURON_ID).pre.synapses.csv") )
-    Neurons.attach_pre_synapses!(neuron, preSynapses)
+    @time Neurons.attach_pre_synapses!(neuron, preSynapses)
     @test Neurons.get_num_pre_synapses(neuron) <= DataFrames.nrow(preSynapses) 
     @test Neurons.get_num_pre_synapses(neuron) > 0 
     
     println("\nattaching postsynapses...")
     postSynapses = CSV.read( joinpath(ASSERT_DIR, "$(NEURON_ID).post.synapses.csv") ) 
-    Neurons.attach_post_synapses!(neuron, postSynapses)
+    @time Neurons.attach_post_synapses!(neuron, postSynapses)
     numPostSynapses = Neurons.get_num_post_synapses(neuron)
     @test numPostSynapses <= DataFrames.nrow(postSynapses)
     @test numPostSynapses > 0 
@@ -138,40 +138,42 @@ end
     println("\nattaching presynapse list...")
     preSynapseList = Neurons.get_all_pre_synapse_list(neuron)
     neuronx = Neuron(swc)
-    Neurons.attach_pre_synapses!(neuronx, preSynapseList)
+    @time Neurons.attach_pre_synapses!(neuronx, preSynapseList)
     numPreSynapses = Neurons.get_num_pre_synapses(neuronx)
     @test numPreSynapses > 0
 
     println("\nattaching postsynapse list...")
     preSynapseList = Neurons.get_all_post_synapse_list(neuron)
-    Neurons.attach_post_synapses!(neuronx, preSynapseList)
+    @time Neurons.attach_post_synapses!(neuronx, preSynapseList)
     numPostSynapses = Neurons.get_num_post_synapses(neuronx)
     @test numPostSynapses > 0
 
     println("\nresample neuron and double check the synapses.")
     neuron2 = Neurons.resample(neuron, Float32(1000))
-    numPostSynapses2 = Neurons.get_num_post_synapses(neuron2)
-    numPreSynapses2 = Neurons.get_num_pre_synapses(neuron2)
+    @time numPostSynapses2 = Neurons.get_num_post_synapses(neuron2)
+    @time numPreSynapses2 = Neurons.get_num_pre_synapses(neuron2)
     @test numPostSynapses == numPostSynapses2
     @test numPreSynapses == numPreSynapses2 
 
     println("\npostprocessing neuron and make sure that the synapses are still there.")
     neuron2 = Neurons.postprocessing(neuron)
-    numPostSynapses2 = Neurons.get_num_post_synapses(neuron2)
-    numPreSynapses2 = Neurons.get_num_pre_synapses(neuron2)
+    @time numPostSynapses2 = Neurons.get_num_post_synapses(neuron2)
+    @time numPreSynapses2 = Neurons.get_num_pre_synapses(neuron2)
     @test numPostSynapses == numPostSynapses2
     @test numPreSynapses == numPreSynapses2
 
-
-    Neurons.adjust_segment_class!(neuron)
+    
+    println("\nadjust segment class...")
+    @time Neurons.adjust_segment_class!(neuron)
     
     preSynapseList = Neurons.get_all_pre_synapse_list(neuron)
     postSynapseList = Neurons.get_all_post_synapse_list(neuron)
     @test !isempty(preSynapseList) 
     @test !isempty(postSynapseList)
 
-    preSynapseToSomaPathLengthList  = Neurons.get_pre_synapse_to_soma_path_length_list( neuron )
-    postSynapseToSomaPathLengthList = Neurons.get_post_synapse_to_soma_path_length_list( neuron )
+    println("\nget synapse to soma path length list...")
+    @time preSynapseToSomaPathLengthList  = Neurons.get_pre_synapse_to_soma_path_length_list( neuron )
+    @time postSynapseToSomaPathLengthList = Neurons.get_post_synapse_to_soma_path_length_list( neuron )
     @test !isempty(preSynapseToSomaPathLengthList)
     @test !isempty(postSynapseToSomaPathLengthList)
 end 

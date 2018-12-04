@@ -5,16 +5,16 @@ using DataFrames
 
 export Synapse 
 
-mutable struct Synapse
+mutable struct Synapse{T}
     psdSegmentationId               ::Int 
-    psdCoordinate                   ::NTuple{3,Float32} # nm
+    psdCoordinate                   ::NTuple{3,T} # nm
     psdBoundingBox                  ::BoundingBox 
     psdSize                         ::Int 
     preSynapticSegmentationId       ::Int 
-    preSynapticCoordinate           ::NTuple{3,Float32} # nm
+    preSynapticCoordinate           ::NTuple{3,T} # nm
     preSynapticWeight               ::Float32 
     postSynapticSegmentationId      ::Int  
-    postSynapticCoordinate          ::NTuple{3,Float32} # nm
+    postSynapticCoordinate          ::NTuple{3,T} # nm
     postSynapticWeight              ::Float32 
 end 
 
@@ -25,7 +25,7 @@ function Synapse( row::DataFrameRow )
     preSynapticCoordinate = SynapseTables.get_coordinate(row, "presyn_") 
     postSynapticCoordinate = SynapseTables.get_coordinate(row, "postsyn_")
 
-    Synapse(row[:psd_segid], psdCoordinate, psdBoundingBox, row[:size], 
+    Synapse{Float32}(row[:psd_segid], psdCoordinate, psdBoundingBox, row[:size], 
             row[:presyn_segid],  preSynapticCoordinate,  row[:presyn_wt],
             row[:postsyn_segid], postSynapticCoordinate, row[:postsyn_wt])
 end

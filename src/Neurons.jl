@@ -21,9 +21,9 @@ const VOXEL_SIZE = (500, 500, 500)
 
 export Neuron
 
-mutable struct Neuron 
+mutable struct Neuron{T} 
     # x,y,z,r, the coordinates should be in physical coordinates
-    segmentList ::Vector{Segment}
+    segmentList ::Vector{Segment{T}}
     connectivityMatrix ::SparseMatrixCSC{Bool, Int}
 end 
 
@@ -31,7 +31,7 @@ end
     Neuron
 a neuron modeled by interconnected segments 
 """
-function Neuron(nodeNet::NodeNet)
+function Neuron(nodeNet::NodeNet{T}) where T
     # the properties from nodeNet
     nodes = NodeNets.get_node_list(nodeNet)
     radii = NodeNets.get_radii(nodeNet)
@@ -56,12 +56,12 @@ function Neuron(nodeNet::NodeNet)
         seedNodeId2 = find_seed_node_id(neuron, nodeNet, collectedFlagVec)
 
         mergingSegmentId1, mergingNodeIdInSegment1, weightedTerminalDistance = 
-            find_merging_terminal_node_id(neuron, nodeNet[seedNodeId2])
+                                find_merging_terminal_node_id(neuron, nodeNet[seedNodeId2])
         # for some spine like structures, they should connect to nearest node
         # rather than terminal point. 
         closestSegmentId1, closestNodeIdInSegment1, closestDistance = 
                                 find_closest_node(neuron, nodeNet[seedNodeId2][1:3])
-        if closestDistance < weightedTerminalDistance
+        if closestDistance < weightedTerminalDistance / T(2)
             mergingSegmentId1 = closestSegmentId1 
             mergingNodeIdInSegment1 = closestNodeIdInSegment1 
         end 
@@ -88,9 +88,9 @@ end
 build a net from a seed node using connected component
 mark the nodes in this new net as collected, so the collectedFlagVec was changed.
 """
-function Neuron!(seedNodeId::Integer, nodeNet::NodeNet, collectedFlagVec::BitArray{1})
+function Neuron!(seedNodeId::Integer, nodeNet::NodeNet{T}, collectedFlagVec::BitArray{1}) where T
     # initialization
-    segmentList = Vector{Segment}()
+    segmentList = Vector{Segment{T}}()
 
     parentSegmentIdList = Vector{Int}()
     childSegmentIdList  = Vector{Int}()
@@ -107,7 +107,7 @@ function Neuron!(seedNodeId::Integer, nodeNet::NodeNet, collectedFlagVec::BitArr
     while !isempty(segmentSeedList)
         seedNodeId, segmentParentId = pop!(segmentSeedList)
         # grow a segment from seed
-        nodeListInSegment = Vector{NTuple{4, Float32}}()
+        nodeListInSegment = Vector{NTuple{4, T}}()
         seedNodeIdList = [seedNodeId]
         while true
             # construct this segment
@@ -163,11 +163,11 @@ function Neuron!(seedNodeId::Integer, nodeNet::NodeNet, collectedFlagVec::BitArr
         # segment should only have one parent 
         @assert length(parentSegmentIdList) <= 1 
     end 
-    Neuron(segmentList, connectivityMatrix)
+    Neuron{T}(segmentList, connectivityMatrix)
 end 
 
-function Neuron( seg::Array{T,3}; obj_id::T = convert(T,1), 
-                     expansion::NTuple{3,UInt32}=EXPANSION ) where T
+function Neuron( seg::Array{ST,3}; obj_id::ST = convert(ST,1), 
+                     expansion::NTuple{3,UInt32}=EXPANSION ) where ST
     nodeNet = NodeNet( seg; obj_id = obj_id, expansion = expansion )
     Neuron( nodeNet )
 end
@@ -269,8 +269,8 @@ end
 
 the first segment should be the root segment, and the first node should be the root node 
 """
-function get_root_segment_id(self::Neuron) 1 end 
-function get_root_segment(self::Neuron) 
+@inline function get_root_segment_id(self::Neuron) 1 end 
+@inline function get_root_segment(self::Neuron) 
     get_segment_list(self)[get_root_segment_id(self)]
 end 
 
@@ -287,7 +287,7 @@ end
 """
     get_num_segments(self::Neuron)
 """
-function get_num_segments(self::Neuron) length(self.segmentList) end
+@inline function get_num_segments(self::Neuron) length(self.segmentList) end
 
 """
     get_num_branching_points(self::Neuron)
@@ -303,8 +303,13 @@ function get_num_branching_points(self::Neuron)
     numSegmentingPoint
 end 
 
-function get_segment_list(self::Neuron) self.segmentList end 
-function get_connectivity_matrix(self::Neuron) self.connectivityMatrix end 
+@inline function get_segment_list(self::Neuron{T}) where T
+    self.segmentList::Vector{Segment{T}} 
+end 
+
+@inline function get_connectivity_matrix(self::Neuron) 
+    self.connectivityMatrix 
+end 
 
 """
     get_segment_order_list( self::Neuron )
@@ -337,7 +342,7 @@ end
 
 get a vector of Integer, which represent the length of each segment 
 """
-function get_segment_length_list( self::Neuron ) map(length, get_segment_list(self)) end
+@inline function get_segment_length_list( self::Neuron ) map(length, get_segment_list(self)) end
 
 """
     get_node_num( self::Neuron )
@@ -351,8 +356,8 @@ end
     get_node_list(self::Neuron)
 get the node list. the first one is root node.
 """
-function get_node_list( self::Neuron )
-    nodeList = Vector{NTuple{4, Float32}}(undef, get_node_num(self))
+function get_node_list( self::Neuron{T} ) where T
+    nodeList = Vector{NTuple{4, T}}(undef, get_node_num(self))
     
     i = 0
     for segment in get_segment_list(self)
@@ -412,17 +417,24 @@ function get_edge_list( self::Neuron )
     edgeList 
 end 
 
-function get_path_to_soma_length(self::Neuron, synapse::Synapse)
+
+function get_path_to_soma_length(self::Neuron{T}, synapse::Synapse{T}) where T
     mergingSegmentId, closestNodeId = find_closest_node( self, synapse )
     get_path_to_soma_length( self, mergingSegmentId; nodeId=closestNodeId )
 end 
 
-function get_path_to_soma_length(self::Neuron, segmentId::Integer; 
+"""
+    get_path_to_soma_length(self::Neuron{T}, segmentId::Integer; 
                         segmentList::Vector{Segment}=get_segment_list(self), 
                         nodeId::Int = length(segmentList[segmentId]), 
-                        segmentPathLengthList::Vector = get_segment_path_length_list(self))
-    path2RootLength = Segments.get_path_length( segmentList[segmentId]; 
-                                                        nodeId=nodeId )
+                        segmentPathLengthList::Vector{T} = get_segment_path_length_list(self)) where T
+"""
+function get_path_to_soma_length(self::Neuron{T}, segmentId::Integer; 
+                        segmentList::Vector{Segment{T}}=get_segment_list(self), 
+                        nodeId::Integer = length(segmentList[segmentId]), 
+                        segmentPathLengthList::Vector{T} = get_segment_path_length_list(self)) where T
+
+    path2RootLength = Segments.get_path_length( segmentList[segmentId]; nodeId=nodeId )
     while true 
         parentSegmentId = get_parent_segment_id(self, segmentId )
         if parentSegmentId < 1 
@@ -436,10 +448,12 @@ function get_path_to_soma_length(self::Neuron, segmentId::Integer;
     path2RootLength 
 end
 
-function get_pre_synapse_to_soma_path_length_list(self::Neuron; 
+get_path_to_root_length = get_path_to_soma_length 
+
+function get_pre_synapse_to_soma_path_length_list(self::Neuron{T}; 
                         segmentList::Vector=get_segment_list(self),
-                        segmentPathLengthList::Vector=get_segment_path_length_list(self))
-    preSynapseToSomaPathLengthList = Vector{Float32}()
+                        segmentPathLengthList::Vector{T}=get_segment_path_length_list(self)) where T
+    preSynapseToSomaPathLengthList = Vector{T}()
     for (segmentId, segment) in enumerate( segmentList )
         preSynapseList = Segments.get_pre_synapse_list( segment )
         nodeIdList, _ = findnz( preSynapseList )
@@ -452,10 +466,10 @@ function get_pre_synapse_to_soma_path_length_list(self::Neuron;
     preSynapseToSomaPathLengthList 
 end 
 
-function get_post_synapse_to_soma_path_length_list(self::Neuron; 
+function get_post_synapse_to_soma_path_length_list(self::Neuron{T}; 
                         segmentList::Vector=get_segment_list(self),
-                        segmentPathLengthList::Vector=get_segment_path_length_list(self))
-    postSynapseToSomaPathLengthList = Vector{Float32}()
+                        segmentPathLengthList::Vector{T}=get_segment_path_length_list(self)) where T
+    postSynapseToSomaPathLengthList = Vector{T}()
     for (segmentId, segment) in enumerate( segmentList )
         postSynapseList = Segments.get_post_synapse_list( segment )
         nodeIdList, _ = findnz( postSynapseList )
@@ -470,15 +484,15 @@ end
 
 
 """
-get_segment_path_length_list(self::Neuron; 
-                                segmentList::Vector{Segment}=get_segment_list(self),
+get_segment_path_length_list(self::Neuron{T}; 
+                                segmentList::Vector{Segment{T}}=get_segment_list(self),
                                 class::{Nothing,UInt8}=nothing)
 get euclidean path length of each segment 
 """
-function get_segment_path_length_list( self::Neuron; 
-                                      segmentList::Vector{Segment} = get_segment_list(self),
-                                      class::Union{Nothing,UInt8}=nothing )
-    ret = Vector{Float64}()
+function get_segment_path_length_list( self::Neuron{T}; 
+                                      segmentList::Vector{Segment{T}} = get_segment_list(self),
+                                      class::Union{Nothing,UInt8}=nothing ) where T
+    ret = Vector{T}()
     for (index, segment) in enumerate( segmentList )
         segmentPathLength = Segments.get_path_length( segment )
         # add the edge length to parent node
@@ -499,10 +513,10 @@ function get_segment_path_length_list( self::Neuron;
     ret 
 end 
 
-function get_node_distance_list(neuron::Neuron)
+function get_node_distance_list(neuron::Neuron{T}) where T
     nodeList = Neurons.get_node_list(neuron)
     edgeList = Neurons.get_edge_list(neuron)
-    nodeDistanceList = Vector{Float32}()
+    nodeDistanceList = Vector{T}()
     sizehint!(nodeDistanceList, length(edgeList))
     for (src, dst) in edgeList
         d = norm( [map(-, nodeList[src][1:3], nodeList[dst][1:3])...] )
@@ -524,14 +538,14 @@ end
 
 get a vector of integer, which represent the node index of segment end 
 """
-function get_segment_end_node_id_list( self::Neuron ) cumsum( get_segment_length_list(self) ) end 
+@inline function get_segment_end_node_id_list( self::Neuron ) cumsum( get_segment_length_list(self) ) end 
 
 """
     get_num_nodes(self::Neuron)
 
 get number of nodes 
 """
-function get_num_nodes( self::Neuron )
+@inline function get_num_nodes( self::Neuron )
     segmentList = get_segment_list(self)
     sum(map(length, segmentList))
 end 
@@ -540,18 +554,18 @@ end
     get_furthest_terminal_node_pair_direction(self::Neurons)
 
 Return: 
-    vec::Vector{Float32}, the 3d vector representing the direction 
-    maxNodeDistance::Float32, the maximum distance between terminal nodes 
+    vec::Vector{T}, the 3d vector representing the direction 
+    maxNodeDistance::T, the maximum distance between terminal nodes 
 """
-function get_furthest_terminal_node_pair_direction(self::Neuron)
+@inline function get_furthest_terminal_node_pair_direction(self::Neuron{T}) where T
     terminalNodeList = Neurons.get_terminal_node_list(self)
     get_furthest_terminal_node_pair_direction(terminalNodeList)
 end 
 
-function get_furthest_terminal_node_pair_direction(terminalNodeList::Vector{NTuple{4,Float32}})
+function get_furthest_terminal_node_pair_direction(terminalNodeList::Vector{NTuple{4,T}}) where T
     # find the farthest node pair
-    vec = zeros(Float32, 2)
-    maxNodeDistance = zero(Float32)
+    vec = zeros(T, 2)
+    maxNodeDistance = zero(T)
     for i in 1:length(terminalNodeList)
         node1 = terminalNodeList[i][1:3]
         for j in i+1:length(terminalNodeList)
@@ -664,7 +678,7 @@ function get_terminal_segment_id_list( self::Neuron; startSegmentId::Integer = 1
     terminalSegmentIdList 
 end
 
-function get_terminal_node_list( self::Neuron; startSegmentId::Integer = 1 )
+@inline function get_terminal_node_list( self::Neuron; startSegmentId::Integer = 1 )
     terminalSegmentIdList = get_terminal_segment_id_list( self )
     map( x -> Segments.get_node_list(x)[end], get_segment_list(self)[ terminalSegmentIdList ] )
 end 
@@ -1046,8 +1060,8 @@ end
 merge two nets at a specific segment location.
 the root node of second net will be connected to the first net
 """
-function Base.merge(self::Neuron, other::Neuron, 
-                    mergingSegmentId::Integer, mergingNodeIdInSegment::Integer)
+function Base.merge(self::Neuron{T}, other::Neuron{T}, 
+                    mergingSegmentId::Integer, mergingNodeIdInSegment::Integer) where T
     @assert !isempty(self)
     @assert !isempty(other)
     @assert mergingSegmentId > 0
@@ -1073,7 +1087,7 @@ function Base.merge(self::Neuron, other::Neuron,
             mergedConnectivityMatrix[num_segments1+1 : end, 
                                      num_segments1+1 : end] = other.connectivityMatrix 
             mergedConnectivityMatrix[mergingSegmentId, num_segments1+1] = true
-            return Neuron(mergedSegmentList, mergedConnectivityMatrix)
+            return Neuron{T}(mergedSegmentList, mergedConnectivityMatrix)
         else 
             println("the closest segment is a terminal segment, merge the root segment of the other net")
             if num_segments2 == 1
@@ -1081,7 +1095,7 @@ function Base.merge(self::Neuron, other::Neuron,
                 mergedSegmentList = copy(segmentList1)
                 mergedSegmentList[mergingSegmentId] = 
                             merge(mergedSegmentList[mergingSegmentId], segmentList2[1])
-                return Neuron(mergedSegmentList, self.connectivityMatrix)
+                            return Neuron{T}(mergedSegmentList, self.connectivityMatrix)
             else 
                 # the connection point is the end of a segment, no need to break segment
                 # merge the root segment of second net to the first net
@@ -1110,7 +1124,7 @@ function Base.merge(self::Neuron, other::Neuron,
                     mergedConnectivityMatrix[ mergingSegmentId, 
                                               num_segments1+childSegmentId2-1 ] = true 
                 end
-                return Neuron(mergedSegmentList, mergedConnectivityMatrix)
+                return Neuron{T}(mergedSegmentList, mergedConnectivityMatrix)
             end 
         end 
     else 
@@ -1162,7 +1176,7 @@ function Base.merge(self::Neuron, other::Neuron,
         end 
 
         # create new merged net
-        return Neuron(mergedSegmentList, mergedConnectivityMatrix)
+        return Neuron{T}(mergedSegmentList, mergedConnectivityMatrix)
     end
 end 
 
@@ -1174,7 +1188,7 @@ function Base.isempty(self::Neuron)    isempty(self.segmentList) end
 split the segment net into two neurons
 the nodeIdInSegment will be included in the first main net including the original root node  
 """
-function Base.split(self::Neuron, splitSegmentId::Integer; nodeIdInSegment::Integer=1)
+function Base.split(self::Neuron{T}, splitSegmentId::Integer; nodeIdInSegment::Integer=1) where T
     if splitSegmentId == 1 && nodeIdInSegment < 1 
         return Neuron(), self
     end 
@@ -1208,11 +1222,11 @@ function Base.split(self::Neuron, splitSegmentId::Integer; nodeIdInSegment::Inte
             println("find root of new tree in the original tree : $(parentSegmentIdInOriginalTree)")
         end 
     end 
-    subtree2 = Neuron( segmentList2, connectivityMatrix2 )
+    subtree2 = Neuron{T}( segmentList2, connectivityMatrix2 )
 
     # rebuild the main tree without the subtree2. 
     # the main tree still contains the old root
-    segmentList1 = Vector{Segment}()
+    segmentList1 = Vector{Segment{T}}()
     segmentIdListInSubtree1 = Vector{Int}()
     segmentIdMap = Dict{Int,Int}()
     # the first one is the root segment
@@ -1249,7 +1263,7 @@ function Base.split(self::Neuron, splitSegmentId::Integer; nodeIdInSegment::Inte
             connectivityMatrix1[ parentSegmentIdInSubtree1, segmentIdInSubtree1 ] = true 
         end 
     end 
-    subtree1 = Neuron( segmentList1, connectivityMatrix1 )
+    subtree1 = Neuron{T}( segmentList1, connectivityMatrix1 )
     return subtree1, subtree2
 end
 
@@ -1258,7 +1272,7 @@ function remove_segments(self::Neuron, removeSegmentIdList::Vector{Int})
     remove_segments(self, Set{Int}( removeSegmentIdList ))
 end 
 
-function remove_segments(self::Neuron, removeSegmentIdSet::Set{Int})
+function remove_segments(self::Neuron{T}, removeSegmentIdSet::Set{Int}) where T
     if isempty(removeSegmentIdSet)
         return self 
     end 
@@ -1269,7 +1283,7 @@ function remove_segments(self::Neuron, removeSegmentIdSet::Set{Int})
 
     # rebuild the main tree without the subtree2. 
     # the main tree still contains the old root
-    newSegmentList = Vector{Segment}()
+    newSegmentList = Vector{Segment{T}}()
     newSegmentIdList = Vector{Int}()
     segmentIdMap = Dict{Int,Int}()
     # the first one is the root segment
@@ -1296,7 +1310,7 @@ function remove_segments(self::Neuron, removeSegmentIdSet::Set{Int})
             newConnectivityMatrix[ newParentSegmentId, newSegmentId ] = true 
         end 
     end
-    neuron = Neuron( newSegmentList, newConnectivityMatrix )
+    neuron = Neuron{T}( newSegmentList, newConnectivityMatrix )
     neuron = merge_only_child(neuron)
     return neuron
 end 
@@ -1307,11 +1321,11 @@ If a segment only have one child, there should not be a branching point here.
 It should be merged with it's only-child.
 Find the segment mapping by depth-first search. 
 """
-function merge_only_child(self::Neuron)
+function merge_only_child(self::Neuron{T}) where T
     segmentList = get_segment_list(self)
     connectivityMatrix = get_connectivity_matrix(self)
 
-    newSegmentList = Vector{Segment}()
+    newSegmentList = Vector{Segment{T}}()
     # root always map to root 
     oldId2NewId = Dict{Int,Int}(0=>0)
     seedSegmentIdList = [1]
@@ -1354,7 +1368,7 @@ function merge_only_child(self::Neuron)
             newConnectivityMatrix[newParentSegmentId, newSegmentId] = true 
         end 
     end
-    Neuron(newSegmentList, newConnectivityMatrix)
+    Neuron{T}(newSegmentList, newConnectivityMatrix)
 end 
 
 """
@@ -1430,8 +1444,8 @@ end
     remove_redundent_nodes( self::Neuron )
 if neighboring node is the same, remove one of them 
 """
-function remove_redundent_nodes(self::Neuron)
-    newSegmentList = Vector{Segment}()
+function remove_redundent_nodes(self::Neuron{T}) where T
+    newSegmentList = Vector{Segment{T}}()
     sizehint!(newSegmentList, get_num_segments(self))
     removeSegmentIdList = Vector{Int}()
     segmentList = get_segment_list(self)
@@ -1450,7 +1464,7 @@ function remove_redundent_nodes(self::Neuron)
             push!(removeSegmentIdList, segmentId)
         end 
     end 
-    newNeuron = Neuron( newSegmentList, get_connectivity_matrix(self) )
+    newNeuron = Neuron{T}( newSegmentList, get_connectivity_matrix(self) )
     return remove_segments(newNeuron, removeSegmentIdList)
 end
 
@@ -1721,10 +1735,10 @@ remove_dendrites(self::Neuron) = remove_segments_with_class(self, Segments.DENDR
 
 
 
-function downsample_nodes(self::Neuron; nodeNumStep::Int=24) 
+function downsample_nodes(self::Neuron{T}; nodeNumStep::Int=24) where T 
 	@assert nodeNumStep > 1
     segmentList = get_segment_list(self)
-    newSegmentList = Vector{Segment}()
+    newSegmentList = Vector{Segment{T}}()
     sizehint!(newSegmentList, length(segmentList) )
     for segment in segmentList 
         nodeList = Segments.get_node_list(segment)
@@ -1737,7 +1751,7 @@ function downsample_nodes(self::Neuron; nodeNumStep::Int=24)
         newSegment = Segment(newNodeList, class=Segments.get_class(segment))
         push!(newSegmentList, newSegment)
     end
-    Neuron(newSegmentList, get_connectivity_matrix(self))
+    Neuron{T}(newSegmentList, get_connectivity_matrix(self))
 end
 
 """
@@ -1747,8 +1761,8 @@ Note that the distance is physical rather than point number.
 For example, if the neuron coordinate is based on nm, and the 
 resample distance is 1000.0, then the resample distance is 1000 nm.
 """
-function resample(self::Neuron, resampleDistance::Float32) 
-    newSegmentList = Vector{Segment}()
+function resample(self::Neuron{T}, resampleDistance::T) where T 
+    newSegmentList = Vector{Segment{T}}()
     segmentList = get_segment_list(self)
     preSynapseList = get_all_pre_synapse_list(self)
     postSynapseList = get_all_post_synapse_list(self)
@@ -1768,7 +1782,7 @@ function resample(self::Neuron, resampleDistance::Float32)
             push!(newSegmentList, newSegment)
         end 
     end 
-    neuron = Neuron(newSegmentList, get_connectivity_matrix(self))
+    neuron = Neuron{T}(newSegmentList, get_connectivity_matrix(self))
 
     # reattach synapses 
     attach_pre_synapses!(neuron, preSynapseList)
@@ -1843,57 +1857,62 @@ end
 """
     find_merging_terminal_node_id(self::Neuron, seedNode2::NTuple{4, Float32}) 
 
-the distance was weighted according to angle θ: d' = d * tan(θ)
-this function has a nice property that shrinking the distance within 45 degrees  
-and enlarge it with angle greater than 45 degrees 
+# Note that the weighted version was commented out since it seems not working well
+#the distance was weighted according to angle θ: d' = d * tan(θ)
+#this function has a nice property that shrinking the distance within 45 degrees  
+#and enlarge it with angle greater than 45 degrees 
 """
-function find_merging_terminal_node_id(self::Neuron, seedNode2::NTuple{4, Float32}) 
+function find_merging_terminal_node_id(self::Neuron{T}, seedNode2::NTuple{4, T}) where T
     # initialization 
     closestTerminalSegmentId1 = 0
     terminalNodeIdInSegment1 = 0
-    weightedDistance = typemax(Float32)
+    weightedDistance = typemax(T)
 
     terminalSegmentIdList1 = get_terminal_segment_id_list(self)
     segmentList1 = get_segment_list(self)
 
     for terminalSegmentId1 in terminalSegmentIdList1 
         terminalSegment1 = segmentList1[terminalSegmentId1]
-        if length(terminalSegment1) > 1
-            terminalNode0 = terminalSegment1[end-1]
-        else 
-            parentSegmentId = get_parent_segment_id(self, terminalSegmentId1)
-            terminalNode0 = segmentList1[parentSegmentId][end]
-        end 
         terminalNode1 = terminalSegment1[end]
-
-        # get angle θ
-        a = [ [terminalNode1[1:3]...] .- [terminalNode0[1:3]...] ]
         b = [ [seedNode2[1:3]...] .- [terminalNode1[1:3]...] ]
-        # sometimes the value could be larger than 1.0 or less than -1.0 due to numerical precision stabilities
-        dp = dot(a,b) / (norm(a)*norm(b))
-                
-        # euclidean distance
-        #if theta > pi/2
-        if dp < zero(Float32)
-            # if we use one(Float32)), the tan value will become positive due to numerical precision. 
-            # acos(-one(Float32)) |> tan = 8.7422784f-8 
-            dp = max(-0.9999999f0, dp)
-            theta = acos(dp)
-            #@show theta
-
-            physicalDistance = norm(b)
-            distance = physicalDistance * (-tan(theta))
-            #@assert distance > zero(typeof(distance))
-            if distance < weightedDistance
-                weightedDistance = distance 
-                closestTerminalSegmentId1 = terminalSegmentId1
-            end
+        physicalDistance::T = norm(b)
+        
+        if physicalDistance < weightedDistance 
+            weightedDistance = physicalDistance 
+            closestTerminalSegmentId1 = terminalSegmentId1
+            terminalNodeIdInSegment1 = length(terminalSegment1)
         end 
+        
+       # if length(terminalSegment1) > 1
+       #     terminalNode0 = terminalSegment1[end-1]
+       # else 
+       #     parentSegmentId = get_parent_segment_id(self, terminalSegmentId1)
+       #     terminalNode0 = segmentList1[parentSegmentId][end]
+       # end 
+
+       # # get angle θ
+       # a = [ [terminalNode1[1:3]...] .- [terminalNode0[1:3]...] ]
+       # # sometimes the value could be larger than 1.0 or less than -1.0 due to numerical precision stabilities
+       # dp = dot(a,b) / (norm(a)*norm(b))
+       #         
+       # # euclidean distance
+       # #if theta > pi/2
+       # if dp < zero(Float32)
+       #     # if we use one(Float32)), the tan value will become positive due to numerical precision. 
+       #     # acos(-one(Float32)) |> tan = 8.7422784f-8 
+       #     dp = max(-0.9999999f0, dp)
+       #     theta = acos(dp)
+       #     #@show theta
+
+       #     distance = physicalDistance * (-tan(theta))
+       #     #@assert distance > zero(typeof(distance))
+       #     if distance < weightedDistance
+       #         weightedDistance = distance 
+       #         closestTerminalSegmentId1 = terminalSegmentId1
+       #     end
+       # end 
     end
 
-    if closestTerminalSegmentId1 > 0
-        terminalNodeIdInSegment1 = length( segmentList1[closestTerminalSegmentId1] )
-    end 
     return closestTerminalSegmentId1, terminalNodeIdInSegment1, weightedDistance  
 end 
 
@@ -1985,13 +2004,13 @@ function find_closest_node(neuron::Neuron, nodeNet::NodeNet, collectedFlagVec::B
     return closestNodeId, mergingSegmentId, mergingNodeIdInSegment 
 end 
 
-function add_offset(self::Neuron, offset::Union{Vector, Tuple})
-    segmentList = Vector{Segment}()
+function add_offset(self::Neuron{T}, offset::Union{Vector, Tuple}) where T
+    segmentList = Vector{Segment{T}}()
     for segment in self.segmentList 
         newSegment = Segments.add_offset(segment, offset)
         push!(segmentList, newSegment)
     end 
-    Neuron(segmentList, self.connectivityMatrix)
+    Neuron{T}(segmentList, self.connectivityMatrix)
 end 
 
 end # module

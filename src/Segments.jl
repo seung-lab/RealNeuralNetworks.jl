@@ -17,9 +17,9 @@ const SOMA_CLASS = one(UInt8)
 const UNDEFINED_CLASS = zero(UInt8)
 
 export Segment 
-mutable struct Segment 
+mutable struct Segment{T}  
     # list of tuple (x,y,z,r)
-    nodeList        ::Vector{Node}
+    nodeList        ::Vector{NTuple{4,T}}
     class           ::UInt8
     #boundingBox     ::BoundingBox
     preSynapseList  ::SynapseList 
@@ -84,7 +84,7 @@ get_post_synapse_sparse_vec = get_post_synapse_list
 end 
 
 
-@inline function euclidean_distance( n1::NTuple{3,Float32}, n2::NTuple{3,Float32})
+@inline function euclidean_distance( n1::NTuple{3,T}, n2::NTuple{3,T}) where T
     norm([map((x,y)->x-y, n1, n2)...])  
 end 
 
@@ -134,15 +134,14 @@ end
     get_surface_area(self::Segment)
 frustum-based: http://www.treestoolbox.org/manual/surf_tree.html 
 """
-function get_surface_area(self::Segment) 
-    ret = zero(Float32)  
+function get_surface_area(self::Segment{T}) where T 
+    ret = zero(T)  
     for i in 2:length(self) 
         # average diameter 
         averageD = self[i][4] + self[i-1][4] 
         l = euclidean_distance(self[i][1:3], self[i-1][1:3])
         ret += pi*averageD*sqrt(l*l + averageD*averageD)
     end
-    @assert typeof(ret) == Float32
     ret 
 end
 
@@ -151,13 +150,13 @@ end
 compute frustum-based volume 
 http://jwilson.coe.uga.edu/emt725/Frustum/Frustum.cone.html 
 """
-function get_volume(self::Segment)
-    ret = zero(Float32) 
+function get_volume(self::Segment{T}) where T
+    ret = zero(T) 
     for i in 2:length(self)
         r1 = self[i-1][4]
         r2 = self[i][4]
         h = euclidean_distance(self[i-1][1:3], self[i][1:3])
-        ret += pi * h * (r1*r1 + r1*r2 + r2*r2) / Float32(3)
+        ret += pi * h * (r1*r1 + r1*r2 + r2*r2) / T(3)
     end 
     ret 
 end 
@@ -238,10 +237,10 @@ end
 split the segment from the node list index to two segmentes
 the indexed node will be included in the second segment 
 """
-function Base.split(self::Segment, index::Integer)
+function Base.split(self::Segment{T}, index::Integer) where T
     @assert index >=1 && index<=length(self)
-    local nodeList1::Vector{NTuple{4, Float32}}
-    local nodeList2::Vector{NTuple{4, Float32}}
+    local nodeList1::Vector{NTuple{4, T}}
+    local nodeList2::Vector{NTuple{4, T}}
     if index==1
         if length(self)==1
             nodeList1 = self.nodeList[1]
@@ -278,13 +277,13 @@ distance from a point
 function distance_from(self::Segment, point::Tuple)
     distance_from(self, [point[1:3]...])
 end 
-function distance_from(self::Segment, point::Vector)
+function distance_from(self::Segment{T}, point::Vector) where T
     @assert !isempty(self)
-    ret = (zero(Float32), zero(Int))
+    ret = (zero(T), zero(Int))
     nodeList = get_node_list(self)
     @assert !isempty(nodeList)
     @assert length(point) == 3 || length(point) == 4
-    distance = typemax(Float32)
+    distance = typemax(T)
     for (index, node) in enumerate(nodeList)
         d = norm( [node[1:3]...] .- [point[1:3]...] )
         if d < distance
@@ -329,11 +328,11 @@ function adjust_class!(self::Segment)
     end 
 end 
 
-function add_offset(self::Segment, offset::Union{Tuple, Vector})
+function add_offset(self::Segment{T}, offset::Union{Tuple, Vector}) where T
     @assert length(offset) == 3
-    nodeList = Vector{NTuple{4,Float32}}()
+    nodeList = Vector{NTuple{4,T}}()
     for node in self.nodeList
-        newNode = map(+, node, [offset..., zero(Float32)])
+        newNode = map(+, node, [offset..., zero(T)])
         push!(nodeList, newNode)
     end
     Segment(nodeList, self.class)    
@@ -347,13 +346,13 @@ end
     remove_nodes(self::Segment, removeIdRange::UnitRange{Int})
 remove nodes from a segment
 """
-function remove_nodes(self::Segment, removeIdRange::UnitRange{Int}) 
+function remove_nodes(self::Segment{T}, removeIdRange::UnitRange{Int}) where T  
     newLength = length(self) - length(removeIdRange)
     @assert newLength >= 0
     if newLength == 0 
         return Segment()
     end 
-    newNodeList = Vector{NTuple{4, Float32}}()
+    newNodeList = Vector{NTuple{4, T}}()
     sizehint!(newNodeList, newLength)
 
     for (index,node) in enumerate(get_node_list(self))
@@ -390,9 +389,9 @@ end
     remove_redundent_nodes!(self::Segment)
 remove neighboring nodes that is the same. 
 """
-function remove_redundent_nodes!(self::Segment)
+function remove_redundent_nodes!(self::Segment{T}) where T
     nodeList = get_node_list(self)
-    newNodeList = Vector{NTuple{4, Float32}}()
+    newNodeList = Vector{NTuple{4, T}}()
     for index in 1:length(nodeList)-1
         if nodeList[index] != nodeList[index+1]
             push!(newNodeList, nodeList[index])
