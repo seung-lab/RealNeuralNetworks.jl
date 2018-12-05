@@ -22,8 +22,8 @@ end
 """
 customized argument parse for tuple
 """
-function ArgParse.parse_item(::Type{NTuple{3,Int}}, x::AbstractString)
-    return (map(Meta.parse, split(x,","))...,)
+function ArgParse.parse_item(::Type{NTuple{3,T}}, x::AbstractString) where T
+    return (map(x->T(Meta.parse(x)), split(x,","))...,)
 end
 function ArgParse.parse_item(::Type{UInt32}, x::AbstractString)
     return UInt32(Meta.parse(x))
@@ -46,7 +46,7 @@ function parse_commandline()
             default = "/tmp"
         "--voxelsize", "-v"
             help = "voxel size of the raw image, mip level 0"
-            arg_type = NTuple{3,Int}
+            arg_type = NTuple{3,Float32}
             default = VOXEL_SIZE 
         "--mip", "-m"
             help = "mip level of the dataset" 
