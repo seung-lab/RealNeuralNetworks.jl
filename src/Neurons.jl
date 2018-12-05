@@ -15,6 +15,7 @@ using SparseArrays
 using LinearAlgebra 
 using Serialization  
 using Statistics 
+using NearestNeighbors
 
 const EXPANSION = (one(UInt32), one(UInt32), one(UInt32))
 const VOXEL_SIZE = (500, 500, 500)
@@ -1602,8 +1603,9 @@ end
 
 """
 function attach_pre_synapses!(self::Neuron, synapseList::Vector{Synapse})
+    kdTree, nodePosition = build_tree_with_position(self)
     for synapse in synapseList 
-        attach_pre_synapse!(self, synapse)
+        attach_pre_synapse!(self, synapse, kdTree, nodePosition)
     end 
 
     for segment in self 
@@ -1616,8 +1618,9 @@ end
     attach_post_synapses!(self::Neuron, synapseList::Vector{Synapse})
 """
 function attach_post_synapses!(self::Neuron, synapseList::Vector{Synapse})
+    kdTree, nodePosition = build_tree_with_position(self)
     for synapse in synapseList 
-        attach_post_synapse!(self, synapse)
+        attach_post_synapse!(self, synapse, kdTree, nodePosition)
     end 
 
     for segment in self 
@@ -1631,9 +1634,10 @@ end
 make sure that the synapse table contains *only* the presynapses of this neuron 
 """
 function attach_pre_synapses!(self::Neuron, synapseTable::DataFrame)
+    kdTree, nodePosition = build_tree_with_position(self)
     for row in DataFrames.eachrow( synapseTable )
         synapse = Synapse(row)
-        attach_pre_synapse!(self, synapse)
+        attach_pre_synapse!(self, synapse, kdTree, nodePosition)
     end 
     # adjust segment class according to this new information
     for segment in get_segment_list(self)
@@ -1646,9 +1650,10 @@ end
 make sure that the synapse table contains *only* the postsynapses of this neuron 
 """
 function attach_post_synapses!(self::Neuron, synapseTable::DataFrame)
+    kdTree, nodePosition = build_tree_with_position(self)
     for row in DataFrames.eachrow( synapseTable )
         synapse = Synapse(row)
-        attach_post_synapse!(self, synapse)
+        attach_post_synapse!(self, synapse, kdTree, nodePosition)
     end  
     # adjust segment class according to this new information
     for segment in get_segment_list(self)
@@ -1657,19 +1662,37 @@ function attach_post_synapses!(self::Neuron, synapseTable::DataFrame)
     nothing
 end 
 
+function attach_pre_synapse!(self::Neuron, synapse::Segments.Synapse, 
+                             kdTree::KDTree, nodePosition::Matrix{Int})
+    synapticCoordinate = Synapses.get_pre_synaptic_coordinate( synapse )
+    segmentId, nodeIdInSegment,_ = find_closest_node( kdTree, nodePosition, 
+                                                        synapticCoordinate )
+    segmentList = get_segment_list(self)
+    Segments.attach_pre_synapse!(segmentList[segmentId], nodeIdInSegment, synapse)
+    nothing
+end 
+
 function attach_pre_synapse!(self::Neuron, synapse::Segments.Synapse)
-    preSynapticCoordinate = Synapses.get_pre_synaptic_coordinate( synapse )
-    segmentId, nodeIdInSegment = find_closest_node( self, 
-                                                        preSynapticCoordinate )
+    synapticCoordinate = Synapses.get_pre_synaptic_coordinate( synapse )
+    segmentId, nodeIdInSegment = find_closest_node( self, synapticCoordinate )
     segmentList = get_segment_list(self)
     Segments.attach_pre_synapse!(segmentList[segmentId], nodeIdInSegment, synapse)
     nothing 
 end 
 
+function attach_post_synapse!(self::Neuron, synapse::Segments.Synapse, 
+                             kdTree::KDTree, nodePosition::Matrix{Int})
+    synapticCoordinate = Synapses.get_post_synaptic_coordinate( synapse )
+    segmentId, nodeIdInSegment,_ = find_closest_node( kdTree, nodePosition, 
+                                                        synapticCoordinate )
+    segmentList = get_segment_list(self)
+    Segments.attach_post_synapse!(segmentList[segmentId], nodeIdInSegment, synapse)
+    nothing
+end 
+
 function attach_post_synapse!(self::Neuron, synapse::Segments.Synapse)
-    postSynapticCoordinate = Synapses.get_post_synaptic_coordinate( synapse )
-    segmentId, nodeIdInSegment = find_closest_node( self, 
-                                                        postSynapticCoordinate )
+    synapticCoordinate = Synapses.get_post_synaptic_coordinate( synapse )
+    segmentId, nodeIdInSegment = find_closest_node( self, synapticCoordinate )
     segmentList = get_segment_list(self)
     Segments.attach_post_synapse!(segmentList[segmentId], nodeIdInSegment, synapse) 
 end 
@@ -1823,7 +1846,57 @@ function resample(nodeList::Vector{NTuple{4,T}}, resampleDistance::T) where T
     ret 
 end
 
-function find_closest_node(self::Neuron, seedNode::NTuple{3,T}) where T 
+"""
+    _build_tree_with_position(self::Neuron{T}; leafSize=1) where T 
+    
+Return: 
+    kdTree::KDTree, the built kdtree for node query 
+    nodePosition::Matrix{Int}, the first row is segment id, 
+            the second row is node id in the segment.
+            the column number is the node number of this neuron.
+"""
+function build_tree_with_position(self::Neuron{T}; leafSize=1) where T 
+    N = get_node_num(self)
+
+    nodeCoord = Matrix{T}(undef, 3, N)
+    # the node position in the neuron
+    # the first row is segment id, and the second row is the node id in segment 
+    nodePosition = Matrix{Int}(undef, 2, N)
+
+    k = 0
+    for (segmentId,segment) in enumerate(self)
+        for (nodeId, node) in enumerate(segment)
+            k += 1
+            nodeCoord[:,k] = [node[1:3]...]
+            nodePosition[1,k] = segmentId 
+            nodePosition[2,k] = nodeId 
+        end
+    end 
+    kdTree = KDTree(nodeCoord; leafsize=leafSize)
+    return kdTree, nodePosition 
+end
+
+function find_closest_node(self::Neuron{T}, seedNode::NTuple{3,T}) where T
+    kdTree, nodePosition = build_tree_with_position(self)
+    find_closest_node(kdTree, nodePosition, seedNode)
+end 
+
+function find_closest_node(kdTree::KDTree, nodePosition::Matrix{Int}, 
+                           seedNode::Union{Tuple, Vector})
+    idxs, dists = knn(kdTree, [seedNode[1:3]...], 1, false)
+    segmentId, nodeIdInSegment = nodePosition[:, idxs[1]]
+    return segmentId, nodeIdInSegment, dists[1]
+end 
+
+"""
+    find_closest_node_V1(self::Neuron{T}, seedNode::NTuple{3,T}) where T
+
+Return:
+    closestSegmentId::Int, the closest segment Id 
+    closestNodeIdInSegment::Int, the closest node id in the segment  
+    distance::T, the closest distance 
+"""
+function find_closest_node_V1(self::Neuron{T}, seedNode::NTuple{3,T}) where T 
     segmentList = get_segment_list(self)
     
     # initialization 
