@@ -8,7 +8,7 @@ using ProgressMeter
 export SynapseTable 
 const SynapseTable = DataFrame  
 
-function preprocessing!(self::SynapseTable, voxelSize::Tuple)
+function preprocess!(self::SynapseTable, voxelSize::Tuple)
     @assert length(voxelSize) == 3
     voxelSize = map(Float32, voxelSize)
     
@@ -64,7 +64,7 @@ function preprocessing!(self::SynapseTable, voxelSize::Tuple)
     nothing
 end
 
-function postprocessing!(self::SynapseTable, voxelSize::Union{Vector, Tuple})
+function postprocess!(self::SynapseTable, voxelSize::Union{Vector, Tuple})
     @assert length(voxelSize) == 3
     voxelSize = map(Float32, voxelSize)
 

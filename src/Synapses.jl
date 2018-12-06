@@ -58,7 +58,6 @@ end
 end
 @inline function get_post_synaptic_weight( self::Synapse ) self.postSynapticWeight end 
 
-
 #@inline function isbutton(self::Synapse, neuronId::Int)
 #    neuronId == get_presynaptic_segmentation_id(self)
 #end 

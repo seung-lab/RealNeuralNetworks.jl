@@ -3,6 +3,7 @@ using RealNeuralNetworks.Utils.FakeSegmentations
 using RealNeuralNetworks.Neurons
 using RealNeuralNetworks.NodeNets
 using RealNeuralNetworks.SWCs
+using RealNeuralNetworks.Utils.SynapseTables 
 
 using CSV
 using SparseArrays 
@@ -124,16 +125,18 @@ end
 
     println("\nattaching presynapses...")
     preSynapses = CSV.read( joinpath(ASSERT_DIR, "$(NEURON_ID).pre.synapses.csv") )
+    SynapseTables.preprocess!(preSynapses, (5,5,45))
     @time Neurons.attach_pre_synapses!(neuron, preSynapses)
     @test Neurons.get_num_pre_synapses(neuron) <= DataFrames.nrow(preSynapses) 
-    @test Neurons.get_num_pre_synapses(neuron) > 0 
+    @test Neurons.get_num_pre_synapses(neuron) > 1 
     
     println("\nattaching postsynapses...")
     postSynapses = CSV.read( joinpath(ASSERT_DIR, "$(NEURON_ID).post.synapses.csv") ) 
+    SynapseTables.preprocess!(postSynapses, (5,5,45))
     @time Neurons.attach_post_synapses!(neuron, postSynapses)
     numPostSynapses = Neurons.get_num_post_synapses(neuron)
     @test numPostSynapses <= DataFrames.nrow(postSynapses)
-    @test numPostSynapses > 0 
+    @test numPostSynapses > 1
 
     println("\nattaching presynapse list...")
     preSynapseList = Neurons.get_all_pre_synapse_list(neuron)
