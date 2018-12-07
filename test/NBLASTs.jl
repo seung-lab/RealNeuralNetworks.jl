@@ -35,7 +35,7 @@ NEURON_ID2 = 77641
 
     # read the precomputed score matrix, which is the joint distribution of the scores
     println("\nread the precomputed score table...")
-    SMAT_FCWB_PATH = joinpath(ASSERT_DIR, "smat_fcwb.csv")
+    SMAT_FCWB_PATH = joinpath(ASSET_DIR, "smat_fcwb.csv")
     df = CSV.read(SMAT_FCWB_PATH)    
     ria = RangeIndexingArray{Float32}(df)
 
@@ -86,5 +86,5 @@ NEURON_ID2 = 77641
     println("\ncompute nblast score using default zfish score table ...")
     @time score = NBLASTs.nblast(vectorCloud2, vectorCloud1;) 
     println("query $(NEURON_ID1) against target $(NEURON_ID2): ", score)
-    @test isapprox(score, -51068.773) 
+    @test isapprox(score, -63722.48f0) 
 end 
