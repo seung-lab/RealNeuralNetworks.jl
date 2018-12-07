@@ -36,7 +36,9 @@ function Synapse( df::DataFrame )
 end 
 
 ############### Base functions ################
-
+@inline function Base.zero(Synapse)
+    nothing 
+end 
 ############### properties ####################
 """
 Note that the psd size was measured using voxel numbers.

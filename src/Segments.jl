@@ -1,6 +1,6 @@
 module Segments
 
-import SparseArrays: SparseVector, spzeros, findnz, nnz
+using SparseArrays
 import LinearAlgebra: norm, dot
 import Statistics: mean, std 
 
@@ -32,8 +32,8 @@ function Segment()
 end 
 function Segment(nodeList::Vector{Node}; 
                  class::UInt8=UNDEFINED_CLASS,
-                 preSynapseList::SynapseList  = spzeros(Synapse, length(nodeList)),
-                 postSynapseList::SynapseList = spzeros(Synapse, length(nodeList)))
+                 preSynapseList::SynapseList  = sparsevec([], Synapse[], length(nodeList)),
+                 postSynapseList::SynapseList = sparsevec([], Synapse[], length(nodeList)))
     Segment(nodeList, class, preSynapseList, postSynapseList)
 end 
 

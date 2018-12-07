@@ -8,7 +8,7 @@ using ProgressMeter
 export SynapseTable 
 const SynapseTable = DataFrame  
 
-function preprocess!(self::SynapseTable, voxelSize::Tuple)
+function preprocess(self::SynapseTable, voxelSize::Tuple)
     @assert length(voxelSize) == 3
     voxelSize = map(Float32, voxelSize)
     
@@ -60,11 +60,10 @@ function preprocess!(self::SynapseTable, voxelSize::Tuple)
     self[:postsyn_x]    = (self[:postsyn_x] .- one(Float32)) .* voxelSize[1]
     self[:postsyn_y]    = (self[:postsyn_y] .- one(Float32)) .* voxelSize[2]
     self[:postsyn_z]    = (self[:postsyn_z] .- one(Float32)) .* voxelSize[3]
-	#return self
-    nothing
+	return self
 end
 
-function postprocess!(self::SynapseTable, voxelSize::Union{Vector, Tuple})
+function postprocess(self::SynapseTable, voxelSize::Union{Vector, Tuple})
     @assert length(voxelSize) == 3
     voxelSize = map(Float32, voxelSize)
 
@@ -90,8 +89,7 @@ function postprocess!(self::SynapseTable, voxelSize::Union{Vector, Tuple})
     self[:postsyn_y]     = (self[:postsyn_y]./voxelSize[2]) .+ one(Float32)
     self[:postsyn_z]     = (self[:postsyn_z]./voxelSize[3]) .+ one(Float32)
     
-    #return self
-    return nothing
+    return self
 end 
 
 function get_coordinate_array(self::SynapseTable, prefix::String)

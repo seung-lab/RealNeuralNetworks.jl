@@ -123,47 +123,56 @@ end
     println("\ndownsample node number...")
     @time Neurons.downsample_nodes(neuron)
 
-    println("\nattaching presynapses...")
+    println("\nattaching presynapses in DataFrame...")
     preSynapses = CSV.read( joinpath(ASSERT_DIR, "$(NEURON_ID).pre.synapses.csv") )
-    SynapseTables.preprocess!(preSynapses, (5,5,45))
+    @time preSynapses = SynapseTables.preprocess(preSynapses, (5,5,45))
+    println("get ", DataFrames.nrow(preSynapses), " synapses.")
     @time Neurons.attach_pre_synapses!(neuron, preSynapses)
-    @test Neurons.get_num_pre_synapses(neuron) <= DataFrames.nrow(preSynapses) 
-    @test Neurons.get_num_pre_synapses(neuron) > 1 
+    numPreSynapses = Neurons.get_num_pre_synapses(neuron)
+    println("have ", numPreSynapses, " synapses after attachment.")
+    @test numPreSynapses <= DataFrames.nrow(preSynapses) 
+    @test numPreSynapses > 2 
     
-    println("\nattaching postsynapses...")
+    println("\nattaching postsynapses in DataFrame...")
     postSynapses = CSV.read( joinpath(ASSERT_DIR, "$(NEURON_ID).post.synapses.csv") ) 
-    SynapseTables.preprocess!(postSynapses, (5,5,45))
+    @time postSynapses = SynapseTables.preprocess(postSynapses, (5,5,45))
+    println("get ", DataFrames.nrow(postSynapses), " synapses.")
     @time Neurons.attach_post_synapses!(neuron, postSynapses)
     numPostSynapses = Neurons.get_num_post_synapses(neuron)
-    @test numPostSynapses <= DataFrames.nrow(postSynapses)
-    @test numPostSynapses > 1
+    println("have ", numPostSynapses, " synapses after attachment.")
+    @test numPostSynapses <= DataFrames.nrow(postSynapses) 
+    @test numPostSynapses > 2 
 
     println("\nattaching presynapse list...")
     preSynapseList = Neurons.get_all_pre_synapse_list(neuron)
+    println("get ", length(preSynapseList), " synapses.")
     neuronx = Neuron(swc)
     @time Neurons.attach_pre_synapses!(neuronx, preSynapseList)
     numPreSynapses = Neurons.get_num_pre_synapses(neuronx)
-    @test numPreSynapses > 0
+    println("have ", numPreSynapses, " synapses after attachment.")
+    @test numPreSynapses > 2
 
     println("\nattaching postsynapse list...")
-    preSynapseList = Neurons.get_all_post_synapse_list(neuron)
-    @time Neurons.attach_post_synapses!(neuronx, preSynapseList)
+    postSynapseList = Neurons.get_all_post_synapse_list(neuron)
+    println("get ", length(postSynapseList), " synapses.")
+    @time Neurons.attach_post_synapses!(neuronx, postSynapseList)
     numPostSynapses = Neurons.get_num_post_synapses(neuronx)
-    @test numPostSynapses > 0
+    println("have ", numPostSynapses, " synapses after attachment.")
+    @test numPostSynapses > 2
 
     println("\nresample neuron and double check the synapses.")
     neuron2 = Neurons.resample(neuron, Float32(1000))
     @time numPostSynapses2 = Neurons.get_num_post_synapses(neuron2)
     @time numPreSynapses2 = Neurons.get_num_pre_synapses(neuron2)
-    @test numPostSynapses == numPostSynapses2
-    @test numPreSynapses == numPreSynapses2 
+    @test numPostSynapses >= numPostSynapses2
+    @test numPreSynapses >= numPreSynapses2 
 
     println("\npostprocessing neuron and make sure that the synapses are still there.")
     neuron2 = Neurons.postprocessing(neuron)
     @time numPostSynapses2 = Neurons.get_num_post_synapses(neuron2)
     @time numPreSynapses2 = Neurons.get_num_pre_synapses(neuron2)
-    @test numPostSynapses == numPostSynapses2
-    @test numPreSynapses == numPreSynapses2
+    @test numPostSynapses >= numPostSynapses2
+    @test numPreSynapses >= numPreSynapses2
 
     
     println("\nadjust segment class...")

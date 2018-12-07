@@ -16,14 +16,6 @@ NEURON_ID1 = 77625
 NEURON_ID2 = 77641
 
 
-function prepare_neurons()
-    neuron1 = Neurons.load("../01_data/0920/postprocessed/atlas_space/bin/$(NEURON_ID1).bin")
-    neuron2 = Neurons.load("../01_data/0920/postprocessed/atlas_space/bin/$(NEURON_ID2).bin")
-
-    Neurons.save(neuron1, "/tmp/$(NEURON_ID1).swc.bin")
-    Neurons.save(neuron2, "/tmp/$(NEURON_ID2).swc.bin")
-end 
-
 @testset "test NBLAST module..." begin 
     neuron1 = SWCs.load(joinpath(ASSET_DIR, "$(NEURON_ID1).swc.bin")) |> NodeNet;
     neuron2 = SWCs.load(joinpath(ASSET_DIR, "$(NEURON_ID2).swc.bin")) |> NodeNet;
@@ -43,40 +35,43 @@ end
 
     # read the precomputed score matrix, which is the joint distribution of the scores
     println("\nread the precomputed score table...")
-    SMAT_FCWB_PATH = joinpath(@__DIR__, "../asset/smat_fcwb.csv")
+    SMAT_FCWB_PATH = joinpath(ASSERT_DIR, "smat_fcwb.csv")
     df = CSV.read(SMAT_FCWB_PATH)    
     ria = RangeIndexingArray{Float32}(df)
 
     println("\ncompute nblast score...")
     @time score = NBLASTs.nblast(vectorCloud2, vectorCloud1; ria=ria) 
     println("query $(NEURON_ID1) against target $(NEURON_ID2): ", score)
-    @test isapprox(score, Float32(43072.21))
+    @test isapprox(score, Float32(50887.82f0))
     @time score = NBLASTs.nblast(vectorCloud1, vectorCloud1; ria=ria)
     println("query $(NEURON_ID1) against itself: ", score)
-    @test isapprox(score, Float32(69314.85)) 
+    @test isapprox(score, Float32(86507.24f0)) 
 
 
     vectorCloudList = [vectorCloud1, vectorCloud2]
     # the result from R NBLAST is :
     # ID    77625	    77641
-    # 77625	69314.85	45313.29
-    # 77641	43072.21	80601.58
-    RNBLAST_RESULT = Float32[69314.85 45313.29; 43072.21 80601.58]
+    # 77625	86501.20 	53696.72
+    # 77641	50891.03 	101011.08
+    RNBLAST_RESULT = Float32[86501.20 	53696.72; 50891.03 	101011.08]
     println("\ncompute similarity matrix...")
-    @time similarityMatrix = NBLASTs.nblast_allbyall(vectorCloudList; ria=ria, normalisation=:raw)
+    @time similarityMatrix = NBLASTs.nblast_allbyall(vectorCloudList; ria=ria, 
+                                                     normalisation=:raw)
     @show similarityMatrix
     @test isapprox.(similarityMatrix,  RNBLAST_RESULT) |> all
  
     println("\ncompute normalised similarity matrix...")
-    RNBLAST_RESULT = Float32[1.0 0.5621886; 0.6213994 1.0]
-    @time similarityMatrix = NBLASTs.nblast_allbyall(vectorCloudList; ria=ria, normalisation=:normalised)
+    RNBLAST_RESULT = Float32[1.0 0.5315924; 0.5883275 1.0]
+    @time similarityMatrix = NBLASTs.nblast_allbyall(vectorCloudList; ria=ria, 
+                                                     normalisation=:normalised)
     @show similarityMatrix
     @test isapprox.(similarityMatrix,  RNBLAST_RESULT) |> all
 
     
-    RNBLAST_RESULT = Float32[1.0 0.591794; 0.591794 1.0]
+    RNBLAST_RESULT = Float32[1.0 0.5599599; 0.5599599 1.0]
     println("\ncompute mean similarity matrix...")
-    @time similarityMatrix = NBLASTs.nblast_allbyall(vectorCloudList; ria=ria, normalisation=:mean)
+    @time similarityMatrix = NBLASTs.nblast_allbyall(vectorCloudList; ria=ria, 
+                                                     normalisation=:mean)
     @show similarityMatrix
     @test isapprox.(similarityMatrix,  RNBLAST_RESULT) |> all
 

@@ -1611,6 +1611,11 @@ function attach_pre_synapses!(self::Neuron, synapseList::Vector{Synapse})
     for segment in self 
         Segments.adjust_class!(segment)
     end
+
+    numSynapse = get_num_pre_synapses(self)
+    if numSynapse < length(synapseList)
+        @warn("we got $(length(synapseList)) synapses, but only $numSynapse were attached.")
+    end 
     nothing 
 end
 
@@ -1625,6 +1630,11 @@ function attach_post_synapses!(self::Neuron, synapseList::Vector{Synapse})
 
     for segment in self 
         Segments.adjust_class!(segment)
+    end 
+
+    numSynapse = get_num_post_synapses(self)
+    if numSynapse < length(synapseList)
+        @warn("we got $(length(synapseList)) synapses, but only $numSynapse were attached.")
     end 
     nothing 
 end 
@@ -1643,6 +1653,14 @@ function attach_pre_synapses!(self::Neuron, synapseTable::DataFrame)
     for segment in get_segment_list(self)
         Segments.adjust_class!(segment)
     end 
+    
+    numSynapse1 = DataFrames.nrow(synapseTable)
+    numSynapse2 = get_num_pre_synapses(self)
+    if numSynapse2 < numSynapse1
+        @warn("we got $(numSynapse1) synapses, but only $numSynapse2 were attached.")
+    end 
+
+    nothing 
 end 
 
 """
@@ -1659,6 +1677,13 @@ function attach_post_synapses!(self::Neuron, synapseTable::DataFrame)
     for segment in get_segment_list(self)
         Segments.adjust_class!(segment)
     end 
+    
+    numSynapse1 = DataFrames.nrow(synapseTable)
+    numSynapse2 = get_num_post_synapses(self)
+    if numSynapse2 < numSynapse1 
+        @warn("we got $numSynapse1 synapses, but only $numSynapse2 were attached.")
+    end 
+
     nothing
 end 
 
@@ -1674,7 +1699,7 @@ end
 
 function attach_pre_synapse!(self::Neuron, synapse::Segments.Synapse)
     synapticCoordinate = Synapses.get_pre_synaptic_coordinate( synapse )
-    segmentId, nodeIdInSegment = find_closest_node( self, synapticCoordinate )
+    segmentId, nodeIdInSegment, _ = find_closest_node( self, synapticCoordinate )
     segmentList = get_segment_list(self)
     Segments.attach_pre_synapse!(segmentList[segmentId], nodeIdInSegment, synapse)
     nothing 
@@ -1847,7 +1872,7 @@ function resample(nodeList::Vector{NTuple{4,T}}, resampleDistance::T) where T
 end
 
 """
-    _build_tree_with_position(self::Neuron{T}; leafSize=1) where T 
+    build_tree_with_position(self::Neuron{T}; leafSize=1) where T 
     
 Return: 
     kdTree::KDTree, the built kdtree for node query 
@@ -1855,7 +1880,7 @@ Return:
             the second row is node id in the segment.
             the column number is the node number of this neuron.
 """
-function build_tree_with_position(self::Neuron{T}; leafSize=1) where T 
+function build_tree_with_position(self::Neuron{T}; leafSize::Integer=1) where T 
     N = get_node_num(self)
 
     nodeCoord = Matrix{T}(undef, 3, N)
