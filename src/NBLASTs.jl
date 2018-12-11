@@ -139,16 +139,16 @@ Return:
     similarityMatrix::Matrix{TR}: the similarity matrix 
 """
 function nblast_allbyall(vectorCloudList::Vector{Matrix{T}};
-                         ria::RangeIndexingArray{TR}=RangeIndexingArray{Float32}(), 
-                         normalisation::Symbol=:raw) where {T, TR}
+                         ria::RangeIndexingArray{T}=RangeIndexingArray{Float32}(), 
+                         normalisation::Symbol=:raw) where {T}
     num = length(vectorCloudList)
-    similarityMatrix = Matrix{TR}(undef, num, num)
+    similarityMatrix = Matrix{T}(undef, num, num)
 
     treeList = map(VectorClouds.to_kd_tree, vectorCloudList) 
 
     @inbounds @showprogress 1 "computing similarity matrix..." for targetIndex in 1:num 
-        #Threads.@threads for queryIndex in 1:num 
-        for queryIndex in 1:num 
+        Threads.@threads for queryIndex in 1:num 
+        # for queryIndex in 1:num 
             similarityMatrix[targetIndex, queryIndex] = nblast( 
                         vectorCloudList[targetIndex], vectorCloudList[queryIndex];
                         ria=ria, targetTree=treeList[targetIndex] )

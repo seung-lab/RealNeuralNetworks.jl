@@ -62,8 +62,19 @@ end
 
    
     println("\nresampling ...")
-    @time neuron = Neurons.resample(neuron, Float32(100))
-    println("after resampling of 100 nm: $(Neurons.get_num_segments(neuron))")
+    nodeNum1 = Neurons.get_node_num(neuron)
+    @time neuron = Neurons.resample(neuron, Float32(400))
+    nodeNum2 = Neurons.get_node_num(neuron)
+    println("resampling of 400 nm reduced node number form ", nodeNum1, " to ", nodeNum2)
+    @test nodeNum2 < nodeNum1
+ 
+    println("\nsmooth ...")
+    nodeNum1 = Neurons.get_node_num(neuron) 
+    @time neuron = Neurons.smooth(neuron)
+    nodeNum2 = Neurons.get_node_num(neuron)
+    println("smoothing the neuron should not change node number: ", nodeNum1, " => ", nodeNum2)
+    @test nodeNum1 == nodeNum2
+
     
     @test Neurons.get_num_segments(neuron) > 0
     #println("get fractal dimension ...")

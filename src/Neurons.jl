@@ -506,8 +506,7 @@ function get_segment_path_length_list( self::Neuron{T};
         end
 
         if class == nothing || class==Segments.get_class(segment)
-            # include all segment 
-            # the class matchs
+            # include all segment the class matches
             push!(ret, segmentPathLength)
         end
     end 
@@ -812,6 +811,7 @@ end
 """
     get_surface_area(self::Neuron)
 frustum-based 
+http://www.analyzemath.com/Geometry_calculators/surface_volume_frustum.html
 """
 function get_surface_area(self::Neuron)
     ret = zero(Float32) 
@@ -821,7 +821,11 @@ function get_surface_area(self::Neuron)
         parentSegmentId = get_parent_segment_id(self, segmentId)
         if parentSegmentId  > 0
             parentNode = segmentList[parentSegmentId][end]
-            ret += Segments.euclidean_distance(parentNode[1:3], segment[1][1:3])
+            h = Segments.euclidean_distance(parentNode[1:3], segment[1][1:3]) 
+            # average diameter 
+            r1 = parentNode[4] 
+            r2 = segment[1][4]
+            ret += pi * (r1+r2) * sqrt( h*h + (r1-r2)*(r1-r2) )
         end 
     end 
     ret 
@@ -1759,6 +1763,7 @@ function postprocessing(self::Neuron)
     self = remove_terminal_blobs(self)
     self = resample(self, Float32(100))
     self = merge_only_child(self)
+    self = smooth(self)
     return self
 end  
 
@@ -1802,6 +1807,63 @@ function downsample_nodes(self::Neuron{T}; nodeNumStep::Int=24) where T
     Neuron{T}(newSegmentList, get_connectivity_matrix(self))
 end
 
+
+"""
+    smooth(nodeList::Vector{NTuple{4,T}}, k::Integer) where T 
+"""
+function smooth(nodeList::Vector{NTuple{4,T}}) where T
+    if length(nodeList) < 3 
+        return nodeList 
+    end  
+    newNodeList = Vector{NTuple{4,T}}()
+    push!(newNodeList, nodeList[1])
+    for i in 2:length(nodeList)-1
+        newNode = map((x,y,z)-> (x+y+z) / T(3), nodeList[i-1], nodeList[i], nodeList[i+1])
+        push!(newNodeList, newNode)
+    end  
+    push!(newNodeList, nodeList[end])
+    @assert length(newNodeList) == length(nodeList)
+    return newNodeList 
+end 
+
+"""
+    smooth(self::Neuron{T}, k::Integer=3)
+
+make the skeleton smooth. 
+use the mean coordinate and radius with two neighboring nodes as new node coordinate 
+"""
+function smooth(self::Neuron{T}) where T
+    newSegmentList = Vector{Segment{T}}()
+    segmentList = get_segment_list(self)
+    preSynapseList = get_all_pre_synapse_list(self)
+    postSynapseList = get_all_post_synapse_list(self)
+    
+    for (index, segment) in enumerate(segmentList)
+        parentSegmentId = get_parent_segment_id(self, index)
+        if parentSegmentId > 0 
+            parentNode = segmentList[parentSegmentId][end]
+            nodeList = [parentNode, Segments.get_node_list(segment) ...]
+            newNodeList = smooth(nodeList) 
+            # ignore the first node since it is from the parent segment 
+            newSegment = Segment(newNodeList[2:end]; class=Segments.get_class(segment))
+            push!(newSegmentList, newSegment)
+        else 
+            # no parent segment
+            nodeList = Segments.get_node_list(segment) 
+            newNodeList = smooth(nodeList) 
+            newSegment = Segment(newNodeList; class=Segments.get_class(segment))
+            push!(newSegmentList, newSegment)
+        end 
+    end 
+    @assert length(newSegmentList) == length(segmentList)
+    neuron = Neuron{T}(newSegmentList, get_connectivity_matrix(self))
+
+    # reattach synapses 
+    attach_pre_synapses!(neuron, preSynapseList)
+    attach_post_synapses!(neuron, postSynapseList)
+    neuron
+end 
+
 """
     resample( self::Neuron, resampleDistance::Float32 )
 resampling the segments by a fixed point distance.
@@ -1819,7 +1881,8 @@ function resample(self::Neuron{T}, resampleDistance::T) where T
         if parentSegmentId > 0 
             parentNode = segmentList[parentSegmentId][end]
             nodeList = [parentNode, Segments.get_node_list(segment) ...]
-            nodeList = resample(nodeList, resampleDistance) 
+            nodeList = resample(nodeList, resampleDistance)
+            # ignore the first node since it is from the parent segment 
             newSegment = Segment(nodeList[2:end]; class=Segments.get_class(segment))
             push!(newSegmentList, newSegment)
         else 

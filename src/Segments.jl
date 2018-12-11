@@ -132,17 +132,19 @@ end
 
 """
     get_surface_area(self::Segment)
-frustum-based: http://www.treestoolbox.org/manual/surf_tree.html 
+frustum-based:  
+http://www.analyzemath.com/Geometry_calculators/surface_volume_frustum.html
 """
 function get_surface_area(self::Segment{T}) where T 
     ret = zero(T)  
     for i in 2:length(self) 
-        # average diameter 
-        averageD = self[i][4] + self[i-1][4] 
-        l = euclidean_distance(self[i][1:3], self[i-1][1:3])
-        ret += pi*averageD*sqrt(l*l + averageD*averageD)
+        # average diameter
+        r1 = self[i][4]
+        r2 = self[i-1][4]
+        h = euclidean_distance(self[i][1:3], self[i-1][1:3])
+        ret += pi* (r1+r2) * sqrt(h*h + (r1-r2)*(r1-r2))
     end
-    ret 
+    ret::T 
 end
 
 """
@@ -297,15 +299,59 @@ end
 
 ################## manipulation ###############################
 
-@inline function attach_pre_synapse!(self::Segment, nodeId::Int, 
-                                     synapse::Synapse)
-    self.preSynapseList[ nodeId ] = synapse
+"""
+    attach_pre_synapse!(self::Segment, nodeId::Int, synapse::Synapse)
+"""
+@inline function attach_pre_synapse!(self::Segment, nodeId::Int, synapse::Synapse)
+    if self.preSynapseList[ nodeId ] == nothing 
+        self.preSynapseList[ nodeId ] = synapse
+    elseif self.preSynapseList[nodeId] == synapse
+        @warn("get a same presynapse, will skip attaching!")
+        return 
+    elseif nodeId>1 && self.preSynapseList[nodeId-1]==nothing 
+        self.preSynapseList[nodeId-1] = synapse 
+    elseif nodeId<length(self) && self.preSynapseList[nodeId+1]==nothing
+        self.preSynapseList[nodeId+1] = synapse
+    elseif nodeId>2 && self.preSynapseList[nodeId-2]==nothing 
+        self.preSynapseList[nodeId-2] = synapse 
+    elseif nodeId<length(self)-1 && self.preSynapseList[nodeId+2]==nothing 
+        self.preSynapseList[nodeId+2] = synapse 
+    elseif nodeId>3 && self.preSynapseList[nodeId-3]==nothing 
+        self.preSynapseList[nodeId-3] = synapse 
+    elseif nodeId<length(self)-2 && self.preSynapseList[nodeId+3]==nothing 
+        self.preSynapseList[nodeId+3] = synapse 
+    else 
+        @warn("there is an existing presynapse, can not find position to fit in.")
+    end  
     nothing 
 end 
 
-@inline function attach_post_synapse!(self::Segment, nodeId::Int, 
-                                      synapse::Synapse)
-    self.postSynapseList[ nodeId ] = synapse
+"""
+    attach_post_synapse!(self::Segment, nodeId::Int, synapse::Synapse)
+
+"""
+@inline function attach_post_synapse!(self::Segment, nodeId::Int, synapse::Synapse)
+    if self.postSynapseList[nodeId] == nothing 
+        self.postSynapseList[nodeId] = synapse
+        return nothing
+    elseif self.postSynapseList[nodeId] == synapse 
+        @warn("get a same postsynapse, will skip attaching!")
+        return 
+    elseif nodeId>1 && self.postSynapseList[nodeId-1] == nothing 
+        self.postSynapseList[nodeId-1] = synapse 
+    elseif nodeId<length(self) && self.postSynapseList[nodeId+1]==nothing 
+        self.postSynapseList[nodeId+1] = synapse
+    elseif nodeId>2 && self.postSynapseList[nodeId-2]==nothing 
+        self.postSynapseList[nodeId-2] = synapse 
+    elseif nodeId<length(self)-1 && self.postSynapseList[nodeId+2]==nothing
+        self.postSynapseList[nodeId+2] = synapse 
+    elseif nodeId>3 && self.postSynapseList[nodeId-3]==nothing 
+        self.postSynapseList[nodeId-3] = synapse 
+    elseif nodeId<length(self)-2 && self.postSynapseList[nodeId+3]==nothing
+        self.postSynapseList[nodeId+3] = synapse 
+    else 
+        @warn("there is an existing postsynapse, can not find position to fit in.")
+    end 
     nothing
 end 
 
