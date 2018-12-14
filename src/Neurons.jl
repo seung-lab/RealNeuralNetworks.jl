@@ -1043,6 +1043,13 @@ end
 
 ############################### Base functions ###################################
 
+function Base.show(self::Neuron)
+    println("neuron with ", length(self), " segments, ", get_node_num(self), " nodes, ", 
+            get_num_pre_synapses(self), " buttons, and ",
+            get_num_post_synapses(self), " post synapses.")
+    nothing
+end 
+
 function Base.iterate(self::Neuron, state::Int=1)
     if state > length(self)
         return nothing 

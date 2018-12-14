@@ -36,6 +36,20 @@ function Synapse( df::DataFrame )
 end 
 
 ############### Base functions ################
+function Base.show(self::Synapse)
+    println("psd segmentation id: ", psdSegmentationId)
+    println("psd coordinate: ", psdCoordinate)
+    println("psd bounding box: ", psdBoundingBox)
+    println("psd size: ", psdSize)
+    println("\npre synaptic segmentation id: ", preSynapticSegmentationId)
+    println("pre synaptic coordinate: ", preSynapticCoordinate)
+    println("pre synaptic weight: ", preSynapticWeight)
+    println("\npost synaptic segmentation id: ", postSynapticSegmentationId)
+    println("post synaptic coordinate: ", postSynapticCoordinate)
+    println("post synaptic weight: ", postSynapticWeight)
+    nothing
+end 
+
 @inline function Base.zero(Synapse)
     nothing 
 end 

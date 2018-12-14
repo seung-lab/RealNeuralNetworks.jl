@@ -201,6 +201,21 @@ end
 end 
 
 ###################### Base functions ################
+
+function Base.show(self::Segment)
+    if get_class(self) == AXON_CLASS 
+        class = "axon"
+    elseif get_class(self) == DENDRITE_CLASS 
+        class = "dendrite"
+    else 
+        class = "unknown"
+    end   
+    println("segment is a ", class, " and have ", length(self), " nodes, ", 
+            get_num_pre_synapses(self), " presynapses, ", 
+            get_num_post_synapses(self), " postsynapses.")
+    nothing 
+end 
+
 function Base.iterate(self::Segment, state::Int=1)
     if state > length(self) 
         return nothing 
@@ -307,7 +322,7 @@ end
         self.preSynapseList[ nodeId ] = synapse
     elseif self.preSynapseList[nodeId] == synapse
         @warn("get a same presynapse, will skip attaching!")
-        return 
+        return nothing 
     elseif nodeId>1 && self.preSynapseList[nodeId-1]==nothing 
         self.preSynapseList[nodeId-1] = synapse 
     elseif nodeId<length(self) && self.preSynapseList[nodeId+1]==nothing
@@ -332,11 +347,10 @@ end
 """
 @inline function attach_post_synapse!(self::Segment, nodeId::Int, synapse::Synapse)
     if self.postSynapseList[nodeId] == nothing 
-        self.postSynapseList[nodeId] = synapse
-        return nothing
+        self.postSynapseList[nodeId] = synapse 
     elseif self.postSynapseList[nodeId] == synapse 
         @warn("get a same postsynapse, will skip attaching!")
-        return 
+        return nothing 
     elseif nodeId>1 && self.postSynapseList[nodeId-1] == nothing 
         self.postSynapseList[nodeId-1] = synapse 
     elseif nodeId<length(self) && self.postSynapseList[nodeId+1]==nothing 
