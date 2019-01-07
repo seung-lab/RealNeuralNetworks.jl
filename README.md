@@ -3,7 +3,13 @@ RealNeuralNetworks.jl
 [![Build Status](https://travis-ci.org/seung-lab/RealNeuralNetworks.jl.svg?branch=master)](https://travis-ci.org/seung-lab/RealNeuralNetworks.jl)
 [![Coverage Status](https://coveralls.io/repos/github/seung-lab/RealNeuralNetworks.jl/badge.svg?branch=master)](https://coveralls.io/github/seung-lab/RealNeuralNetworks.jl?branch=master)
 
-3D neuron models extracted from EM image segmentation
+3D neuron models extracted from EM image segmentation 
+
+# Features 
+- skeletonization. extract the neuron skeletons based on image segmentation (colored labels).
+- morphological analysis with a lot of features. 
+- neural networks including synapses. Most of current morphological analysis tools do not have synapses. 
+- cell type classification based on NBLAST. use NBLAST to compute similarity scores between neurons. 
 
 # Installation
 run this inside julia package REPL (hit `]` to enter package mode):
