@@ -213,7 +213,7 @@ stretch the coordinate according to the mip level
 normally, we only build mip level at XY plane, not Z
 """
 function stretch_coordinates!(self::SWC, mip::Integer)
-    stretch_coordinates!(self, (2^mip, 2^mip, 1))
+    stretch_coordinates!(self, (2^(mip-1), 2^(mip-1), 1))
 end 
 
 function add_offset!(self::SWC, offset::Tuple)

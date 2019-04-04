@@ -21,7 +21,7 @@ struct Manifest
     # the bigarray for cutout of segmentation 
     ba          ::AbstractBigArray
     # the id of object
-    obj_id       ::Integer
+    obj_id      ::Integer
     # the unit range list for cutout
     rangeList   ::Vector
 end 
@@ -30,9 +30,12 @@ end
 Parameters:
     dir 
 """
-function Manifest( manifestDirPath::AbstractString, manifestKey::AbstractString, bigArrayPath::AbstractString )
-    ba = BigArray( GSDict( bigArrayPath ) )
-    h = GSDict( manifestDirPath; valueType=Dict{Symbol,Any})
+function Manifest(manifestDirPath::AbstractString, manifestKey::AbstractString, 
+                  bigArrayPath::AbstractString, mip::Integer )
+    println("big array path: ", bigArrayPath)
+
+    ba = BigArray( GSDict( bigArrayPath ); mip=mip, mode=:sequential )
+    h = GSDict( manifestDirPath )
     d = h[manifestKey]
     Manifest( d, ba )
 end
@@ -47,7 +50,7 @@ end
 """
 example: ["770048087:0:2968-3480_1776-2288_16912-17424"]
 """
-function Manifest( ranges::Vector, ba::BigArray{D,T,N,C} ) where {D,T,N,C}
+function Manifest( ranges::Vector, ba::BigArray{D,T,N} ) where {D,T,N}
     obj_id = Meta.parse( split(ranges[1], ":")[1] )
     obj_id = convert(T, obj_id)
     ranges = map(x-> split(x,":")[end], ranges)

@@ -421,7 +421,7 @@ end
 end
 
 @inline function stretch_coordinates!(self::NodeNet, mip::Real)
-    expansion = (2^mip, 2^mip, 1) 
+    expansion = (2^(mip-1), 2^(mip-1), 1) 
     stretch_coordinates!(self, expansion)
 end 
 @inline function stretch_coordinates!(self::NodeNet, expansion::Union{Vector, Tuple})

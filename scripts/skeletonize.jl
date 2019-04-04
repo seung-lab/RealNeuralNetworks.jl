@@ -6,13 +6,14 @@ using JSON
 
 export parse_commandline 
 export SEGMENT_ID, MIP, VOXEL_SIZE, SEGMENTATION_LAYER 
-const MIP = UInt32(3)
-const VOXEL_SIZE = (5,5,45)
+const MIP = UInt32(4)
+const VOXEL_SIZE = map(Float32, (5,5,45))
 
 function __init__()
     # setup AWS secrets 
-    if isfile("/secrets/aws-secret.json")
-        d = JSON.parsefile("/secrets/aws-secret.json")
+    secret_file_path = expanduser("~/.cloudvolume/secrets/aws-secret.json")
+    if !haskey(ENV, "AWS_ACCESS_KEY_ID") && isfile(secret_file_path)
+        d = JSON.parsefile(secret_file_path)
         for (k,v) in d 
             ENV[k] = v 
         end 
@@ -49,7 +50,7 @@ function parse_commandline()
             arg_type = NTuple{3,Float32}
             default = VOXEL_SIZE 
         "--mip", "-m"
-            help = "mip level of the dataset" 
+            help = "mip level of the dataset. Note that our mip level start from 1." 
             arg_type = UInt32
             default = MIP 
         "--meshname", "-e"
@@ -84,13 +85,6 @@ using Distributed
 @everywhere using RealNeuralNetworks.Neurons
 
 
-if !haskey(ENV, "AWS_ACCESS_KEY_ID") && isfile("/secrets/aws-secret.json")
-    d = JSON.parsefile("/secrets/aws-secret.json")
-    for (k,v) in d
-        ENV[k] = v
-    end 
-end 
-
 @everywhere function trace(neuronId::Integer; swcDir      ::AbstractString = "/tmp/", 
                                 mip         ::Integer        = MIP, 
                                 meshName    ::String = "mesh_mip_$MIP",
@@ -98,8 +92,7 @@ end
                                 segmentationLayer::AbstractString = SEGMENTATION_LAYER)
     println("fetching manifest...")
     manifest = Manifest(joinpath(segmentationLayer, meshName), "$(neuronId):0", 
-                        joinpath(segmentationLayer, 
-                            "$(2^mip*voxelSize[1])_$(2^mip*voxelSize[2])_$(voxelSize[3])"))
+                        joinpath(segmentationLayer), mip)
     
     println("skeletonizing the point cloud...")
     nodeNet = Manifests.trace(manifest)
@@ -112,39 +105,39 @@ end
  
     # reconnect the broken pieces and reset root to the soma center 
     neuron = Neuron( nodeNet )
-    #neuron = Neurons.remove_subtree_in_soma(neuron)
-    #neuron = Neurons.remove_hair( neuron )
+    neuron = Neurons.remove_subtree_in_soma(neuron)
+    neuron = Neurons.remove_hair( neuron )
 
     swc = SWCs.SWC( neuron )
     SWCs.save(swc, joinpath(swcDir, "$(neuronId).swc"))
     
     # save to neuroglancer
-    d_bin  = GSDict(joinpath(segmentationLayer, "skeleton_mip_$(mip)"))
-    d_str  = GSDict(joinpath(segmentationLayer, "swc"); valueType=String)
-    d_swc_bin  = GSDict(joinpath(segmentationLayer, "swc_bin"))
-    d_bin["$neuronId"] = SWCs.get_neuroglancer_precomputed( swc )
-    d_str["$(neuronId).swc"] = String(swc)
-    d_swc_bin["$(neuronId).swc.bin"] = SWCs.serialize(swc)
+    #d_bin  = GSDict(joinpath(segmentationLayer, "skeleton_mip_$(mip-1)"))
+    #d_str  = GSDict(joinpath(segmentationLayer, "swc"); valueType=String)
+    #d_swc_bin  = GSDict(joinpath(segmentationLayer, "swc_bin"))
+    #d_bin["$neuronId"] = SWCs.get_neuroglancer_precomputed( swc )
+    #d_str["$(neuronId).swc"] = String(swc)
+    #d_swc_bin["$(neuronId).swc.bin"] = SWCs.serialize(swc)
     
-    println("postprocessing the neuron...")
-    neuron = Neurons.postprocessing(neuron)
+    #println("postprocessing the neuron...")
+    #neuron = Neurons.postprocessing(neuron)
     # save to neuroglancer
-    d_bin  = GSDict(joinpath(segmentationLayer, "skeleton_mip_$(mip)_postprocessed"))
-    d_str  = GSDict(joinpath(segmentationLayer, "postprocessed_swc"); valueType=String)
-    d_swc_bin  = GSDict(joinpath(segmentationLayer, "postprocessed_swc_bin"))
-    d_bin["$neuronId"] = SWCs.get_neuroglancer_precomputed( swc )
-    d_str["$(neuronId).swc"] = String(swc)
-    d_swc_bin["$(neuronId).swc.bin"] = SWCs.serialize(swc)
+    #d_bin  = GSDict(joinpath(segmentationLayer, "skeleton_mip_$(mip-1)_postprocessed"))
+    #d_str  = GSDict(joinpath(segmentationLayer, "postprocessed_swc"); valueType=String)
+    #d_swc_bin  = GSDict(joinpath(segmentationLayer, "postprocessed_swc_bin"))
+    #d_bin["$neuronId"] = SWCs.get_neuroglancer_precomputed( swc )
+    #d_str["$(neuronId).swc"] = String(swc)
+    #d_swc_bin["$(neuronId).swc.bin"] = SWCs.serialize(swc)
 
-    println("resample the neuron...")
-    neuron = Neurons.resample(neuron, Float32(500))
-    # save to neuroglancer
-    d_bin  = GSDict(joinpath(segmentationLayer, "skeleton_mip_$(mip)_resampled"))
-    d_str  = GSDict(joinpath(segmentationLayer, "resampled_swc"); valueType=String)
-    d_swc_bin  = GSDict(joinpath(segmentationLayer, "resampled_swc_bin"))
-    d_bin["$neuronId"] = SWCs.get_neuroglancer_precomputed( swc )
-    d_str["$(neuronId).swc"] = String(swc)
-    d_swc_bin["$(neuronId).swc.bin"] = SWCs.serialize(swc)
+    #println("resample the neuron...")
+    #neuron = Neurons.resample(neuron, Float32(500))
+    ## save to neuroglancer
+    #d_bin  = GSDict(joinpath(segmentationLayer, "skeleton_mip_$(mip-1)_resampled"))
+    #d_str  = GSDict(joinpath(segmentationLayer, "resampled_swc"); valueType=String)
+    #d_swc_bin  = GSDict(joinpath(segmentationLayer, "resampled_swc_bin"))
+    #d_bin["$neuronId"] = SWCs.get_neuroglancer_precomputed( swc )
+    #d_str["$(neuronId).swc"] = String(swc)
+    #d_swc_bin["$(neuronId).swc.bin"] = SWCs.serialize(swc)
 
 end 
 
