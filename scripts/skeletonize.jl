@@ -139,6 +139,7 @@ using Distributed
     #d_str["$(neuronId).swc"] = String(swc)
     #d_swc_bin["$(neuronId).swc.bin"] = SWCs.serialize(swc)
 
+    println("finish skeletonize.")
 end 
 
 """
