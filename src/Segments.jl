@@ -1,6 +1,5 @@
 module Segments
 
-using SparseArrays
 import LinearAlgebra: norm, dot
 import Statistics: mean, std 
 
@@ -8,7 +7,7 @@ using RealNeuralNetworks.Utils.BoundingBoxes
 include("Synapses.jl"); using .Synapses
 
 const Node = NTuple{4,Float32}
-const SynapseList = SparseVector{Synapse, Int}
+const SynapseList = Vector{Union{Missing, Tuple{Synapse}}}
 
 # classes following SWC format 
 const AXON_CLASS = UInt8(2)
@@ -29,11 +28,12 @@ end
 function Segment()
     nodeList = Vector{Node}()
     Segment(nodeList)
-end 
+end
+
 function Segment(nodeList::Vector{Node}; 
                  class::UInt8=UNDEFINED_CLASS,
-                 preSynapseList::SynapseList  = sparsevec([], Synapse[], length(nodeList)),
-                 postSynapseList::SynapseList = sparsevec([], Synapse[], length(nodeList)))
+                 preSynapseList::SynapseList  = SynapseList(missing, length(nodeList)),
+                 postSynapseList::SynapseList = SynapseList(missing, length(nodeList)))
     Segment(nodeList, class, preSynapseList, postSynapseList)
 end 
 
@@ -101,10 +101,27 @@ accumulate the euclidean distance between neighboring nodes
 end
 
 @inline function get_num_pre_synapses(self::Segment)
-    nnz(get_pre_synapse_list(self))
+    synapseList = get_pre_synapse_list(self)
+    n = 0
+    for synapses in synapseList
+        if !ismissing(synapses)
+            # there exists some synapses
+            n += length(synapses)
+        end
+    end
+    return n
 end 
+
 @inline function get_num_post_synapses(self::Segment)
-    nnz(get_post_synapse_list(self))
+    synapseList = get_post_synapse_list(self)
+    n = 0
+    for synapses in synapseList
+        if !ismissing(synapses)
+            # there exists some synapses
+            n += length(synapses)
+        end
+    end
+    return n
 end 
 
 """
@@ -246,8 +263,17 @@ function Base.merge(self::Segment, other::Segment)
     mergedNodeList = vcat( nodeList1, nodeList2 )
     # winner taks all!
     class = length(nodeList1)>length(nodeList2) ? get_class(self) : get_class(other)
-    boundingBox = union( get_bounding_box(self), get_bounding_box(other) )
-    Segment(mergedNodeList; class=class)
+    # merge synapse list
+    preSynapseList1 = get_pre_synapse_list(self)
+    preSynapseList2 = get_pre_synapse_list(other)
+    postSynapseList1 = get_post_synapse_list(self)
+    postSynapseList2 = get_post_synapse_list(other)
+
+    mergedPreSynapseList = vcat( preSynapseList1, preSynapseList2 )
+    mergedPostSynapseList = vcat( postSynapseList1, postSynapseList2 )
+
+    Segment(mergedNodeList; class=class, preSynapseList=mergedPreSynapseList, 
+            postSynapseList=mergedPostSynapseList)
 end 
 
 """
@@ -256,22 +282,27 @@ the indexed node will be included in the second segment
 """
 function Base.split(self::Segment{T}, index::Integer) where T
     @assert index >=1 && index<=length(self)
-    local nodeList1::Vector{NTuple{4, T}}
-    local nodeList2::Vector{NTuple{4, T}}
+    idx1 = index - 1
+    idx2 = index 
+
     if index==1
         if length(self)==1
-            nodeList1 = self.nodeList[1]
-            nodeList2 = self.nodeList[1]
-        else 
-            nodeList1 = self.nodeList[1:index]     
-            nodeList2 = self.nodeList[index+1:end]
+            idx1 = 1
+            idx2 = 1
+        else
+            idx1 = index
+            idx2 = index + 1 
         end 
-    else 
-        nodeList1 = self.nodeList[1:index-1]     
-        nodeList2 = self.nodeList[index:end]
-    end 
-    segment1 = Segment(nodeList1; class=self.class)
-    segment2 = Segment(nodeList2; class=self.class)
+    end
+    nodeList1 = self.nodeList[1:idx1]
+    nodeList2 = self.nodeList[idx2:end]
+    preSynapseList1 = self.preSynapseList[1:idx1]
+    preSynapseList2 = self.preSynapseList[idx2:end]
+    postSynapseList1 = self.postSynapseList[1:idx1]
+    postSynapseList2 = self.postSynapseList[idx2:end]
+
+    segment1 = Segment(nodeList1; class=self.class, preSynapseList=preSynapseList1, postSynapseList=postSynapseList1)
+    segment2 = Segment(nodeList2; class=self.class, preSynapseList=preSynapseList2, postSynapseList=postSynapseList2)
     @assert length(nodeList1) > 0
     @assert length(nodeList2) > 0
     return segment1, segment2
@@ -318,26 +349,11 @@ end
     attach_pre_synapse!(self::Segment, nodeId::Int, synapse::Synapse)
 """
 @inline function attach_pre_synapse!(self::Segment, nodeId::Int, synapse::Synapse)
-    if self.preSynapseList[ nodeId ] == nothing 
-        self.preSynapseList[ nodeId ] = synapse
-    elseif self.preSynapseList[nodeId] == synapse
-        @warn("get a same presynapse, will skip attaching!")
-        return nothing 
-    elseif nodeId>1 && self.preSynapseList[nodeId-1]==nothing 
-        self.preSynapseList[nodeId-1] = synapse 
-    elseif nodeId<length(self) && self.preSynapseList[nodeId+1]==nothing
-        self.preSynapseList[nodeId+1] = synapse
-    elseif nodeId>2 && self.preSynapseList[nodeId-2]==nothing 
-        self.preSynapseList[nodeId-2] = synapse 
-    elseif nodeId<length(self)-1 && self.preSynapseList[nodeId+2]==nothing 
-        self.preSynapseList[nodeId+2] = synapse 
-    elseif nodeId>3 && self.preSynapseList[nodeId-3]==nothing 
-        self.preSynapseList[nodeId-3] = synapse 
-    elseif nodeId<length(self)-2 && self.preSynapseList[nodeId+3]==nothing 
-        self.preSynapseList[nodeId+3] = synapse 
-    else 
-        @warn("there is an existing presynapse, can not find position to fit in.")
-    end  
+    if ismissing(self.preSynapseList[ nodeId ])
+        self.preSynapseList[ nodeId ] = (synapse)
+    else
+        self.preSynapseList[ nodeId ] = (self.preSynapseList[nodeId]..., synapse)
+    end
     nothing 
 end 
 
@@ -346,26 +362,11 @@ end
 
 """
 @inline function attach_post_synapse!(self::Segment, nodeId::Int, synapse::Synapse)
-    if self.postSynapseList[nodeId] == nothing 
-        self.postSynapseList[nodeId] = synapse 
-    elseif self.postSynapseList[nodeId] == synapse 
-        @warn("get a same postsynapse, will skip attaching!")
-        return nothing 
-    elseif nodeId>1 && self.postSynapseList[nodeId-1] == nothing 
-        self.postSynapseList[nodeId-1] = synapse 
-    elseif nodeId<length(self) && self.postSynapseList[nodeId+1]==nothing 
-        self.postSynapseList[nodeId+1] = synapse
-    elseif nodeId>2 && self.postSynapseList[nodeId-2]==nothing 
-        self.postSynapseList[nodeId-2] = synapse 
-    elseif nodeId<length(self)-1 && self.postSynapseList[nodeId+2]==nothing
-        self.postSynapseList[nodeId+2] = synapse 
-    elseif nodeId>3 && self.postSynapseList[nodeId-3]==nothing 
-        self.postSynapseList[nodeId-3] = synapse 
-    elseif nodeId<length(self)-2 && self.postSynapseList[nodeId+3]==nothing
-        self.postSynapseList[nodeId+3] = synapse 
-    else 
-        @warn("there is an existing postsynapse, can not find position to fit in.")
-    end 
+    if ismissing(self.postSynapseList[nodeId])
+        self.postSynapseList[nodeId] = (synapse)
+    else
+        self.postSynapseList[nodeId] = (self.postSynapseList[nodeId]..., synapse)
+    end
     nothing
 end 
 
@@ -423,23 +424,14 @@ function remove_nodes(self::Segment{T}, removeIdRange::UnitRange{Int}) where T
     
     preSynapseList = get_pre_synapse_list(self)
     postSynapseList = get_post_synapse_list(self)
-    newPreSynapseList = spzeros(Synapse, newLength) 
-    newPostSynapseList = spzeros(Synapse, newLength)
+    newPreSynapseList = SynapseList(missing, newLength) 
+    newPostSynapseList = SynapseList(missing, newLength)
 
-    for index in findnz(preSynapseList)[1]
-        if index < removeIdRange.start  
-            newPreSynapseList[index] = preSynapseList[index]
-        elseif index > removeIdRange.stop  
-            newPreSynapseList[index-length(removeIdRange)] = preSynapseList[index]  
-        end 
-    end 
-    for index in findnz(postSynapseList)[1]
-        if index < removeIdRange.start 
-            newPostSynapseList[index] = postSynapseList[index] 
-        elseif index > removeIdRange.stop  
-            newPostSynapseList[index-length(removeIdRange)] = postSynapseList[index]
-        end 
-    end 
+    newPreSynapseList[1:removeIdRange.start-1]  = preSynapseList[1:removeIdRange.start-1]
+    newPostSynapseList[1:removeIdRange.start-1] = postSynapseList[1:removeIdRange.start-1]
+    
+    newPreSynapseList[removeIdRange.start:end]  = preSynapseList[removeIdRange.stop+1:end]
+    newPostSynapseList[removeIdRange.start:end] = postSynapseList[removeIdRange.stop+1:end]
 
     Segment(newNodeList; class = get_class(self), 
             preSynapseList=newPreSynapseList, postSynapseList=newPostSynapseList)
@@ -452,9 +444,17 @@ remove neighboring nodes that is the same.
 function remove_redundent_nodes!(self::Segment{T}) where T
     nodeList = get_node_list(self)
     newNodeList = Vector{NTuple{4, T}}()
+    newPreSynapseList = SynapseList()
+    newPostSynapseList = SynapseList()
     for index in 1:length(nodeList)-1
         if nodeList[index] != nodeList[index+1]
             push!(newNodeList, nodeList[index])
+            push!(newPreSynapseList, self.preSynapseList[index])
+            push!(newPostSynapseList, self.postSynapseList[index])
+        else
+            # merge synapses
+            newPreSynapseList[index] = (newPreSynapseList[index]..., self.preSynapseList[index+1]...)
+            newPostSynapseList[index] = (newPostSynapseList[index]..., self.postSynapseList[index+1]...)
         end 
     end 
     # get the final node
