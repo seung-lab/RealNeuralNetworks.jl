@@ -7,7 +7,9 @@ using RealNeuralNetworks.Utils.BoundingBoxes
 include("Synapses.jl"); using .Synapses
 
 const Node = NTuple{4,Float32}
-const SynapseList = Vector{Union{Missing, Tuple{Synapse}}}
+
+# TO-DO: make the data type more general
+const SynapseList = Vector{Union{Missing, Vector{Synapse{Float32}}}}
 
 # classes following SWC format 
 const AXON_CLASS = UInt8(2)
@@ -73,9 +75,6 @@ end
 @inline function get_post_synapse_list( self::Segment ) self.postSynapseList end
 @inline function get_pre_synapse( self::Segment, index::Int ) self.preSynapseList[index] end
 @inline function get_post_synapse( self::Segment, index::Int ) self.postSynapseList[index] end
-
-get_pre_synapse_sparse_vec = get_pre_synapse_list
-get_post_synapse_sparse_vec = get_post_synapse_list 
 
 @inline function get_bounding_box_distance(self::Segment, point::Union{Tuple, Vector})
     @assert length(point) >= 3
@@ -346,41 +345,42 @@ end
 ################## manipulation ###############################
 
 """
-    attach_pre_synapse!(self::Segment, nodeId::Int, synapse::Synapse)
+    attach_pre_synapse!(self::Segment, nodeId::Int, synapse::Synapse{T})
 """
-@inline function attach_pre_synapse!(self::Segment, nodeId::Int, synapse::Synapse)
+@inline function attach_pre_synapse!(self::Segment, nodeId::Int, synapse::Synapse{T}) where T
     if ismissing(self.preSynapseList[ nodeId ])
-        self.preSynapseList[ nodeId ] = (synapse)
+        self.preSynapseList[ nodeId ] = [synapse]
     else
-        self.preSynapseList[ nodeId ] = (self.preSynapseList[nodeId]..., synapse)
+        push!(self.preSynapseList[nodeId], synapse)
     end
     nothing 
 end 
 
 """
     attach_post_synapse!(self::Segment, nodeId::Int, synapse::Synapse)
-
 """
-@inline function attach_post_synapse!(self::Segment, nodeId::Int, synapse::Synapse)
+@inline function attach_post_synapse!(self::Segment, nodeId::Int, synapse::Synapse{T}) where T
     if ismissing(self.postSynapseList[nodeId])
-        self.postSynapseList[nodeId] = (synapse)
+        self.postSynapseList[ nodeId ] = [synapse]
     else
-        self.postSynapseList[nodeId] = (self.postSynapseList[nodeId]..., synapse)
+        push!(self.postSynapseList[nodeId], synapse)
     end
     nothing
 end 
 
 function adjust_class!(self::Segment) 
+    numPreSynapses = get_num_pre_synapses(self)
+    numPostSynapses = get_num_post_synapses(self)
     if self.class == UNDEFINED_CLASS 
-        if nnz(self.preSynapseList) > nnz(self.postSynapseList)
+        if numPreSynapses > numPostSynapses
             # mostly presynapses, so this is an axon 
             # Note that this simple metric fails in the axonal hillock, 
             # where there exist a lot of post synapses.
             self.class = AXON_CLASS 
-        elseif nnz(self.preSynapseList) < nnz(self.postSynapseList) 
+        elseif numPreSynapses < numPostSynapses
             # mostly postsynapses, so this is a dendrite 
             self.class = DENDRITE_CLASS   
-        elseif nnz(self.postSynapseList) == 0 && get_path_length(self)>5000
+        elseif numPostSynapses == 0 && get_path_length(self)>5000
             # a long segment without both pre and post synapses was considered axon 
             self.class = AXON_CLASS
         else 
