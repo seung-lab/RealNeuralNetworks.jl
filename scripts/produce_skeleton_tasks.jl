@@ -53,6 +53,7 @@ function main()
 
     # put to AWS SQS queue
     queueUrl = SQS.get_queue_url( QueueName=args["sqsqueue"] )["QueueUrl"]
+    println("SQS queue url: ", queueUrl)
 
 #    for message in messageList
 #        @show message
