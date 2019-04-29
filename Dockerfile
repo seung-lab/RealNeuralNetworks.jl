@@ -12,11 +12,12 @@ RUN julia -e 'import Pkg; Pkg.update()'
 # install latest packages first to make sure that we are using the latest 
 # RUN julia -e 'import Pkg; Pkg.clone("https://github.com/seung-lab/EMIRT.jl.git")'
 #RUN julia -e 'import Pkg; Pkg.clone("https://github.com/JuliaCloud/GoogleCloud.jl.git")'
-RUN julia -e 'using Pkg; \
-    #using ImageMagick; \
+RUN julia -e 'using Pkg; Pkg.instantiate();\
+    #Pkg.add("ImageMagick"); using ImageMagick; \
     Pkg.develop(PackageSpec(url="https://github.com/seung-lab/BigArrays.jl.git")); \
     Pkg.resolve(); \
-    Pkg.develop(PackageSpec(url="https://github.com/seung-lab/RealNeuralNetworks.jl.git")); \
+    #Pkg.develop(PackageSpec(url="https://github.com/seung-lab/RealNeuralNetworks.jl.git")); \
+    Pkg.develop(PackageSpec(path=pwd())); \
     # install registered packages later
     Pkg.add("LightGraphs");  \
     Pkg.add("MetaGraphs"); \

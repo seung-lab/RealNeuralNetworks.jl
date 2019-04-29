@@ -34,8 +34,8 @@ end
 
 function Segment(nodeList::Vector{Node}; 
                  class::UInt8=UNDEFINED_CLASS,
-                 preSynapseList::SynapseList  = SynapseList(missing, length(nodeList)),
-                 postSynapseList::SynapseList = SynapseList(missing, length(nodeList)))
+                 preSynapseList::Vector{X}  = SynapseList(missing, length(nodeList)),
+                 postSynapseList::Vector{X} = SynapseList(missing, length(nodeList))) where {X<:Union{Missing, Vector{Synapse{Float32}}}}
     Segment(nodeList, class, preSynapseList, postSynapseList)
 end 
 

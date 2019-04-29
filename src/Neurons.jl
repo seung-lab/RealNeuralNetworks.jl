@@ -36,6 +36,8 @@ function Neuron(nodeNet::NodeNet{T}) where T
     # the properties from nodeNet
     nodes = NodeNets.get_node_list(nodeNet)
     radii = NodeNets.get_radii(nodeNet)
+    # TO-DO: add node class information
+    #nodeClassList = NodeNets.get_node_class_list(nodeNet)
     # flags labeling whether this node was collected to the net
     collectedFlagVec = falses(length(nodes))
     # connectivity matrix of nodes in nodeNet 
@@ -418,6 +420,9 @@ function get_edge_list( self::Neuron )
     edgeList 
 end 
 
+function get_edge_num(self::Neuron)
+    length( get_edge_list(self) )
+end 
 
 function get_path_to_soma_length(self::Neuron{T}, synapse::Synapse{T}) where T
     mergingSegmentId, closestNodeId = find_closest_node( self, synapse )
@@ -1563,15 +1568,18 @@ https://github.com/seung-lab/neuroglancer/wiki/Skeletons
 function get_neuroglancer_precomputed(self::Neuron)
     # total number of bytes
     num_bytes = 4 + 4 + 4*3*get_node_num(self) + 4*2*length(get_edge_num(self))
-    buffer = IOBuffer( num_bytes )
+    buffer = IOBuffer( maxsize=num_bytes )
+
+    node_list = get_node_list(self)
+    edge_list = get_edge_list(self)
     # write the number of vertex
-    write(buffer, UInt32(get_node_num(self)))
-    write(buffer, UInt32(get_edge_num(self)))
+    write(buffer, UInt32(length(node_list)))
+    write(buffer, UInt32(length(edge_list)))
     # write the node coordinates
-    for node in get_node_list(self)
+    for node in node_list
         write(buffer, [node[1:3]...])
     end 
-    for edge in get_edges( self )
+    for edge in edge_list
         write(buffer, UInt32( edge[1] ))
         write(buffer, UInt32( edge[2] ))
     end

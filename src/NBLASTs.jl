@@ -174,6 +174,7 @@ end
 """
     nblast_allbyall(neuronList::Vector{Neuron}; ria::RangeIndexingArray{TR}=RangeIndexingArray{Float32}(),
                     normalisation::Symbol=:raw) where {TR}
+    Note that the neuron coordinate unit should be nm, it will be translated to micron internally.
 """
 function nblast_allbyall(neuronList::Vector{Neuron}; ria::RangeIndexingArray{TR}=RangeIndexingArray{Float32}(),
                         normalisation::Symbol=:raw) where {TR}
