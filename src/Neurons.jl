@@ -16,9 +16,10 @@ using LinearAlgebra
 using Serialization  
 using Statistics 
 using NearestNeighbors
+import GeometryTypes: Vec, Vec4, Vec4f0, Vec3, Vec3f0
 
-const EXPANSION = (one(UInt32), one(UInt32), one(UInt32))
-const VOXEL_SIZE = (500, 500, 500)
+const EXPANSION = Vec3(one(UInt32))
+const VOXEL_SIZE = Vec3(500)
 
 export Neuron
 
@@ -110,7 +111,7 @@ function Neuron!(seedNodeId::Integer, nodeNet::NodeNet{T}, collectedFlagVec::Bit
     while !isempty(segmentSeedList)
         seedNodeId, segmentParentId = pop!(segmentSeedList)
         # grow a segment from seed
-        nodeListInSegment = Vector{NTuple{4, T}}()
+        nodeListInSegment = Vec4f0[]
         seedNodeIdList = [seedNodeId]
         while true
             # construct this segment
@@ -169,8 +170,8 @@ function Neuron!(seedNodeId::Integer, nodeNet::NodeNet{T}, collectedFlagVec::Bit
     Neuron{T}(segmentList, connectivityMatrix)
 end 
 
-function Neuron( seg::Array{ST,3}; obj_id::ST = convert(ST,1), 
-                     expansion::NTuple{3,UInt32}=EXPANSION ) where ST
+function Neuron(seg::Array{ST,3}; obj_id::ST = convert(ST,1), 
+                expansion::Vec3{TE}=EXPANSION ) where {ST, TE}
     nodeNet = NodeNet( seg; obj_id = obj_id, expansion = expansion )
     Neuron( nodeNet )
 end
@@ -360,7 +361,7 @@ end
 get the node list. the first one is root node.
 """
 function get_node_list( self::Neuron{T} ) where T
-    nodeList = Vector{NTuple{4, T}}(undef, get_node_num(self))
+    nodeList = Vector{Vec4f0}(undef, get_node_num(self))
     
     i = 0
     for segment in get_segment_list(self)
@@ -583,7 +584,7 @@ Return:
     get_furthest_terminal_node_pair_direction(terminalNodeList)
 end 
 
-function get_furthest_terminal_node_pair_direction(terminalNodeList::Vector{NTuple{4,T}}) where T
+function get_furthest_terminal_node_pair_direction(terminalNodeList::Vector{Vec4{T}}) where T
     # find the farthest node pair
     vec = zeros(T, 2)
     maxNodeDistance = zero(T)
@@ -612,7 +613,7 @@ function get_mass_center( self::Neuron )
     x = sum(map(n->n[1], nodeList)) / length(nodeList)
     y = sum(map(n->n[2], nodeList)) / length(nodeList)
     z = sum(map(n->n[3], nodeList)) / length(nodeList)
-    (x,y,z)
+    Vec3f0(x,y,z)
 end
 
 """
@@ -624,7 +625,7 @@ function get_typical_radius( self::Neuron )
     nodeList = get_node_list( self )
     typicalRadius = 0.0
     for node in nodeList 
-        typicalRadius += norm([massCenter...] .- [node[1:3]...]) / length(nodeList)
+        typicalRadius += norm(massCenter .- node[1:3]) / length(nodeList)
     end 
     typicalRadius 
 end 
@@ -636,7 +637,7 @@ asymmetry was measured by the euclidean distance between root node and mass cent
 function get_asymmetry( self::Neuron )
     massCenter = get_mass_center( self )
     root = get_root_node( self )
-    norm( [massCenter...] .- [root[1:3]...] )
+    norm( massCenter .- root[1:3] )
 end 
 
 """
@@ -770,7 +771,7 @@ function get_sholl_number(self::Neuron, shollRadius::AbstractFloat)
     get_sholl_number( root, nodeList, edgeList, shollRadius )
 end 
 
-function get_sholl_number(root::NTuple{4, Float32}, nodeList::Vector{NTuple{4,Float32}}, 
+function get_sholl_number(root::Vec4f0, nodeList::Vector{Vec4f0}, 
                           edgeList::Vector{NTuple{2,Int}}, shollRadius::AbstractFloat)
     shollNum = 0
     for edge in edgeList 
@@ -842,7 +843,7 @@ function get_surface_area(self::Neuron)
         parentSegmentId = get_parent_segment_id(self, segmentId)
         if parentSegmentId  > 0
             parentNode = segmentList[parentSegmentId][end]
-            h = Segments.euclidean_distance(parentNode[1:3], segment[1][1:3]) 
+            h = norm(parentNode[1:3] .- segment[1][1:3]) 
             # average diameter 
             r1 = parentNode[4] 
             r2 = segment[1][4]
@@ -869,7 +870,7 @@ function get_volume(self::Neuron)
             node = segment[1]
             r1 = node[4]
             r2 = parentNode[4]
-            h = Segments.euclidean_distance(node[1:3], parentNode[1:3])
+            h = norm(node[1:3] .- parentNode[1:3])
             ret += pi * h * (r1*r1 + r1*r2 + r2*r2) / Float32(3)
         end 
     end
@@ -892,7 +893,7 @@ function get_fractal_dimension( self::Neuron )
     gyrationRadius = get_gyration_radius( self; nodeList=nodeList, massCenter=massCenter )
     
     # find the nodes inside the gyration radius
-    diskCenterList = Vector{NTuple{4,Float32}}()
+    diskCenterList = Vector{Vec4f0}()
     for node in nodeList
         if Segments.get_nodes_distance( massCenter, node ) < gyrationRadius 
             push!(diskCenterList, node)
@@ -931,15 +932,15 @@ end
 
 
 """
-	get_mask(self::Neuron, voxelSize::Union{Tuple, Vector}) 
+	get_mask(self::Neuron, voxelSize::Vec3f0) 
 compute binary representation of the neuron skeleton
 """
-function get_mask(self::Neuron, voxelSize::Union{Tuple, Vector})
+function get_mask(self::Neuron{T}, voxelSize::Vec3{T}) where T
     nodeList = get_node_list(self)
-    voxelSet = Set{NTuple{3, Int}}()
+    voxelSet = Set{Vec3{Int}}()
     for node in nodeList 
         voxelCoordinate = map((x,y)->round(Int, x/y), node[1:3], voxelSize)
-        push!(voxelSet, (voxelCoordinate...,))
+        push!(voxelSet, voxelCoordinate)
     end 
     boundingBox = Segments.BoundingBox( voxelSet )
     range = BoundingBoxes.get_unit_range(boundingBox)
@@ -987,15 +988,15 @@ end
 
 """
     get_arbor_density_map(self::Neuron, 
-                        voxelSize::Union{Tuple, Vector},
+                        voxelSize::Vec3f0,
                         gaussianFilterStd ::AbstractFloat)
 compute the arbor density map
 
 Return:
     * densityMap::OffsetArray 
 """
-function get_arbor_density_map(self::Neuron, voxelSize::Union{Tuple, Vector},
-                                            gaussianFilterStd::AbstractFloat)
+function get_arbor_density_map(self::Neuron, voxelSize::Vec3f0,
+                                gaussianFilterStd::AbstractFloat)
     densityMap = get_mask(self, voxelSize)
     # gaussion convolution
     kernel = Kernel.gaussian((3,3,3))
@@ -1014,7 +1015,7 @@ end
 translate the soma to coordinate (0,0,0)
 """
 function translate_soma_to_coordinate_origin(self::Neuron, densityMap::OffsetArray, 
-                                             voxelSize::Tuple)
+                                             voxelSize::Vec3)
     # assume that the first node is the soma node with largest radius
     somaCorrdinate = get_root_node(self)[1:3]
     newRange = map((x,y,s)->(x .- round(Int,y/s)), 
@@ -1043,7 +1044,7 @@ function get_arbor_density_map_distance(self::OffsetArray{T,N,Array{T,N}},
 end 
 
 function _find_correlation_peak_along_axis(self::Array{T,3}, other::Array{T,3}, 
-                                                                    axis::Int) where {T}
+                                            axis::Int) where {T}
 	crossCorrelation = _cross_correlation_along_axis(self, other, axis)
    	maximum(crossCorrelation)    
 end 
@@ -1823,8 +1824,6 @@ end
 remove_axons(self::Neuron) = remove_segments_with_class(self, Segments.AXON_CLASS)
 remove_dendrites(self::Neuron) = remove_segments_with_class(self, Segments.DENDRITE_CLASS)
 
-
-
 function downsample_nodes(self::Neuron{T}; nodeNumStep::Int=24) where T 
 	@assert nodeNumStep > 1
     segmentList = get_segment_list(self)
@@ -1832,10 +1831,10 @@ function downsample_nodes(self::Neuron{T}; nodeNumStep::Int=24) where T
     sizehint!(newSegmentList, length(segmentList) )
     for segment in segmentList 
         nodeList = Segments.get_node_list(segment)
-        newNodeList = Vector{Segments.Node}()
+        newNodeList = Vector{Vec4{T}}()
         for i in 1:nodeNumStep:length(nodeList)
             center = Segments.get_center(segment, 
-                                            i: min(i+nodeNumStep-1,length(nodeList)))
+                                        i: min(i+nodeNumStep-1,length(nodeList)))
             push!(newNodeList, center)
         end 
         newSegment = Segment(newNodeList, class=Segments.get_class(segment))
@@ -1846,13 +1845,13 @@ end
 
 
 """
-    smooth(nodeList::Vector{NTuple{4,T}}, k::Integer) where T 
+    smooth(nodeList::Vector{Vec4{T}, k::Integer) where T
 """
-function smooth(nodeList::Vector{NTuple{4,T}}) where T
+function smooth(nodeList::Vector{Vec4{T}}) where T
     if length(nodeList) < 3 
         return nodeList 
     end  
-    newNodeList = Vector{NTuple{4,T}}()
+    newNodeList = Vec4f0[]
     push!(newNodeList, nodeList[1])
     for i in 2:length(nodeList)-1
         newNode = map((x,y,z)-> (x+y+z) / T(3), nodeList[i-1], nodeList[i], nodeList[i+1])
@@ -1938,7 +1937,7 @@ function resample(self::Neuron{T}, resampleDistance::T) where T
     neuron
 end
 
-function resample(nodeList::Vector{NTuple{4,T}}, resampleDistance::T) where T
+function resample(nodeList::Vector{Vec4{T}}, resampleDistance::T) where T
     @assert !isempty(nodeList)
     # always keep the first node
     ret = [nodeList[1]]
@@ -2001,66 +2000,27 @@ function build_tree_with_position(self::Neuron{T}; leafSize::Integer=1) where T
     return kdTree, nodePosition 
 end
 
-function find_closest_node(self::Neuron{T}, seedNode::NTuple{3,T}) where T
+function find_closest_node(self::Neuron{T}, seedNode::Union{Vec{N,T}, Vector{T}, NTuple{N,T}}) where {N,T}
     kdTree, nodePosition = build_tree_with_position(self)
     find_closest_node(kdTree, nodePosition, seedNode)
 end 
 
 function find_closest_node(kdTree::KDTree, nodePosition::Matrix{Int}, 
-                           seedNode::Union{Tuple, Vector})
-    idxs, dists = knn(kdTree, [seedNode[1:3]...], 1, false)
+                           seedNode::Union{Vec{N,T}, Vector{T}, NTuple{N,T}}) where {N,T}
+    idxs, dists = knn(kdTree, seedNode[1:3], 1, false)
     segmentId, nodeIdInSegment = nodePosition[:, idxs[1]]
     return segmentId, nodeIdInSegment, dists[1]
 end 
 
 """
-    find_closest_node_V1(self::Neuron{T}, seedNode::NTuple{3,T}) where T
-
-Return:
-    closestSegmentId::Int, the closest segment Id 
-    closestNodeIdInSegment::Int, the closest node id in the segment  
-    distance::T, the closest distance 
-"""
-function find_closest_node_V1(self::Neuron{T}, seedNode::NTuple{3,T}) where T 
-    segmentList = get_segment_list(self)
-    
-    # initialization 
-    closestSegmentId = 0
-    closestNodeIdInSegment = 0
-    distance = typemax(T)
-    
-    @assert !isempty(segmentList)
-    
-    for (segmentId, segment) in enumerate(segmentList)
-        # distance from bounding box give the maximum bound of closest distance
-        # this was used to filter out far away segments quickly
-        # no need to compute all the distances between nodes
-        # this is the lower bound of the distance
-        bbox_distance = Segments.get_bounding_box_distance(segment, seedNode)
-        if bbox_distance < distance 
-            d, nodeIdInSegment = Segments.distance_from(segment, seedNode )
-            if d < distance 
-                distance = d
-                closestSegmentId = segmentId 
-                closestNodeIdInSegment = nodeIdInSegment 
-            end 
-        end 
-    end
-    @assert closestNodeIdInSegment > 0 
-    @assert closestNodeIdInSegment <= length(segmentList[closestSegmentId])
-    closestSegmentId, closestNodeIdInSegment, distance 
-end 
-
-
-"""
-    find_merging_terminal_node_id(self::Neuron, seedNode2::NTuple{4, Float32}) 
+    find_merging_terminal_node_id(self::Neuron, seedNode2::Vec4{Float32}) 
 
 # Note that the weighted version was commented out since it seems not working well
 #the distance was weighted according to angle θ: d' = d * tan(θ)
 #this function has a nice property that shrinking the distance within 45 degrees  
 #and enlarge it with angle greater than 45 degrees 
 """
-function find_merging_terminal_node_id(self::Neuron{T}, seedNode2::NTuple{4, T}) where T
+function find_merging_terminal_node_id(self::Neuron{T}, seedNode2::Vec4{T}) where T
     # initialization 
     closestTerminalSegmentId1 = 0
     terminalNodeIdInSegment1 = 0
@@ -2202,7 +2162,7 @@ function find_closest_node(neuron::Neuron, nodeNet::NodeNet, collectedFlagVec::B
     return closestNodeId, mergingSegmentId, mergingNodeIdInSegment 
 end 
 
-function add_offset(self::Neuron{T}, offset::Union{Vector, Tuple}) where T
+function add_offset(self::Neuron{T}, offset::Vec3f0) where T
     segmentList = Vector{Segment{T}}()
     for segment in self.segmentList 
         newSegment = Segments.add_offset(segment, offset)

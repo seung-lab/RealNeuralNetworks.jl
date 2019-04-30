@@ -2,20 +2,21 @@ module Synapses
 using RealNeuralNetworks.Utils.SynapseTables 
 using RealNeuralNetworks.Utils.BoundingBoxes
 using DataFrames
+import GeometryTypes: Vec3, Vec3f0
 
 export Synapse 
 
 mutable struct Synapse{T}
     psdSegmentationId               ::Int 
-    psdCoordinate                   ::NTuple{3,T} # nm
+    psdCoordinate                   ::Vec3{T} # nm
     psdBoundingBox                  ::BoundingBox 
     psdSize                         ::Int 
     preSynapticSegmentationId       ::Int 
-    preSynapticCoordinate           ::NTuple{3,T} # nm
-    preSynapticWeight               ::Float32 
+    preSynapticCoordinate           ::Vec3{T} # nm
+    preSynapticWeight               ::T
     postSynapticSegmentationId      ::Int  
-    postSynapticCoordinate          ::NTuple{3,T} # nm
-    postSynapticWeight              ::Float32 
+    postSynapticCoordinate          ::Vec3{T} # nm
+    postSynapticWeight              ::T
 end 
 
 function Synapse( row::DataFrameRow )

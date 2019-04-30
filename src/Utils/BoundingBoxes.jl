@@ -1,37 +1,35 @@
 module BoundingBoxes
 
 import LinearAlgebra: norm 
+import GeometryTypes: Vec, Vec3, Vec3f0, Vec4
 
 const ZERO_FLOAT32 = zero(Float32)
 
 export BoundingBox 
 
-mutable struct BoundingBox
-    minCorner   ::NTuple{3,Float32}
-    maxCorner   ::NTuple{3,Float32}
+mutable struct BoundingBox{T}
+    minCorner   ::Vec3{T}
+    maxCorner   ::Vec3{T}
 end 
 
 function BoundingBox()
-    minCorner = (Inf32, Inf32, Inf32)
-    maxCorner = (ZERO_FLOAT32, ZERO_FLOAT32, ZERO_FLOAT32)
+    minCorner = Vec3f0(Inf32)
+    maxCorner = Vec3f0(ZERO_FLOAT32)
     BoundingBox( minCorner, maxCorner )
 end 
 
-function BoundingBox( minCorner::NTuple{3,Int}, maxCorner::NTuple{3,Int} )
-	BoundingBox( 	map(x->convert(Float32,x), minCorner), 
-					map(x->convert(Float32,x), maxCorner) )
-end 
-
-function BoundingBox( minCorner::Vector{Float32}, maxCorner::Vector{Float32} )
-    BoundingBox((minCorner...,), (maxCorner...,))
+function BoundingBox(minCorner::Union{Vector{T}, NTuple{3,T}}, 
+                     maxCorner::Union{Vector{T}, NTuple{3,T}} ) where T
+    BoundingBox(Vec3{T}(minCorner), 
+                Vec3{T}(maxCorner) )
 end 
 
 """
 get bounding box from a node list 
 """
 function BoundingBox(nodeList::Union{Vector, Set})
-    minCorner = fill(Inf32,3)
-    maxCorner = fill(ZERO_FLOAT32, 3)
+    minCorner = Vec3f0(Inf32)
+    maxCorner = Vec3f0(ZERO_FLOAT32)
     for node in nodeList 
         minCorner = map(min, minCorner, node[1:3])
         maxCorner = map(max, maxCorner, node[1:3])
@@ -44,7 +42,8 @@ function get_unit_range( self::BoundingBox )
 end 
 
 function Base.size(self::BoundingBox)
-    map(length, get_unit_range(self))
+    sz = map(length, get_unit_range(self))
+    return (sz...,)
 end 
 
 function Base.isequal(self::BoundingBox, other::BoundingBox)
@@ -64,14 +63,13 @@ function Base.union(self::BoundingBox, other::BoundingBox)
     BoundingBox(minCorner, maxCorner)
 end
 
-function isinside(self::BoundingBox, point::Union{Tuple, Vector})
+function isinside(self::BoundingBox{T}, point::Vec{N,T}) where {N,T}
     all( map((x,y)->x>y, self.maxCorner, point[1:3]) ) && 
     all( map((x,y)->x<y, self.minCorner, point[1:3]) )
 end 
 
 """
     to_voxel_space(self::BoundingBox, voxelSize::Union{Tuple, Vector})
-
 """
 function to_voxel_space(self::BoundingBox, voxelSize::Union{Tuple, Vector})
     minCorner = map(fld, self.minCorner, voxelSize)
@@ -80,7 +78,7 @@ function to_voxel_space(self::BoundingBox, voxelSize::Union{Tuple, Vector})
 end 
 
 """
-    distance_from(self::BoundingBox, point::Union{Tuple, Vector})
+    distance_from(self::BoundingBox{T}, point::Vec{N,T})
 
 compute the distance from bounding box using a smart way
 https://stackoverflow.com/questions/5254838/calculating-distance-between-a-point-and-a-rectangular-box-nearest-point
@@ -92,8 +90,8 @@ function distance(rect, p) {
   return Math.sqrt(dx*dx + dy*dy);
 }
 """
-function distance_from(self::BoundingBox, point::Union{Tuple, Vector})
-    @assert length(point) == 3 || length(point)==4
+function distance_from(self::BoundingBox{T}, point::Vec{N,T}) where {N,T}
+    @assert N == 3 || N == 4
     d = map((cmin, p, cmax)-> max(cmin-p, Float32(0), p-cmax), 
                             self.minCorner, point[1:3], self.maxCorner )
     norm([d...])

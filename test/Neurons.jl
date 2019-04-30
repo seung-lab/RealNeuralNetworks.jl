@@ -8,12 +8,13 @@ using RealNeuralNetworks.Utils.SynapseTables
 using CSV
 using SparseArrays 
 using LinearAlgebra 
-using DataFrames 
+using DataFrames
+import GeometryTypes: Vec3f0
 
 const NEURON_ID = 77625
 const ASSERT_DIR = joinpath(@__DIR__, "../asset")
 const SWC_BIN_PATH = joinpath(ASSERT_DIR, "$(NEURON_ID).swc.bin") 
-const ARBOR_DENSITY_MAP_VOXEL_SIZE = (2000,2000,2000)
+const ARBOR_DENSITY_MAP_VOXEL_SIZE = Vec3f0(2000)
 
 @testset "test basic functions of Neurons..." begin 
     swc = SWCs.load(joinpath(ASSERT_DIR, "example.swc"))

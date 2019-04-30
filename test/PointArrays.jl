@@ -1,6 +1,8 @@
 using RealNeuralNetworks
 using RealNeuralNetworks.NodeNets.PointArrays
 
+import GeometryTypes: Vec3
+
 using Test
 
 @testset "test PointArray add_offset! operation" begin
@@ -9,7 +11,7 @@ using Test
             0xa8e1555e  0x7fbeb45b  0xc786dc67
             0x940649cd  0x20b148bc  0xc15152cb
             0xc91b9db1  0x39fee982  0x7019e841]
-    offset = (UInt32(1), UInt32(2), UInt32(3))
+    offset = Vec3(UInt32(1), UInt32(2), UInt32(3))
     PointArrays.add_offset!(a, offset)
     b = [0xc95f39a8  0x21a2a09e  0xc9e447a5
          0xa8e1555f  0x7fbeb45d  0xc786dc6a

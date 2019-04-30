@@ -3,6 +3,7 @@ include("DBFs.jl"); using .DBFs;
 include("PointArrays.jl"); using .PointArrays;
 using ..RealNeuralNetworks.SWCs
 import LinearAlgebra: norm
+import GeometryTypes: Vec2, Vec4, Vec4f0, Vec3, Vec3f0
 
 export NodeNet 
 
@@ -11,10 +12,10 @@ import BigArrays
 using SparseArrays 
 import DataStructures: IntSet 
 
-const OFFSET = (zero(UInt32), zero(UInt32), zero(UInt32))
+const OFFSET = Vec3(zero(UInt32))
 
 # rescale the skeleton
-const EXPANSION = (one(UInt32), one(UInt32), one(UInt32))
+const EXPANSION = Vec3(one(UInt32))
 
 # control the removing points around path based on DBF
 const REMOVE_PATH_SCALE = 3 
@@ -23,7 +24,7 @@ const REMOVE_PATH_CONST = 4
 
 mutable struct NodeNet{T}  
     # x,y,z,r
-    nodeList            :: Vector{NTuple{4,T}}
+    nodeList            :: Vector{Vec4{T}}
     nodeClassList       :: Vector{UInt8}
     # connectivity matrix to represent edges
     # conn[2,3]=true means node 2 and 3 connected with each other
@@ -31,7 +32,7 @@ mutable struct NodeNet{T}
     connectivityMatrix  :: SparseMatrixCSC{Bool,UInt32}
 end 
 
-@inline function NodeNet(nodeList::Vector{NTuple{4,T}}, 
+@inline function NodeNet(nodeList::Vector{Vec4{T}}, 
                          connectivityMatrix::SparseMatrixCSC{Bool, UInt32}) where {T}
     nodeClassList = zeros(UInt8, length(nodeList))
     NodeNet{T}(nodeList, nodeClassList, connectivityMatrix)
@@ -43,7 +44,7 @@ Perform the teasar algorithm on the passed binary array.
 """
 function NodeNet( seg::Array{T,3}; 
                      obj_id::T = convert(T,1), 
-                     expansion::NTuple{3, UInt32} = EXPANSION,
+                     expansion::Vec3{UInt32} = EXPANSION,
                      penalty_fn::Function = alexs_penalty ) where T
     # note that the object voxels are false and non-object voxels are true!
     # bin_im = DBFs.create_binary_image( seg, obj_id ) 
@@ -59,8 +60,8 @@ Return:
     nodeNet object
 """
 function NodeNet(bin_im::Union{BitArray, Array{Bool,3}}; 
-                 offset::NTuple{3, UInt32} = OFFSET,
-                 expansion::NTuple{3, UInt32} = EXPANSION,
+                 offset::Vec3{UInt32} = OFFSET,
+                 expansion::Vec3{UInt32} = EXPANSION,
                  penalty_fn::Function = alexs_penalty)
         # transform segmentation to points
     points = PointArrays.from_binary_image(bin_im)
@@ -82,7 +83,7 @@ end
 """
 function NodeNet( points::Matrix{T}; dbf::DBF=DBFs.compute_DBF(points),
                          penalty_fn::Function = alexs_penalty,
-                         expansion::NTuple{3, UInt32} = EXPANSION) where T
+                         expansion::Vec3{UInt32} = EXPANSION) where T
     @assert length(dbf) == size(points, 1)
     println("total number of points: $(size(points,1))")
     points, bbox_offset = translate_to_origin!( points );
@@ -159,22 +160,20 @@ function NodeNet( points::Matrix{T}; dbf::DBF=DBFs.compute_DBF(points),
     nodes, edges = distill!(points, path_nodes, path_edges)
 
     conn = get_connectivity_matrix(edges)
-    nodeList = Vector{NTuple{4,Float32}}()
+    nodeList = Vector{Vec4f0}()
     sizehint!(nodeList, length(node_radii))
     for i in 1:length(node_radii)
-        push!(nodeList, (map(Float32,nodes[i,:])..., node_radii[i]))
+        push!(nodeList, Vec4f0(nodes[i,:]..., node_radii[i]))
     end
 
     nodeNet = NodeNet(nodeList, conn)
     # add the offset from shift bounding box function
-    bbox_offset = map(Float32, bbox_offset)
-    @show bbox_offset
     add_offset!(nodeNet, bbox_offset)
     return nodeNet
 end
 
 function NodeNet(swc::SWC)
-    nodeList = Vector{NTuple{4, Float32}}()
+    nodeList = Vector{Vec4f0}()
     nodeClassList = Vector{UInt8}()
     I = Vector{UInt32}()
     J = Vector{UInt32}()
@@ -231,7 +230,7 @@ the connectivity matrix is symmetric, so the connection is undirected
 @inline function get_edge_num(self::NodeNet) div(nnz(self.connectivityMatrix), 2) end
 
 function get_edges(self::NodeNet) 
-    edges = Vector{Tuple{UInt32,UInt32}}()
+    edges = Vector{NTuple{2,UInt32}}()
     conn = get_connectivity_matrix(self)
     I,J,V = findnz(conn)
     # only record the triangular part of the connectivity matrix
@@ -314,8 +313,8 @@ end
 end 
 
 function Base.UnitRange(self::NodeNet)
-    minCoordinates = [typemax(UInt32), typemax(UInt32), typemax(UInt32)]
-    maxCoordinates = [zero(UInt32), zero(UInt32), zero(UInt32)]
+    minCoordinates = Vec3{UInt32}[typemax(UInt32)]
+    maxCoordinates = Vec3{UInt32}[zero(UInt32)]
     for node in get_node_list(self)
         minCoordinates = map(min, minCoordinates, node[1:3])
         maxCoordinates = map(max, maxCoordinates, node[1:3])
@@ -412,11 +411,11 @@ function save_edges(self::NodeNet, fileName::String)
 end 
 
 ##################### manipulate ############################
-@inline function add_offset!(self::NodeNet{T}, offset::Union{Vector{T},NTuple{3,T}} ) where T
+@inline function add_offset!(self::NodeNet{T}, offset::Vec3{T}) where T
     @assert length(offset) == 3
     for i in 1:get_node_num(self)
-        xyz = map((x,y)->x+y, self.nodeList[i][1:3],offset)
-        self.nodeList[i] = (xyz..., self.nodeList[i][4])
+        xyz = self.nodeList[i][1:3] + offset
+        self.nodeList[i] = Vec4f0(xyz..., self.nodeList[i][4])
     end 
 end
 
@@ -424,7 +423,7 @@ end
     expansion = (2^(mip-1), 2^(mip-1), 1) 
     stretch_coordinates!(self, expansion)
 end 
-@inline function stretch_coordinates!(self::NodeNet, expansion::Union{Vector, Tuple})
+@inline function stretch_coordinates!(self::NodeNet, expansion::Vec3{T}) where T
     @assert length(expansion) == 3
     nodeList = get_node_list(self)
     for (nodeIndex, node) in enumerate(nodeList)
@@ -455,7 +454,7 @@ function translate_to_origin!( points::Matrix{T} ) where T
     points[:,2] .-= offset[2]
     points[:,3] .-= offset[3]
   
-    points, offset
+    points, Vec3f0(offset)
 end 
 
 """
@@ -495,7 +494,7 @@ end
   be weighted or modified easily upon return.
 """
 function make_neighbor_graph( points::Array{T,2}, volumeIndex2NodeIndex=nothing, max_dims=nothing;
-                             expansion::NTuple{3, UInt32} = EXPANSION ) where T
+                             expansion::Vec3{UInt32} = EXPANSION ) where T
 
   if volumeIndex2NodeIndex == nothing volumeIndex2NodeIndex, max_dims = create_node_lookup(points) end
 

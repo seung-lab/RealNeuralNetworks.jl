@@ -2,11 +2,10 @@ module Segments
 
 import LinearAlgebra: norm, dot
 import Statistics: mean, std 
+import GeometryTypes: Vec, Vec4, Vec4f0, Vec3f0
 
 using RealNeuralNetworks.Utils.BoundingBoxes
 include("Synapses.jl"); using .Synapses
-
-const Node = NTuple{4,Float32}
 
 # TO-DO: make the data type more general
 const SynapseList = Vector{Union{Missing, Vector{Synapse{Float32}}}}
@@ -20,7 +19,7 @@ const UNDEFINED_CLASS = zero(UInt8)
 export Segment 
 mutable struct Segment{T}  
     # list of tuple (x,y,z,r)
-    nodeList        ::Vector{NTuple{4,T}}
+    nodeList        ::Vector{Vec4{T}}
     class           ::UInt8
     #boundingBox     ::BoundingBox
     preSynapseList  ::SynapseList 
@@ -28,11 +27,11 @@ mutable struct Segment{T}
 end 
 
 function Segment()
-    nodeList = Vector{Node}()
+    nodeList = Vector{Vec4f0}()
     Segment(nodeList)
 end
 
-function Segment(nodeList::Vector{Node}; 
+function Segment(nodeList::Vector{Vec4f0}; 
                  class::UInt8=UNDEFINED_CLASS,
                  preSynapseList::Vector{X}  = SynapseList(missing, length(nodeList)),
                  postSynapseList::Vector{X} = SynapseList(missing, length(nodeList))) where {X<:Union{Missing, Vector{Synapse{Float32}}}}
@@ -63,8 +62,8 @@ end
     get_nodes_distance(self::Node, other::Node)
 compute the euclidean distance between two nodes 
 """
-@inline function get_nodes_distance(self::Union{Vector,Tuple}, other::Union{Vector,Tuple})
-    norm( [map((x,y)->x-y, self[1:3], other[1:3]) ...])
+@inline function get_nodes_distance(self::Vec{N,T}, other::Vec{N,T}) where {N,T}
+    norm( self[1:3] .- other[1:3])
 end 
 
 @inline function get_node_list(self::Segment) self.nodeList end 
@@ -76,25 +75,21 @@ end
 @inline function get_pre_synapse( self::Segment, index::Int ) self.preSynapseList[index] end
 @inline function get_post_synapse( self::Segment, index::Int ) self.postSynapseList[index] end
 
-@inline function get_bounding_box_distance(self::Segment, point::Union{Tuple, Vector})
-    @assert length(point) >= 3
+@inline function get_bounding_box_distance(self::Segment{T}, point::Vec{N,T}) where {N,T}
+    @assert N >= 3
     boundingBox = get_bounding_box(self) 
     BoundingBoxes.distance_from(boundingBox, point)
 end 
 
 
-@inline function euclidean_distance( n1::NTuple{3,T}, n2::NTuple{3,T}) where T
-    norm([map((x,y)->x-y, n1, n2)...])  
-end 
-
 """
     get_path_length(self::Segment; nodeId::Int=length(self))
 accumulate the euclidean distance between neighboring nodes 
 """
-@inline function get_path_length(self::Segment; nodeId::Int=length(self))
+@inline function get_path_length(self::Segment; nodeId::Integer=length(self))
     ret = 0.0
     for i in 2:nodeId
-        ret += euclidean_distance(self[i][1:3], self[i-1][1:3])
+        ret += norm(self[i][1:3] .- self[i-1][1:3])
     end
     ret
 end
@@ -157,7 +152,7 @@ function get_surface_area(self::Segment{T}) where T
         # average diameter
         r1 = self[i][4]
         r2 = self[i-1][4]
-        h = euclidean_distance(self[i][1:3], self[i-1][1:3])
+        h = norm(self[i][1:3] .- self[i-1][1:3])
         ret += pi* (r1+r2) * sqrt(h*h + (r1-r2)*(r1-r2))
     end
     ret::T 
@@ -173,7 +168,7 @@ function get_volume(self::Segment{T}) where T
     for i in 2:length(self)
         r1 = self[i-1][4]
         r2 = self[i][4]
-        h = euclidean_distance(self[i-1][1:3], self[i][1:3])
+        h = norm(self[i-1][1:3] .- self[i][1:3])
         ret += pi * h * (r1*r1 + r1*r2 + r2*r2) / T(3)
     end 
     ret 
@@ -208,7 +203,7 @@ the ratio of the actual path length to the euclidean distance between head and t
     pathLength / euclideanLength 
 end 
 
-@inline function get_center(nodeList::Vector{Node})
+@inline function get_center(nodeList::Vector{Vec4f0})
     (map(i->mean(y->y[i], nodeList), 1:4)...,)
 end
 
@@ -321,18 +316,15 @@ end
 """
 distance from a point 
 """
-function distance_from(self::Segment, point::Tuple)
-    distance_from(self, [point[1:3]...])
-end 
-function distance_from(self::Segment{T}, point::Vector) where T
+function distance_from(self::Segment{T}, point::Vec{N,T}) where {N,T}
     @assert !isempty(self)
     ret = (zero(T), zero(Int))
     nodeList = get_node_list(self)
     @assert !isempty(nodeList)
-    @assert length(point) == 3 || length(point) == 4
+    @assert N == 3 || N == 4
     distance = typemax(T)
     for (index, node) in enumerate(nodeList)
-        d = norm( [node[1:3]...] .- [point[1:3]...] )
+        d = norm( node[1:3] .- point[1:3] )
         if d < distance
             distance = d
             ret = (d, index)
@@ -389,9 +381,9 @@ function adjust_class!(self::Segment)
     end 
 end 
 
-function add_offset(self::Segment{T}, offset::Union{Tuple, Vector}) where T
+function add_offset(self::Segment{T}, offset::Vec3f0) where T
     @assert length(offset) == 3
-    nodeList = Vector{NTuple{4,T}}()
+    nodeList = Vec4f0[]
     for node in self.nodeList
         newNode = map(+, node, [offset..., zero(T)])
         push!(nodeList, newNode)
@@ -413,7 +405,7 @@ function remove_nodes(self::Segment{T}, removeIdRange::UnitRange{Int}) where T
     if newLength == 0 
         return Segment()
     end 
-    newNodeList = Vector{NTuple{4, T}}()
+    newNodeList = Vector{Vec4f0}()
     sizehint!(newNodeList, newLength)
 
     for (index,node) in enumerate(get_node_list(self))
@@ -443,7 +435,7 @@ remove neighboring nodes that is the same.
 """
 function remove_redundent_nodes!(self::Segment{T}) where T
     nodeList = get_node_list(self)
-    newNodeList = Vector{NTuple{4, T}}()
+    newNodeList = Vector{Vec4f0}()
     newPreSynapseList = SynapseList()
     newPostSynapseList = SynapseList()
     for index in 1:length(nodeList)-1

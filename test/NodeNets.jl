@@ -7,14 +7,16 @@ using RealNeuralNetworks.NodeNets
 using RealNeuralNetworks.SWCs
 
 using LinearAlgebra
+import GeometryTypes: Vec3f0, Vec3
+
 
 const CELL_ID = UInt32(76880)
-const EXPANSION= (UInt32(80), UInt32(80), UInt32(40))
+const EXPANSION= Vec3(UInt32(80), UInt32(80), UInt32(40))
 const MIP = 4
 
 function get_seg_from_h5()
     # read seg data
-    f = h5open("/usr/people/jingpeng/seungmount/research/Ashwin/Scripts/NG_scripts/77605.h5")
+    f = h5open("../asset/77605.h5")
     seg = f["main"][1,:,:,101:500]
     close(f)
     seg = reshape(seg, size(seg)[2:4])
@@ -49,7 +51,7 @@ end
     println("building nodeNet ...")
     #@time nodeNet = NodeNet( seg; obj_id = CELL_ID )
     @time nodeNet = NodeNet( seg; obj_id = one(UInt32) )
-    NodeNets.add_offset!(nodeNet, (-one(Float32),-one(Float32),-one(Float32)))
+    NodeNets.add_offset!(nodeNet, Vec3f0(-one(Float32)))
     bin = NodeNets.get_neuroglancer_precomputed(nodeNet)
     # open("/tmp/fake.bin", "w") do f write(f, bin)  end 
     @time swc = SWCs.SWC( nodeNet )
