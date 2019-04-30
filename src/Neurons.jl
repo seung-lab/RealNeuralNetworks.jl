@@ -1566,24 +1566,26 @@ reference:
 https://github.com/seung-lab/neuroglancer/wiki/Skeletons
 """
 function get_neuroglancer_precomputed(self::Neuron)
-    # total number of bytes
-    num_bytes = 4 + 4 + 4*3*get_node_num(self) + 4*2*length(get_edge_num(self))
-    buffer = IOBuffer( maxsize=num_bytes )
-
     node_list = get_node_list(self)
     edge_list = get_edge_list(self)
+
+    # total number of bytes
+    num_bytes = 4 + 4 + 4*3*length(node_list) + 4*2*length(edge_list)
+    buffer = IOBuffer( read=false, write=true, maxsize=num_bytes )
+
     # write the number of vertex
     write(buffer, UInt32(length(node_list)))
     write(buffer, UInt32(length(edge_list)))
     # write the node coordinates
     for node in node_list
-        write(buffer, [node[1:3]...])
+        write(buffer, node[1])
+        write(buffer, node[2])
+        write(buffer, node[3])
     end 
     for edge in edge_list
-        write(buffer, UInt32( edge[1] ))
-        write(buffer, UInt32( edge[2] ))
+        write(buffer, UInt32( edge[1] - 1 ))
+        write(buffer, UInt32( edge[2] - 1 ))
     end
-    #bin = Vector{UInt8}(takebuf_array(buffer))
     bin = Vector{UInt8}(take!(buffer))
     close(buffer)
     return bin 
