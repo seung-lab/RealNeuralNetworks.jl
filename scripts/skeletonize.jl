@@ -90,6 +90,7 @@ using Distributed
                                 meshName    ::String = "mesh_mip_$MIP",
                                 voxelSize   ::Union{Tuple,Vector} = VOXEL_SIZE,
                                 segmentationLayer::AbstractString = SEGMENTATION_LAYER)
+    println("skeletonize neuron: $(neuronId)")
     println("fetching manifest...")
     manifest = Manifest(joinpath(segmentationLayer, meshName), "$(neuronId):0", 
                         joinpath(segmentationLayer), mip)
@@ -150,8 +151,10 @@ function read_cell_id_list( fileName::String )
     open(fileName) do f 
         for line in eachline(f)
             try 
-                id = Meta.parse(split(line, ":")[1])
-                push!(idList, UInt32(id))
+                id_list = map(Meta.parse, split(line, ","))
+                for id in id_list 
+                    push!(idList, UInt32(id))
+                end
             catch err
                 if line != "\n"
                     rethrow()

@@ -22,8 +22,8 @@ Parameters:
 Return:
     net: the MetaDiGraph representing neural network.
 """
-function NeuralNet(neuronId2neuron::Dict{Int, Neuron}; 
-                   neuronIdList::Vector{Int} = collect(keys(neuronId2neuron)))
+function NeuralNet(neuronId2neuron::Dict{Int, Neuron{T}}; 
+                   neuronIdList::Vector{Int} = collect(keys(neuronId2neuron))) where T
     neuronIdSet = Set{Int}(neuronIdList)
     net = NeuralNet(length(neuronIdList))
     
@@ -41,7 +41,6 @@ function NeuralNet(neuronId2neuron::Dict{Int, Neuron};
         neuron = neuronId2neuron[ neuronId ]
         vertexId = neuronId2vertexId[ neuronId ]
         preSynapseList = Neurons.get_all_pre_synapse_list(neuron)
-        #postSynapseList = Neurons.get_all_post_synapse_list(neuron)
         for preSynapse in preSynapseList 
             postNeuronId = Synapses.get_post_synaptic_segmentation_id(preSynapse)
             if postNeuronId == neuronId 
@@ -57,7 +56,7 @@ function NeuralNet(neuronId2neuron::Dict{Int, Neuron};
                     prop = get_prop(net, edge[1], edge[2], :synapses)
                     totalPSDSize = get_prop(net, edge[1], edge[2], :total_psd_size)
                 else 
-                    prop = Vector{Synapse}()
+                    prop = Vector{Synapse{T}}()
                     totalPSDSize = 0
                 end 
                 push!(prop, preSynapse)
