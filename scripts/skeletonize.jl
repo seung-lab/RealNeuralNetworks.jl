@@ -170,7 +170,7 @@ function main()
     @show args
     if args["idlistfile"] != nothing
         idList = read_cell_id_list(args["idlistfile"])
-        pmap(id -> trace(id; swcDir=args["swcdir"], mip=args["mip"], 
+        map(id -> trace(id; swcDir=args["swcdir"], mip=args["mip"], 
                          meshName=args["meshname"],
                          voxelSize = args["voxelsize"],
                          segmentationLayer=args["segmentationlayer"]), idList)

@@ -177,11 +177,11 @@ end
     Note that the neuron coordinate unit should be nm, it will be translated to micron internally.
 """
 function nblast_allbyall(neuronList::Vector{Neuron}; ria::RangeIndexingArray{TR}=RangeIndexingArray{Float32}(),
-                        normalisation::Symbol=:raw) where {TR}
+                         normalisation::Symbol=:raw, class::Union{Nothing, UInt8}=nothing) where {TR}
     # transforming to vector cloud list     
     vectorCloudList = Vector{Matrix{Float32}}()
     @inbounds @showprogress 1 "tranforming to vector cloud..." for neuron in neuronList
-        vectorCloud = VectorCloud(neuron)
+        vectorCloud = VectorCloud(neuron; class=class)
         # use micron instead of nanometer
         vectorCloud[1:3,:] ./= Float32(1000)
         push!(vectorCloudList, vectorCloud)

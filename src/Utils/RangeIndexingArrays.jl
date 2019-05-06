@@ -93,6 +93,10 @@ function DataFrame(ria::RangeIndexingArray{T,N}) where {T,N}
     df
 end 
 
+function Base.eltype(self::RangeIndexingArray{T,N}) where {T,N}
+    return T
+end
+
 @inline function get_septa_list_tuple(self::RangeIndexingArray)
     self.septaListTuple
 end 
@@ -121,6 +125,11 @@ end
 
 @inline function Base.fill!(self::RangeIndexingArray{T,N}, x::T) where {T,N}
     fill!(self.table, x)
+end 
+
+function Base.getindex(self::RangeIndexingArray{T,N}, idxes::Integer...) where {T,N}
+    table = get_table_array(self)
+    return table[idxes...]
 end 
 
 """
