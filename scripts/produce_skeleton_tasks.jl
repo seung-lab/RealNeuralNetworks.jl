@@ -22,6 +22,10 @@ function parse_commandline()
             help="skip some huge neurons which will explode memory. example: 34,45,78"
             arg_type = String 
             default = ""
+        "--skip-dir", "-d"
+            help="skip existing file"
+            arg_type=String
+            default = ""
     end 
     return parse_args(s)
 end 
@@ -47,7 +51,15 @@ function main()
     end
 
     messageList = Vector{String}()
+    skipDir = expanduser(args["skip-dir"])
     for id in neuronIdSet 
+        if !isempty(args["skip-dir"]) && 
+            (isfile(joinpath(skipDir, "$(id).swc")) ||
+            isfile(joinpath(skipDir, "$(id).swc.bin")) ||
+            isfile(joinpath(skipDir, "$(id).bin")))
+            # this neuron was already skeletonized
+            continue
+        end
         push!(messageList, string(id))
     end
 
