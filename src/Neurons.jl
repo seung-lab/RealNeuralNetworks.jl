@@ -1502,6 +1502,41 @@ function remove_redundent_nodes(self::Neuron{T}) where T
 end
 
 
+"""
+    make_segment_class_consistent_with_parents_children!(self::Neuron)
+Note that we only adjast the segment class with multiple neighbors and without any synapses
+"""
+function make_segment_class_consistent_with_parent_children!(self::Neuron)
+    for (i, segment) in enumerate(self)
+        synapseNum = Segments.get_num_pre_synapses(segment) + 
+                        Segments.get_num_post_synapses(segment)
+        class = Segments.get_class(segment)
+        
+        classSet = Set{UInt8}()
+        parentSegmentId = get_parent_segment_id(self, i)
+        if parentSegmentId > 0
+            parentSegment = self[parentSegmentId]
+            parentSegmentClass = Segments.get_class(parentSegment)
+            push!(classSet, parentSegmentClass)
+        end
+
+        childrenSegmentIdList = get_children_segment_id_list(self, i)
+        for childrenSegmentId in childrenSegmentIdList
+            childrenSegment = self[childrenSegmentId]
+            childrenSegmentClass = Segments.get_class(childrenSegment)
+            push!(classSet, childrenSegmentClass)
+        end
+
+        if length(classSet)==1 && length(childrenSegmentIdList)>0 && synapseNum==0
+            consensusClass = pop!(classSet)
+            if consensusClass != class
+                # need to update the segment class
+                Segments.set_class(segment, consensusClass)
+            end
+        end
+    end 
+end 
+
 ########################## type convertion ####################
 """
     NodeNets.NodeNet( self::Neuron )

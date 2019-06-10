@@ -76,6 +76,8 @@ end
 @inline function get_pre_synapse( self::Segment, index::Int ) self.preSynapseList[index] end
 @inline function get_post_synapse( self::Segment, index::Int ) self.postSynapseList[index] end
 
+@inline function set_class(self::Segment, class::UInt8) self.class=class end
+
 @inline function get_bounding_box_distance(self::Segment, point::Union{Tuple, Vector})
     @assert length(point) >= 3
     boundingBox = get_bounding_box(self) 
