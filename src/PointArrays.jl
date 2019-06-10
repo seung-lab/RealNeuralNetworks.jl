@@ -1,12 +1,14 @@
 module PointArrays
 
+import GeometryTypes: Vec3f0, Vec3
+
 export PointArray
 
 const PointArray = Array{UInt32, 2}
 
 const ZERO_UINT32 = zero(UInt32)
 const ONE_UINT32  = one(UInt32)
-const DEFAULT_OFFSET = (ZERO_UINT32, ZERO_UINT32, ZERO_UINT32)
+const DEFAULT_OFFSET = Vec3(ZERO_UINT32)
 
 const MAX_BOUNDARY_DISTANCE = 100000
 
@@ -35,7 +37,7 @@ end
 find points inside an object from a segmentation array. 
 """
 function from_seg(seg::Array{T,3}; obj_id::T=convert(T,1),
-                     offset::NTuple{3,UInt32}=DEFAULT_OFFSET) where T
+                     offset::Vec3{UInt32}=DEFAULT_OFFSET) where T
     # compute the number of object voxels
     nov = 0
     for i in eachindex(seg)
@@ -93,7 +95,7 @@ end
 """
 add offset to points
 """
-function add_offset!(self::Array{T,2}, offset::NTuple{3,T}) where T
+function add_offset!(self::Array{T,2}, offset::Vec3{T}) where T
     self[:, 1] .+= offset[1]
     self[:, 2] .+= offset[2]
     self[:, 3] .+= offset[3]
