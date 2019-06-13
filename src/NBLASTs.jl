@@ -48,8 +48,8 @@ function VectorCloud(neuron::NodeNet; k::Integer=20, class::Union{Nothing, UInt8
     # transform neuron to xyzmatrix
     N = NodeNets.get_node_num(neuron; class=class) 
     if N < k 
-        @warn("the number of node $N is less than than the number of neighborhood points k=$k")
-        return zeros(Float32, 0, 0)
+        @warn("the number of node $N is less than than the number of neighborhood points k=$k, return zero vector")
+        return nothing
     end 
 
     xyzmatrix = Matrix{Float32}(undef, 3, N)
@@ -97,15 +97,15 @@ measure the similarity of two neurons using NBLAST algorithm
 Reference:
 Costa, Marta, et al. "NBLAST: rapid, sensitive comparison of neuronal structure and construction of neuron family databases." Neuron 91.2 (2016): 293-311.
 """
-function nblast(target::Matrix{T}, query::Matrix{T}; 
+function nblast(target::Union{Nothing, Matrix{T}}, query::Union{Nothing, Matrix{T}}; 
                 ria::RangeIndexingArray{TR}=RangeIndexingArray{Float32}(), 
                 targetTree::Union{Nothing, KDTree}=VectorClouds.to_kd_tree(target)) where {T, TR, N}
-
-    if isempty(target) || isempty(query) || targetTree==nothing
+    
+    if target==nothing || query==nothing || isempty(target) || isempty(query) || targetTree==nothing
         # if one of them is empty, return zero 
         return zero(T)
     end 
-    totalScore = zero(Float32)
+    totalScore = zero(T)
 
     idxs, dists = knn(targetTree, query[1:3, :], 1, false)
 
@@ -124,8 +124,23 @@ function nblast(target::Matrix{T}, query::Matrix{T};
     totalScore
 end
 
+@inline function normalize_similarity_matrix!(similarityMatrix::Matrix{T}) where T
+    @inbounds for i in 1:size(similarityMatrix, 1)
+        similarityMatrix[:,i] ./= similarityMatrix[i,i]
+    end
+end
+
+@inline function set_mean!(similarityMatrix::Matrix{T}) where T
+    @inbounds for i in 1:size(similarityMatrix,1) 
+        for j in i+1:size(similarityMatrix,2)
+            similarityMatrix[i,j] = (similarityMatrix[i,j] + similarityMatrix[j,i])/T(2)
+            similarityMatrix[j,i] = similarityMatrix[i,j]
+        end 
+    end 
+end
+
 """
-    nblast_allbyall(vectorCloudList::Vector{Matrix{T}};
+    nblast_allbyall(vectorCloudList::Vector{Union{Nothin, Matrix{T}}};
                     ria::RangeIndexingArray{TR,N}=RangeIndexingArray{Float32}(),
                     normalisation::Symbol=:raw) 
 
@@ -138,7 +153,7 @@ Parameters:
 Return: 
     similarityMatrix::Matrix{TR}: the similarity matrix 
 """
-function nblast_allbyall(vectorCloudList::Vector{Matrix{T}};
+function nblast_allbyall(vectorCloudList::Vector{Union{Nothing, Matrix{T}}};
                          ria::RangeIndexingArray{T}=RangeIndexingArray{Float32}(), 
                          normalisation::Symbol=:raw) where {T}
     num = length(vectorCloudList)
@@ -148,7 +163,7 @@ function nblast_allbyall(vectorCloudList::Vector{Matrix{T}};
 
     @inbounds @showprogress 1 "computing similarity matrix..." for targetIndex in 1:num 
         Threads.@threads for queryIndex in 1:num 
-        # for queryIndex in 1:num 
+        #for queryIndex in 1:num 
             similarityMatrix[targetIndex, queryIndex] = nblast( 
                         vectorCloudList[targetIndex], vectorCloudList[queryIndex];
                         ria=ria, targetTree=treeList[targetIndex] )
@@ -156,34 +171,38 @@ function nblast_allbyall(vectorCloudList::Vector{Matrix{T}};
     end 
    
     if normalisation==:normalised || normalisation==:mean 
-        @inbounds for i in 1:num
-            similarityMatrix[:,i] ./= similarityMatrix[i,i]
-        end
+        normalize_similarity_matrix!(similarityMatrix)
     end 
-    if normalisation==:mean 
-        @inbounds for i in 1:num 
-            for j in i+1:num 
-                similarityMatrix[i,j] = (similarityMatrix[i,j] + similarityMatrix[j,i])/T(2)
-                similarityMatrix[j,i] = similarityMatrix[i,j]
-            end 
-        end 
+    if normalisation==:mean
+        set_mean!(similarityMatrix) 
     end
     similarityMatrix
-end 
+end
+
 
 """
-    nblast_allbyall(neuronList::Vector{Neuron}; ria::RangeIndexingArray{TR}=RangeIndexingArray{Float32}(),
+    nblast_allbyall(neuronList::Vector{Neuron}; 
+                    semantic::Bool=false,
+                    ria::RangeIndexingArray{TR}=RangeIndexingArray{Float32}(),
                     normalisation::Symbol=:raw) where {TR}
     Note that the neuron coordinate unit should be nm, it will be translated to micron internally.
 """
-function nblast_allbyall(neuronList::Vector{Neuron}; ria::RangeIndexingArray{TR}=RangeIndexingArray{Float32}(),
-                         normalisation::Symbol=:raw, class::Union{Nothing, UInt8}=nothing) where {TR}
-    # transforming to vector cloud list     
-    vectorCloudList = Vector{Matrix{Float32}}()
+function nblast_allbyall(neuronList::Vector{Neuron{T}};
+                            semantic::Bool=false, 
+                            ria::Union{Nothing, RangeIndexingArray{T,2}}=nothing,
+                            normalisation::Symbol=:raw, 
+                            class::Union{Nothing, UInt8}=nothing) where {T}
+    if ria == nothing 
+        ria = RangeIndexingArray{T}()
+    end
+    # transforming to vector cloud list    
+    vectorCloudList = Vector{Union{Nothing, Matrix{Float32}}}()
     @inbounds @showprogress 1 "tranforming to vector cloud..." for neuron in neuronList
         vectorCloud = VectorCloud(neuron; class=class)
         # use micron instead of nanometer
-        vectorCloud[1:3,:] ./= Float32(1000)
+        if vectorCloud != nothing
+            vectorCloud[1:3,:] ./= T(1000)
+        end 
         push!(vectorCloudList, vectorCloud)
     end
     
