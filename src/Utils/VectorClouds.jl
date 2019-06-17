@@ -16,6 +16,11 @@ export VectorCloud
     end 
 end 
 
+
+@inline function to_kd_tree(self::Nothing)
+    return nothing
+end
+
 """
     query(self::VectorCloud{T}, targetVectorCloud::VectorCloud; 
                 targetTree::KDTree = to_kd_tree(targetVectorCloud))

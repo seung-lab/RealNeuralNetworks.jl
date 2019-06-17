@@ -50,7 +50,7 @@ function Base.show(self::Synapse)
     nothing
 end 
 
-@inline function Base.zero(Synapse)
+@inline function Base.zero(Synapse{T}) where T
     nothing 
 end 
 ############### properties ####################
