@@ -1,8 +1,10 @@
 module PlotRecipes
 using RealNeuralNetworks.Neurons
+using RealNeuralNetworks.Neurons.Segments
 using Colors, ColorSchemes, Clustering
 using Plots
 using Statistics 
+using Plotly
 
 import PyPlot
 PyPlot.svg(true)
@@ -45,17 +47,35 @@ function coloring(dm)
     img
 end 
 
-
 function plot(neuron::Neuron; nodeStep::Integer=10)
+    traces = Plotly.GenericTrace[]
+    # plot soma
+    root = Neurons.get_root_node(neuron)
+    root_trace = Plotly.scatter3d(;x=[root[1]], y=[root[2]], z=[root[3]], 
+                                    mode="markers", marker_size=7)
+    push!(traces, root_trace)
+
+    for i in 1:length(neuron)
+        nodeList = Neurons.get_segment_node_list(neuron, i)
+        x = map(n->n[1], nodeList[1:nodeStep:end]) |> Vector{Float32}
+        y = map(n->n[2], nodeList[1:nodeStep:end]) |> Vector{Float32}
+        z = map(n->n[3], nodeList[1:nodeStep:end]) |> Vector{Float32}
+        segment_trace = Plotly.scatter3d(;x=x,y=y,z=z, mode="lines")
+        push!(traces, segment_trace)
+    end
+    traces
+end 
+
+function plot_v2(neuron::Neuron; nodeStep::Integer=10)
     #using PyPlot
-    PyPlot.pygui(true)
+    #PyPlot.pygui(true)
 
     # plot soma
     root = Neurons.get_root_node(neuron)
     PyPlot.scatter3D([root[1]], [root[2]], [root[3]])
         
     for segment in neuron
-        nodeList = Segments.get_node_list(segment)
+        nodeList = Neurons.Segments.get_node_list(segment)
         x = map(n->n[1], nodeList[1:nodeStep:end])
         y = map(n->n[2], nodeList[1:nodeStep:end])
         z = map(n->n[3], nodeList[1:nodeStep:end])
@@ -68,8 +88,6 @@ function plot_v1(neuron::Neuron; nodeStep::Integer=10)
     plotly()
     for branch in segmentList
         nodeList = Neurons.Segments.get_node_list(branch)
-        #@show length(nodeList)
-        #@show nodeList
         x = map(n->n[1], nodeList[1:nodeStep:end])
         y = map(n->n[2], nodeList[1:nodeStep:end])
         z = map(n->n[3], nodeList[1:nodeStep:end])

@@ -102,8 +102,11 @@ end
             targetTree=KDTree(targetVectorCloud[1:3, :]))
 
 measure the similarity of two neurons using NBLAST algorithm 
+
 Reference:
+```
 Costa, Marta, et al. "NBLAST: rapid, sensitive comparison of neuronal structure and construction of neuron family databases." Neuron 91.2 (2016): 293-311.
+```
 """
 function nblast(target::Matrix{T}, query::Matrix{T}; 
                 ria::RangeIndexingArray{T,2}=RangeIndexingArray{Float32}(), 

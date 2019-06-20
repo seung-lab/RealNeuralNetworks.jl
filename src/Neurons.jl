@@ -1627,6 +1627,23 @@ function get_neuroglancer_precomputed(self::Neuron)
 end
 
 """
+    get_segment_node_list(self::Neuron{T}, segmentId::Integer; with_parent::Bool=true)
+"""
+function get_segment_node_list(self::Neuron{T}, segmentId::Integer; 
+                                        with_parent::Bool=true) where T
+    segment = self[segmentId]
+    segmentNodeList = Segments.get_node_list(segment)
+    parentSegmentId = get_parent_segment_id(self, segmentId)
+    if !with_parent || parentSegmentId < 1 
+        return segmentNodeList
+    else
+        # there exist a parent segment
+        parentSegment = self[parentSegmentId]
+        return [parentSegment[end], segmentNodeList...]
+    end
+end
+
+"""
 return all the pre synapses in a list 
 """
 function get_all_pre_synapse_list(self::Neuron{T}) where T

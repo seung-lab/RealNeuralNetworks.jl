@@ -50,9 +50,10 @@ function Base.show(self::Synapse)
     nothing
 end 
 
-@inline function Base.zero(Synapse{T}) where T
+@inline function Base.zero(self::Synapse) 
     nothing 
-end 
+end
+
 ############### properties ####################
 """
 Note that the psd size was measured using voxel numbers.

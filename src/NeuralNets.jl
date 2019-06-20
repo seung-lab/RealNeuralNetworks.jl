@@ -22,8 +22,7 @@ Parameters:
 Return:
     net: the MetaDiGraph representing neural network.
 """
-function NeuralNet(neuronId2neuron::Dict{Int, Neuron{T}}; 
-                   neuronIdList::Vector{Int} = collect(keys(neuronId2neuron))) where T
+function NeuralNet(neuronList::Vector{Neuron{T}}, neuronIdList::Vector{Int}) where T
     neuronIdSet = Set{Int}(neuronIdList)
     net = NeuralNet(length(neuronIdList))
     
@@ -31,14 +30,14 @@ function NeuralNet(neuronId2neuron::Dict{Int, Neuron{T}};
     neuronId2vertexId = Dict{Int,Int}()
     for (vertexId, neuronId) in enumerate(neuronIdList)
         neuronId2vertexId[neuronId] = vertexId
-        neuron = neuronId2neuron[ neuronId ]
+        neuron = neuronList[ vertexId ]
         set_props!(net, vertexId, Dict(:id=>neuronId, :skeleton=>neuron))
     end 
 
     # add edges 
     selfConnectNeuronIdSet = Set{Int}()
-    for neuronId in neuronIdList 
-        neuron = neuronId2neuron[ neuronId ]
+    for (i,neuronId) in enumerate(neuronIdList)
+        neuron = neuronList[ i ]
         vertexId = neuronId2vertexId[ neuronId ]
         preSynapseList = Neurons.get_all_pre_synapse_list(neuron)
         for preSynapse in preSynapseList 
@@ -123,18 +122,15 @@ function NeuralNet( syn::DataFrame; neuronDict::Dict{Int, Neuron}=Dict{Int,Neuro
     net 
 end
 
-function get_cell_id_list(syn::DataFrame)
-    cellIdSet = Set(syn[:presyn_segid]) ∪ Set(syn[:postsyn_segid]) 
-    return [map(x->round(Int, x), cellIdSet)...]
-end 
 
-function get_cell_id_list(self::NeuralNet)
-    N = nv(self)
-    cellIdList = Vector{Int}(N)
+function get_neuron_id_list(self::NeuralNet)
+    neuronIdList = Vector{Int}()
+    sizehint!(neuronIdList, nv(self))
+
     for v in vertices(self)
-        push!(cellIdList, get_prop(self, v, :id))
+        push!(neuronIdList, get_prop(self, v, :id))
     end 
-    cellIdList 
+    neuronIdList 
 end 
 
 """
@@ -237,7 +233,5 @@ end
 function get_nblast_similarity_matrix(self::NeuralNet)
     error("not implemented.")
 end 
-
-
 
 end # end of module
