@@ -4,7 +4,7 @@ using LinearAlgebra
 using NearestNeighbors
 using ..Utils.Mathes 
 
-const VectorCloud{T} = Matrix{T}
+const VectorCloud = Matrix
 
 export VectorCloud
 

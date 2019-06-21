@@ -83,7 +83,7 @@ build point cloud and dbf when iterating the chunks
 function trace(self::Manifest)
     println("extract point clouds and distance from boundary fields ...")
     
-    pointCloudDBFList = map(x->_get_point_cloud_dbf(self, x), self.rangeList )
+    pointCloudDBFList = pmap(x->_get_point_cloud_dbf(self, x), self.rangeList )
 
     pointClouds = map( x->x[1], pointCloudDBFList )
     pointCloud = vcat(pointClouds ...)

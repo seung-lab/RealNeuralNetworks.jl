@@ -1650,11 +1650,7 @@ function get_all_pre_synapse_list(self::Neuron{T}) where T
     ret = Synapse{T}[]
     for segment in self 
         preSynapseList = Segments.get_pre_synapse_list(segment)
-        for synapse in preSynapseList
-            if !ismissing(synapse)
-                append!(ret, synapse)
-            end
-        end
+        append!(ret, preSynapseList)
     end
     ret 
 end 
@@ -1666,11 +1662,7 @@ function get_all_post_synapse_list(self::Neuron{T}) where T
     ret = Synapse{T}[]
     for segment in self 
         postSynapseList = Segments.get_post_synapse_list(segment)
-        for synapse in postSynapseList
-            if !ismissing(synapse)
-                append!(ret, synapse)
-            end
-        end
+        append!(ret, postSynapseList)
     end
     ret 
 end 

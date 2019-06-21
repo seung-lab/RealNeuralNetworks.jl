@@ -105,10 +105,10 @@ function nblast(targetNeuron::Neuron{T}, queryNeuron::Neuron{T};
     nblast(targetVectorCloud, queryVectorCloud; ria=ria)
 end
 
-function nblast(vectorCloudList::Vector{VectorCloud}, 
+function nblast(vectorCloudList::Vector{X}, 
                 targetIndex::Integer, queryIndex::Integer;
                 ria::RangeIndexingArray{T,2}=RangeIndexingArray{T}(),
-                targetTree=VectorClouds.to_kd_tree(vectorCloud[targetIndex][1:3,:])) where T
+                targetTree=VectorClouds.to_kd_tree(vectorCloud[targetIndex][1:3,:])) where {X<:Matrix{Float32},T}
     target = vectorCloudList[targetIndex]
     query = vectorCloudList[queryIndex]
     return nblast(target, query; ria=ria, targetTree=targetTree)
@@ -185,10 +185,10 @@ Parameters:
 Return: 
     similarityMatrix::Matrix{TR}: the similarity matrix 
 """
-function nblast_allbyall(vectorCloudList::Vector{Matrix{T}};
+function nblast_allbyall(vectorCloudList::Vector{X};
                         ria::RangeIndexingArray{T,2}=RangeIndexingArray{Float32}(),
                         treeList::Vector = map(VectorClouds.to_kd_tree, vectorCloudList)
-                        ) where T
+                        ) where {X<:Matrix{Float32}, T}
     num = length(vectorCloudList)
     similarityMatrix = Matrix{T}(undef, num, num)
 
@@ -277,8 +277,7 @@ end
             ria::Union{Nothing, RangeIndexingArray{T,2}}=nothing,
             treeList::Vector=map(VectorClouds.to_kd_tree, vectorCloudList),
             selfScoreList::Vector=map((v,t)->nblast(v,v; ria=ria, targetTree=t), 
-                                                        vectorCloudList, treeList);
-            ) where T
+                                                        vectorCloudList, treeList)) where T
 """
 function nblast_allbyall_small2big(neuronList::Vector{Neuron{T}}; 
             ria::Union{Nothing, RangeIndexingArray{T,2}}=nothing,
@@ -295,14 +294,13 @@ end
             ria::Union{Nothing, RangeIndexingArray{T,2}}=nothing,
             treeList::Vector=map(VectorClouds.to_kd_tree, vectorCloudList),
             selfScoreList::Vector=map((v,t)->nblast(v,v; ria=ria, targetTree=t), 
-                                                        vectorCloudList, treeList);
-            ) where T
+                                                        vectorCloudList, treeList)) where T
 """
-function nblast_allbyall_small2big(vectorCloudList::Vector{VectorCloud{T}}; 
+function nblast_allbyall_small2big(vectorCloudList::Vector{X}; 
             ria::Union{Nothing, RangeIndexingArray{T,2}}=nothing,
             treeList::Vector=map(VectorClouds.to_kd_tree, vectorCloudList),
             selfScoreList::Vector=map((v,t)->nblast(v,v; ria=ria, targetTree=t), 
-                                                        vectorCloudList, treeList)) where T
+                        vectorCloudList, treeList)) where {X<:Matrix{Float32}, T}
     N = length(vectorCloudList)
     similarityMatrix = ones(Float32, (N,N))
     # Threads.@threads for i in 1:N

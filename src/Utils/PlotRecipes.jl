@@ -2,6 +2,7 @@ module PlotRecipes
 
 using RealNeuralNetworks.Neurons
 using RealNeuralNetworks.Neurons.Segments
+using RealNeuralNetworks.Neurons.Segments.Synapses
 using Colors, ColorSchemes, Clustering
 using Plots
 using Statistics 
@@ -48,7 +49,7 @@ function coloring(dm)
     img
 end 
 
-function plot(neuron::Neuron; nodeStep::Integer=10, semantic::Bool=true)
+function plot(neuron::Neuron; nodeStep::Integer=10, semantic::Bool=true, showSynapse::Bool=true)
     traces = Plotly.GenericTrace[]
     # plot soma
     root = Neurons.get_root_node(neuron)
@@ -70,14 +71,31 @@ function plot(neuron::Neuron; nodeStep::Integer=10, semantic::Bool=true)
             else
                 color = "rgb(127,127,127)"
             end
-            segment_trace = Plotly.scatter3d(;x=x,y=y,z=z, mode="lines", 
+            segmentTrace = Plotly.scatter3d(;x=x,y=y,z=z, mode="lines", 
                                                 line_color=color)
         else
-            segment_trace = Plotly.scatter3d(;x=x,y=y,z=z, mode="lines")
+            segmentTrace = Plotly.scatter3d(;x=x,y=y,z=z, mode="lines")
         end
-        push!(traces, segment_trace)
+        push!(traces, segmentTrace)
+
+        if showSynapse
+            preSynapseList = Neurons.Segments.get_pre_synapse_list(segment)
+            postSynapseList = Neurons.Segments.get_post_synapse_list(segment)
+            preTrace = Plotly.scatter3d(; 
+                                x=map(c->Synapses.get_psd_coordinate(c)[1], preSynapseList),
+                                y=map(c->Synapses.get_psd_coordinate(c)[2], preSynapseList),
+                                z=map(c->Synapses.get_psd_coordinate(c)[3], preSynapseList),
+                                mode="markers", marker_color="rgb(179,66,244)", marker_size=2)
+            postTrace = Plotly.scatter3d(; 
+                                x=map(c->Synapses.get_psd_coordinate(c)[1], postSynapseList),
+                                y=map(c->Synapses.get_psd_coordinate(c)[2], postSynapseList),
+                                z=map(c->Synapses.get_psd_coordinate(c)[3], postSynapseList),
+                                mode="markers", marker_color="rgb(66,223,244)", marker_size=2)
+            push!(traces, preTrace)
+            push!(traces, postTrace)
+        end
     end
-    layout = Plotly.Layout(; title="neuron", showlegend=false)
+    layout = Plotly.Layout(; showlegend=false)
     Plotly.plot(traces, layout)
 end 
 

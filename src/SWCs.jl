@@ -84,6 +84,9 @@ get binary buffer formatted as neuroglancer nodeNet.
     Array{UInt32,2}: Mx2 arrray, node index pair of edges
 reference: 
 https://github.com/seung-lab/neuroglancer/wiki/Skeletons
+
+since there is no node type and radius information in precomputed format, 
+    we won't have a function to read/load precomputed binary data to SWC.
 """
 function get_neuroglancer_precomputed(self::SWC)
     @show get_node_num(self)
@@ -109,7 +112,7 @@ function get_neuroglancer_precomputed(self::SWC)
     bin = Vector{UInt8}(take!(buffer))
     close(buffer)
     return bin 
-end 
+end
 
 function Base.String(self::SWC)
     io = IOBuffer()
