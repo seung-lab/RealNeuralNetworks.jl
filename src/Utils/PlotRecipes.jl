@@ -1,4 +1,5 @@
 module PlotRecipes
+
 using RealNeuralNetworks.Neurons
 using RealNeuralNetworks.Neurons.Segments
 using Colors, ColorSchemes, Clustering
@@ -47,7 +48,7 @@ function coloring(dm)
     img
 end 
 
-function plot(neuron::Neuron; nodeStep::Integer=10)
+function plot(neuron::Neuron; nodeStep::Integer=10, semantic::Bool=true)
     traces = Plotly.GenericTrace[]
     # plot soma
     root = Neurons.get_root_node(neuron)
@@ -55,15 +56,29 @@ function plot(neuron::Neuron; nodeStep::Integer=10)
                                     mode="markers", marker_size=7)
     push!(traces, root_trace)
 
-    for i in 1:length(neuron)
+    for (i,segment) in enumerate(neuron)
         nodeList = Neurons.get_segment_node_list(neuron, i)
         x = map(n->n[1], nodeList[1:nodeStep:end]) |> Vector{Float32}
         y = map(n->n[2], nodeList[1:nodeStep:end]) |> Vector{Float32}
         z = map(n->n[3], nodeList[1:nodeStep:end]) |> Vector{Float32}
-        segment_trace = Plotly.scatter3d(;x=x,y=y,z=z, mode="lines")
+        if semantic
+            class = Neurons.Segments.get_class(segment)
+            if class == Neurons.Segments.AXON_CLASS
+                color = "rgb(255,0,0)"
+            elseif class == Neurons.Segments.DENDRITE_CLASS
+                color = "rgb(0,0,255)"
+            else
+                color = "rgb(127,127,127)"
+            end
+            segment_trace = Plotly.scatter3d(;x=x,y=y,z=z, mode="lines", 
+                                                line_color=color)
+        else
+            segment_trace = Plotly.scatter3d(;x=x,y=y,z=z, mode="lines")
+        end
         push!(traces, segment_trace)
     end
-    traces
+    layout = Plotly.Layout(; title="neuron", showlegend=false)
+    Plotly.plot(traces, layout)
 end 
 
 function plot_v2(neuron::Neuron; nodeStep::Integer=10)
