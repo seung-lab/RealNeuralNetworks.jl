@@ -1502,6 +1502,42 @@ function remove_redundent_nodes(self::Neuron{T}) where T
 end
 
 
+"""
+    make_segment_class_consistent_with_parents_children!(self::Neuron)
+Note that we only adjast the segment class with multiple neighbors and without any synapses
+"""
+function make_segment_class_consistent_with_parent_children!(self::Neuron)
+    error("Not working correctly now.")
+    for (i, segment) in enumerate(self)
+        synapseNum = Segments.get_num_pre_synapses(segment) + 
+                        Segments.get_num_post_synapses(segment)
+        class = Segments.get_class(segment)
+        
+        classSet = Set{UInt8}()
+        parentSegmentId = get_parent_segment_id(self, i)
+        if parentSegmentId > 0
+            parentSegment = self[parentSegmentId]
+            parentSegmentClass = Segments.get_class(parentSegment)
+            push!(classSet, parentSegmentClass)
+        end
+
+        childrenSegmentIdList = get_children_segment_id_list(self, i)
+        for childrenSegmentId in childrenSegmentIdList
+            childrenSegment = self[childrenSegmentId]
+            childrenSegmentClass = Segments.get_class(childrenSegment)
+            push!(classSet, childrenSegmentClass)
+        end
+
+        if length(classSet)==1 && length(childrenSegmentIdList)>0 && synapseNum==0
+            consensusClass = pop!(classSet)
+            if consensusClass != class
+                # need to update the segment class
+                Segments.set_class(segment, consensusClass)
+            end
+        end
+    end 
+end 
+
 ########################## type convertion ####################
 """
     NodeNets.NodeNet( self::Neuron )
@@ -1592,17 +1628,30 @@ function get_neuroglancer_precomputed(self::Neuron)
 end
 
 """
+    get_segment_node_list(self::Neuron{T}, segmentId::Integer; with_parent::Bool=true)
+"""
+function get_segment_node_list(self::Neuron{T}, segmentId::Integer; 
+                                        with_parent::Bool=true) where T
+    segment = self[segmentId]
+    segmentNodeList = Segments.get_node_list(segment)
+    parentSegmentId = get_parent_segment_id(self, segmentId)
+    if !with_parent || parentSegmentId < 1 
+        return segmentNodeList
+    else
+        # there exist a parent segment
+        parentSegment = self[parentSegmentId]
+        return [parentSegment[end], segmentNodeList...]
+    end
+end
+
+"""
 return all the pre synapses in a list 
 """
 function get_all_pre_synapse_list(self::Neuron{T}) where T
     ret = Synapse{T}[]
     for segment in self 
         preSynapseList = Segments.get_pre_synapse_list(segment)
-        for synapse in preSynapseList
-            if !ismissing(synapse)
-                append!(ret, synapse)
-            end
-        end
+        append!(ret, preSynapseList)
     end
     ret 
 end 
@@ -1614,11 +1663,7 @@ function get_all_post_synapse_list(self::Neuron{T}) where T
     ret = Synapse{T}[]
     for segment in self 
         postSynapseList = Segments.get_post_synapse_list(segment)
-        for synapse in postSynapseList
-            if !ismissing(synapse)
-                append!(ret, synapse)
-            end
-        end
+        append!(ret, postSynapseList)
     end
     ret 
 end 

@@ -4,15 +4,15 @@ using LinearAlgebra
 using NearestNeighbors
 using ..Utils.Mathes 
 
-const VectorCloud{T} = Matrix{T}
+const VectorCloud = Matrix
 
 export VectorCloud
 
-@inline function to_kd_tree(self::VectorCloud)
+@inline function to_kd_tree(self::VectorCloud; leafsize::Integer=1)
     if isempty(self)
         return nothing 
     else 
-        return KDTree(self[1:3, :])
+        return KDTree(self[1:3, :], leafsize=leafsize)
     end 
 end 
 

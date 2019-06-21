@@ -1,8 +1,12 @@
 module PlotRecipes
+
 using RealNeuralNetworks.Neurons
+using RealNeuralNetworks.Neurons.Segments
+using RealNeuralNetworks.Neurons.Segments.Synapses
 using Colors, ColorSchemes, Clustering
 using Plots
 using Statistics 
+using Plotly
 
 import PyPlot
 PyPlot.svg(true)
@@ -45,17 +49,66 @@ function coloring(dm)
     img
 end 
 
+function plot(neuron::Neuron; nodeStep::Integer=10, semantic::Bool=true, showSynapse::Bool=true)
+    traces = Plotly.GenericTrace[]
+    # plot soma
+    root = Neurons.get_root_node(neuron)
+    root_trace = Plotly.scatter3d(;x=[root[1]], y=[root[2]], z=[root[3]], 
+                                    mode="markers", marker_size=7)
+    push!(traces, root_trace)
 
-function plot(neuron::Neuron; nodeStep::Integer=10)
+    for (i,segment) in enumerate(neuron)
+        nodeList = Neurons.get_segment_node_list(neuron, i)
+        x = map(n->n[1], nodeList[1:nodeStep:end]) |> Vector{Float32}
+        y = map(n->n[2], nodeList[1:nodeStep:end]) |> Vector{Float32}
+        z = map(n->n[3], nodeList[1:nodeStep:end]) |> Vector{Float32}
+        if semantic
+            class = Neurons.Segments.get_class(segment)
+            if class == Neurons.Segments.AXON_CLASS
+                color = "rgb(255,0,0)"
+            elseif class == Neurons.Segments.DENDRITE_CLASS
+                color = "rgb(0,0,255)"
+            else
+                color = "rgb(127,127,127)"
+            end
+            segmentTrace = Plotly.scatter3d(;x=x,y=y,z=z, mode="lines", 
+                                                line_color=color)
+        else
+            segmentTrace = Plotly.scatter3d(;x=x,y=y,z=z, mode="lines")
+        end
+        push!(traces, segmentTrace)
+
+        if showSynapse
+            preSynapseList = Neurons.Segments.get_pre_synapse_list(segment)
+            postSynapseList = Neurons.Segments.get_post_synapse_list(segment)
+            preTrace = Plotly.scatter3d(; 
+                                x=map(c->Synapses.get_psd_coordinate(c)[1], preSynapseList),
+                                y=map(c->Synapses.get_psd_coordinate(c)[2], preSynapseList),
+                                z=map(c->Synapses.get_psd_coordinate(c)[3], preSynapseList),
+                                mode="markers", marker_color="rgb(179,66,244)", marker_size=2)
+            postTrace = Plotly.scatter3d(; 
+                                x=map(c->Synapses.get_psd_coordinate(c)[1], postSynapseList),
+                                y=map(c->Synapses.get_psd_coordinate(c)[2], postSynapseList),
+                                z=map(c->Synapses.get_psd_coordinate(c)[3], postSynapseList),
+                                mode="markers", marker_color="rgb(66,223,244)", marker_size=2)
+            push!(traces, preTrace)
+            push!(traces, postTrace)
+        end
+    end
+    layout = Plotly.Layout(; showlegend=false)
+    Plotly.plot(traces, layout)
+end 
+
+function plot_v2(neuron::Neuron; nodeStep::Integer=10)
     #using PyPlot
-    PyPlot.pygui(true)
+    #PyPlot.pygui(true)
 
     # plot soma
     root = Neurons.get_root_node(neuron)
     PyPlot.scatter3D([root[1]], [root[2]], [root[3]])
         
     for segment in neuron
-        nodeList = Segments.get_node_list(segment)
+        nodeList = Neurons.Segments.get_node_list(segment)
         x = map(n->n[1], nodeList[1:nodeStep:end])
         y = map(n->n[2], nodeList[1:nodeStep:end])
         z = map(n->n[3], nodeList[1:nodeStep:end])
@@ -68,8 +121,6 @@ function plot_v1(neuron::Neuron; nodeStep::Integer=10)
     plotly()
     for branch in segmentList
         nodeList = Neurons.Segments.get_node_list(branch)
-        #@show length(nodeList)
-        #@show nodeList
         x = map(n->n[1], nodeList[1:nodeStep:end])
         y = map(n->n[2], nodeList[1:nodeStep:end])
         z = map(n->n[3], nodeList[1:nodeStep:end])
