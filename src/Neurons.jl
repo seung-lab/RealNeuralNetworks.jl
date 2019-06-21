@@ -1507,6 +1507,7 @@ end
 Note that we only adjast the segment class with multiple neighbors and without any synapses
 """
 function make_segment_class_consistent_with_parent_children!(self::Neuron)
+    error("Not working correctly now.")
     for (i, segment) in enumerate(self)
         synapseNum = Segments.get_num_pre_synapses(segment) + 
                         Segments.get_num_post_synapses(segment)
