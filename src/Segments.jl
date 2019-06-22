@@ -50,20 +50,15 @@ end
 aggregate features to a named tuple 
 """
 function get_features(self::Segment)
-    pathLength=get_path_length(self) 
-    surfaceArea=get_surface_area(self)
-    volume=get_volume(self)
-    meanRadius=mean(get_radius_list(self))
-    stdRadius=std(get_radius_list(self))
-    numPreSynapses=get_num_pre_synapses(self)
-    numPostSynapses=get_num_post_synapses(self)
-    tortuosity=get_tortuosity(self)
-    centralPreSynapseNum = get_central_pre_synapse_num(self)
-    centralPostSynapseNum = get_central_post_synapse_num(self) 
-    (patchLength=pathLength, surfaceArea=surfaceArea, volume=volume, meanRadius=meanRadius, 
-        stdRadius=stdRadius, numPreSynapses=numPreSynapses, numPostSynapses=numPostSynapses, 
-        centralPreSynapseNum=centralPreSynapseNum, centralPostSynapseNum=centralPostSynapseNum,
-        tortuosity=tortuosity)
+    (pathLength=get_path_length(self),
+        surfaceArea=get_surface_area(self),
+        volume=get_volume(self),
+        meanRadius=mean(get_radius_list(self)),
+        stdRadius=std(get_radius_list(self)),
+        tortuosity=get_tortuosity(self),
+        numPreSynapses=get_num_pre_synapses(self),
+        numPostSynapses=get_num_post_synapses(self),
+        likeFirstAxon=like_first_axon(self))
 end  
 
 """
@@ -132,7 +127,7 @@ note that the unit is # / micron
 end 
 
 """
-    get_central_pre_synapse_density(self::Segment{T}) where T
+    get_central_pre_synapse_num(self::Segment{T}) where T
 
 some axons in zebrafish start with some post synapses which is a great confusion of 
 segment type classification. only considering the central part should benefit the classification.
@@ -149,10 +144,32 @@ end
 function get_central_post_synapse_num(self::Segment{T}; 
                                         start::Float64=0.2, stop::Float64=0.8) where T
     @assert start < stop
-    @assert start>0 && stop<1
+    @assert start>=0. && stop<=1.
     start = max(1, round(Int, start * length(self)))
     stop = min(length(self), round(Int, length(self)*stop))
     self.postSynapseList[start:stop] |> get_synapse_list |> length
+end
+
+"""
+    like_first_axon(self::Segment{T}; ratio::AbstractFloat=0.3) where T 
+
+first axon might have a few postsynapses at the starting part.
+"""
+function like_first_axon(self::Segment{T}; ratio::AbstractFloat=0.3) where T 
+    @assert ratio>=0 && ratio<=1
+
+    synNum11 = get_central_post_synapse_num(self; start=0., stop=ratio)
+    synNum12 = get_central_post_synapse_num(self; start=ratio, stop=1.)
+    if synNum11 > 1 && synNum12==0
+        return true
+    end
+
+    synNum21 = get_central_post_synapse_num(self; start=0.0, stop=1.0-ratio)
+    synNum22 = get_central_post_synapse_num(self; start=1.0-ratio, stop=1.0)
+    if synNum21==0 && synNum22>1
+        return true
+    end 
+    false
 end
 
 @inline function set_class(self::Segment, class::UInt8) self.class=class end
