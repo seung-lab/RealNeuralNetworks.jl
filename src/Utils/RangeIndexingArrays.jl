@@ -1,4 +1,6 @@
 module RangeIndexingArrays
+
+using Statistics
 using DataFrames 
 using CSV
 
@@ -60,6 +62,9 @@ function RangeIndexingArray{T}(df::DataFrame) where {T}
     rangeStringList = map(string, names(df)[2:end] )
     septaList2 = range_string_list2septa_list( rangeStringList )
     
+    # use tuple to make the indexing faster
+    septaList1 = tuple(septaList1...)
+    septaList2 = tuple(septaList2...)
     RangeIndexingArray{T, 2}(tuple(septaList1, septaList2), table)
 end 
 
@@ -168,9 +173,18 @@ function Base.setindex!(self::RangeIndexingArray{T,N}, value::T,
     tableIndexList = map((x,y)->_float_index2table_index(x,y), inds, get_septa_list_tuple(self))
     table = get_table_array(self)
     table[tableIndexList...,] = value 
-end 
+end
 
+"""
+    to_position_only(self::RangeIndexingArray{T,2})
 
-
+convert to position only range indexing array. This is used for dendrite query. 
+The dendrite seems only respect approximity rather than direction.
+"""
+function to_position_only(self::RangeIndexingArray{T,2})
+    table = mean(self.table; dims=2) |> vec
+    septaList = get_septa_list_tuple(self)[1]
+    return RangeIndexingArray(septaList, table)
+end
 
 end # end of module 

@@ -113,6 +113,7 @@ function nblast(vectorCloudList::Vector{X},
     query = vectorCloudList[queryIndex]
     return nblast(target, query; ria=ria, targetTree=targetTree)
 end
+
 """
     nblast( target::VectorCloud, query::VectorCloud;
             ria::RangeIndexingArray{T,2}=RangeIndexingArray{T,2}(),
@@ -227,6 +228,7 @@ function nblast_allbyall(neuronList::Vector{Neuron{T}};
                             k::Int=20,
                             ria::Union{Nothing, RangeIndexingArray{T,2}}=nothing,
                             downscaleFactor::Number=1000,
+                            dendPositionOnly::Bool=true,
                             normalisation::Symbol=:raw) where T
     if ria == nothing 
         ria = RangeIndexingArray{T}()
