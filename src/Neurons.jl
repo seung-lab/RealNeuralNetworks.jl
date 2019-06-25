@@ -461,12 +461,13 @@ function get_pre_synapse_to_soma_path_length_list(self::Neuron{T};
                         segmentPathLengthList::Vector{T}=get_segment_path_length_list(self)) where T
     preSynapseToSomaPathLengthList = Vector{T}()
     for (segmentId, segment) in enumerate( segmentList )
-        preSynapseList = Segments.concatenate_pre_synapses( segment )
+        preSynapseList = Segments.get_pre_synapse_list( segment )
 
         # get the node IDs with synapses attached
         nodeIdList = Int[]
         for (i,synapses) in enumerate(preSynapseList)
             if !ismissing(synapses)
+                @assert !isempty(synapses)
                 push!(nodeIdList, i)
             end
         end
@@ -485,12 +486,13 @@ function get_post_synapse_to_soma_path_length_list(self::Neuron{T};
                         segmentPathLengthList::Vector{T}=get_segment_path_length_list(self)) where T
     postSynapseToSomaPathLengthList = Vector{T}()
     for (segmentId, segment) in enumerate( segmentList )
-        postSynapseList = Segments.concatenate_post_synapses( segment )
+        postSynapseList = Segments.get_post_synapse_list( segment )
 
         # get the node IDs with synapses attached
         nodeIdList = Int[]
         for (i,synapses) in enumerate(postSynapseList)
             if !ismissing(synapses)
+                @assert !isempty(synapses)
                 push!(nodeIdList, i)
             end
         end

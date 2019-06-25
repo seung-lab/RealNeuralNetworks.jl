@@ -105,10 +105,10 @@ function nblast(targetNeuron::Neuron{T}, queryNeuron::Neuron{T};
     nblast(targetVectorCloud, queryVectorCloud; ria=ria)
 end
 
-function nblast(vectorCloudList::Vector{X}, 
+function nblast(vectorCloudList::Vector{Matrix{T}}, 
                 targetIndex::Integer, queryIndex::Integer;
                 ria::RangeIndexingArray{T,2}=RangeIndexingArray{T}(),
-                targetTree=VectorClouds.to_kd_tree(vectorCloud[targetIndex][1:3,:])) where {X<:Matrix{Float32},T}
+                targetTree=VectorClouds.to_kd_tree(vectorCloud[targetIndex][1:3,:])) where {T}
     target = vectorCloudList[targetIndex]
     query = vectorCloudList[queryIndex]
     return nblast(target, query; ria=ria, targetTree=targetTree)
@@ -186,10 +186,10 @@ Parameters:
 Return: 
     similarityMatrix::Matrix{TR}: the similarity matrix 
 """
-function nblast_allbyall(vectorCloudList::Vector{X};
+function nblast_allbyall(vectorCloudList::Vector{Matrix{T}};
                         ria::RangeIndexingArray{T,2}=RangeIndexingArray{Float32}(),
                         treeList::Vector = map(VectorClouds.to_kd_tree, vectorCloudList)
-                        ) where {X<:Matrix{Float32}, T}
+                        ) where {T}
     num = length(vectorCloudList)
     similarityMatrix = Matrix{T}(undef, num, num)
 

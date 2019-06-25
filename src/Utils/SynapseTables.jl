@@ -17,7 +17,8 @@ function preprocess(self::SynapseTable, voxelSize::Tuple)
 
     # this is not working due to a DataFrames bug 
     # https://github.com/JuliaData/DataFrames.jl/issues/1862
-	@showprogress 1 "transform datatype to Float32..." for (key, value) in DataFrames.eachcol(self)
+    # we need to add true to make it work as old ways...
+	@showprogress 1 "transform datatype to Float32..." for (key, value) in DataFrames.eachcol(self, true)
 		#if key!=:presyn_wt && key!=:postsyn_wt
 		#	self[key] = round.(Int, value)
         #end

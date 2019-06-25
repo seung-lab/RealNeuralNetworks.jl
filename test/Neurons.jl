@@ -147,7 +147,7 @@ end
     @test numPreSynapses > 2 
     
     println("\nattaching postsynapses in DataFrame...")
-    postSynapses = CSV.read( joinpath(ASSET_DIR, "$(NEURON_ID).post.synapses.csv") ) 
+    postSynapses = CSV.read( joinpath(ASSET_DIR, "$(NEURON_ID).post.synapses.csv"); copycols=true) 
     @time postSynapses = SynapseTables.preprocess(postSynapses, (5,5,45))
     println("get ", DataFrames.nrow(postSynapses), " synapses.")
     @time Neurons.attach_post_synapses!(neuron, postSynapses)
