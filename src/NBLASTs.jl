@@ -195,8 +195,8 @@ function nblast_allbyall(vectorCloudList::Vector{X};
 
     @inbounds @showprogress 1 "computing similarity matrix..." for targetIndex in 1:num 
     #Threads.@threads for targetIndex in 1:num 
-        #Threads.@threads for queryIndex in 1:num 
-        for queryIndex in 1:num 
+        Threads.@threads for queryIndex in 1:num 
+        #for queryIndex in 1:num 
             similarityMatrix[targetIndex, queryIndex] = nblast( 
                         vectorCloudList, targetIndex, queryIndex;
                         ria=ria, targetTree=treeList[targetIndex] )
@@ -240,7 +240,12 @@ function nblast_allbyall(neuronList::Vector{Neuron{T}};
         similarityMatrixAxon = nblast_allbyall(vectorCloudListAxon; ria=ria)
         vectorCloudListDend = map(x->VectorCloud(x;class=Segments.DENDRITE_CLASS, 
                                     k=k, downscaleFactor=downscaleFactor), neuronList)
-        similarityMatrixDend = nblast_allbyall(vectorCloudListDend; ria=ria)
+        if dendPositionOnly
+            dendRia = RangeIndexingArrays.to_position_only(ria)
+        else
+            dendRia = ria
+        end
+        similarityMatrixDend = nblast_allbyall(vectorCloudListDend; ria=dendRia)
         similarityMatrix = similarityMatrixAxon .+ similarityMatrixDend
     else
         # transforming to vector cloud list    
