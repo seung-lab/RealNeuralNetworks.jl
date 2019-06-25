@@ -15,10 +15,12 @@ function preprocess(self::SynapseTable, voxelSize::Tuple)
     println("drop missing values...")
 	@time DataFrames.dropmissing!(self)
 
+    # this is not working due to a DataFrames bug 
+    # https://github.com/JuliaData/DataFrames.jl/issues/1862
 	@showprogress 1 "transform datatype to Float32..." for (key, value) in DataFrames.eachcol(self)
 		#if key!=:presyn_wt && key!=:postsyn_wt
 		#	self[key] = round.(Int, value)
-		#end
+        #end
         self[key] = Vector{Float32}(value)
     end
 
