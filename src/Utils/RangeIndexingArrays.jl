@@ -58,7 +58,7 @@ The dataframe is a matrix, so the result is 2D
 function RangeIndexingArray{T}(df::DataFrame) where {T}
     table = convert( Matrix{T}, df[1:end, 2:end] )
     
-    septaList1 = range_string_list2septa_list(df[:Column1])
+    septaList1 = range_string_list2septa_list(df[:Column1] |> Vector{String})
     rangeStringList = map(string, names(df)[2:end] )
     septaList2 = range_string_list2septa_list( rangeStringList )
     
