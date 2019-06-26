@@ -467,6 +467,7 @@ function get_pre_synapse_to_soma_path_length_list(self::Neuron{T};
         nodeIdList = Int[]
         for (i,synapses) in enumerate(preSynapseList)
             if !ismissing(synapses)
+                @assert !isempty(synapses)
                 push!(nodeIdList, i)
             end
         end
@@ -491,6 +492,7 @@ function get_post_synapse_to_soma_path_length_list(self::Neuron{T};
         nodeIdList = Int[]
         for (i,synapses) in enumerate(postSynapseList)
             if !ismissing(synapses)
+                @assert !isempty(synapses)
                 push!(nodeIdList, i)
             end
         end
@@ -1650,7 +1652,7 @@ return all the pre synapses in a list
 function get_all_pre_synapse_list(self::Neuron{T}) where T
     ret = Synapse{T}[]
     for segment in self 
-        preSynapseList = Segments.get_pre_synapse_list(segment)
+        preSynapseList = Segments.concatenate_pre_synapses(segment)
         append!(ret, preSynapseList)
     end
     ret 
@@ -1662,7 +1664,7 @@ return all the post synapses in a list
 function get_all_post_synapse_list(self::Neuron{T}) where T
     ret = Synapse{T}[]
     for segment in self 
-        postSynapseList = Segments.get_post_synapse_list(segment)
+        postSynapseList = Segments.concatenate_post_synapses(segment)
         append!(ret, postSynapseList)
     end
     ret 

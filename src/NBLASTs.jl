@@ -105,14 +105,15 @@ function nblast(targetNeuron::Neuron{T}, queryNeuron::Neuron{T};
     nblast(targetVectorCloud, queryVectorCloud; ria=ria)
 end
 
-function nblast(vectorCloudList::Vector{X}, 
+function nblast(vectorCloudList::Vector{Matrix{T}}, 
                 targetIndex::Integer, queryIndex::Integer;
                 ria::RangeIndexingArray{T,2}=RangeIndexingArray{T}(),
-                targetTree=VectorClouds.to_kd_tree(vectorCloud[targetIndex][1:3,:])) where {X<:Matrix{Float32},T}
+                targetTree=VectorClouds.to_kd_tree(vectorCloud[targetIndex][1:3,:])) where {T}
     target = vectorCloudList[targetIndex]
     query = vectorCloudList[queryIndex]
     return nblast(target, query; ria=ria, targetTree=targetTree)
 end
+
 """
     nblast( target::VectorCloud, query::VectorCloud;
             ria::RangeIndexingArray{T,2}=RangeIndexingArray{T,2}(),
@@ -185,17 +186,17 @@ Parameters:
 Return: 
     similarityMatrix::Matrix{TR}: the similarity matrix 
 """
-function nblast_allbyall(vectorCloudList::Vector{X};
+function nblast_allbyall(vectorCloudList::Vector{Matrix{T}};
                         ria::RangeIndexingArray{T,2}=RangeIndexingArray{Float32}(),
                         treeList::Vector = map(VectorClouds.to_kd_tree, vectorCloudList)
-                        ) where {X<:Matrix{Float32}, T}
+                        ) where {T}
     num = length(vectorCloudList)
     similarityMatrix = Matrix{T}(undef, num, num)
 
     @inbounds @showprogress 1 "computing similarity matrix..." for targetIndex in 1:num 
     #Threads.@threads for targetIndex in 1:num 
-        #Threads.@threads for queryIndex in 1:num 
-        for queryIndex in 1:num 
+        Threads.@threads for queryIndex in 1:num 
+        #for queryIndex in 1:num 
             similarityMatrix[targetIndex, queryIndex] = nblast( 
                         vectorCloudList, targetIndex, queryIndex;
                         ria=ria, targetTree=treeList[targetIndex] )
@@ -227,6 +228,7 @@ function nblast_allbyall(neuronList::Vector{Neuron{T}};
                             k::Int=20,
                             ria::Union{Nothing, RangeIndexingArray{T,2}}=nothing,
                             downscaleFactor::Number=1000,
+                            dendPositionOnly::Bool=true,
                             normalisation::Symbol=:raw) where T
     if ria == nothing 
         ria = RangeIndexingArray{T}()
@@ -238,7 +240,12 @@ function nblast_allbyall(neuronList::Vector{Neuron{T}};
         similarityMatrixAxon = nblast_allbyall(vectorCloudListAxon; ria=ria)
         vectorCloudListDend = map(x->VectorCloud(x;class=Segments.DENDRITE_CLASS, 
                                     k=k, downscaleFactor=downscaleFactor), neuronList)
-        similarityMatrixDend = nblast_allbyall(vectorCloudListDend; ria=ria)
+        if dendPositionOnly
+            dendRia = RangeIndexingArrays.to_position_only(ria)
+        else
+            dendRia = ria
+        end
+        similarityMatrixDend = nblast_allbyall(vectorCloudListDend; ria=dendRia)
         similarityMatrix = similarityMatrixAxon .+ similarityMatrixDend
     else
         # transforming to vector cloud list    

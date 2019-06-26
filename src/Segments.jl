@@ -9,6 +9,9 @@ include("Synapses.jl"); using .Synapses
 const Node = NTuple{4,Float32}
 
 # TO-DO: make the data type more general
+# the AbstractSynapseList is used to define function input type
+# the SynapseList is used to create empty synapse list
+const AbstractSynapseList = Vector{<:Union{Missing, Vector{Synapse{Float32}}}}
 const SynapseList = Vector{Union{Missing, Vector{Synapse{Float32}}}}
 
 # classes following SWC format 
@@ -24,8 +27,8 @@ mutable struct Segment{T}
     nodeList        ::Vector{NTuple{4,T}}
     class           ::UInt8
     #boundingBox     ::BoundingBox
-    preSynapseList  ::SynapseList 
-    postSynapseList ::SynapseList 
+    preSynapseList  ::AbstractSynapseList
+    postSynapseList ::AbstractSynapseList
 end 
 
 function Segment()
@@ -35,8 +38,10 @@ end
 
 function Segment(nodeList::Vector{Node}; 
                  class::UInt8=UNDEFINED_CLASS,
-                 preSynapseList::Vector{X}  = SynapseList(missing, length(nodeList)),
-                 postSynapseList::Vector{X} = SynapseList(missing, length(nodeList))) where {X<:Union{Missing, Vector{Synapse{Float32}}}}
+                 preSynapseList::AbstractSynapseList = SynapseList(missing, length(nodeList)),
+                 postSynapseList::AbstractSynapseList = SynapseList(missing, length(nodeList)))
+    @assert length(nodeList) == length(preSynapseList)
+    @assert length(nodeList) == length(postSynapseList)
     Segment(nodeList, class, preSynapseList, postSynapseList)
 end 
 
@@ -73,8 +78,10 @@ end
 @inline function get_connectivity_matrix( self::Segment ) self.connectivityMatrix end 
 @inline function get_bounding_box( self::Segment ) BoundingBox(get_node_list(self)) end 
 @inline function get_class( self::Segment ) self.class end 
+@inline function get_pre_synapse_list(self::Segment) self.preSynapseList end
+@inline function get_post_synapse_list(self::Segment) self.postSynapseList end
 
-function get_synapse_list(self::SynapseList)
+function get_synapse_list(self::AbstractSynapseList)
     ret = Synapse{Float32}[]
     for synapses in self
         if !ismissing(synapses)
@@ -87,11 +94,11 @@ function get_synapse_list(self::SynapseList)
 
 end
 
-@inline function get_pre_synapse_list( self::Segment{T} ) where T 
+@inline function concatenate_pre_synapses( self::Segment{T} ) where T 
     get_synapse_list(self.preSynapseList) 
 end 
 
-@inline function get_post_synapse_list( self::Segment{T} ) where T
+@inline function concatenate_post_synapses( self::Segment{T} ) where T
     get_synapse_list(self.postSynapseList)
 end 
 
@@ -99,11 +106,11 @@ end
 @inline function get_post_synapse( self::Segment, index::Int ) self.postSynapseList[index] end
 
 @inline function get_num_pre_synapses(self::Segment)
-    get_pre_synapse_list(self) |> length
+    concatenate_pre_synapses(self) |> length
 end 
 
 @inline function get_num_post_synapses(self::Segment)
-    get_post_synapse_list(self) |> length
+    concatenate_post_synapses(self) |> length
 end 
 
 """
@@ -319,7 +326,7 @@ function Base.merge(self::Segment, other::Segment)
     class = length(nodeList1)>length(nodeList2) ? get_class(self) : get_class(other)
     # merge synapse list
     preSynapseList1 = get_pre_synapse_list(self)
-    preSynapseList2 = get_pre_synapse_list(other)
+    preSynapseList2 = get_pre_synapse_list(other) 
     postSynapseList1 = get_post_synapse_list(self)
     postSynapseList2 = get_post_synapse_list(other)
 

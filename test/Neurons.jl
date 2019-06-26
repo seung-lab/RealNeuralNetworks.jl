@@ -11,12 +11,12 @@ using LinearAlgebra
 using DataFrames 
 
 const NEURON_ID = 77625
-const ASSERT_DIR = joinpath(@__DIR__, "../asset")
-const SWC_BIN_PATH = joinpath(ASSERT_DIR, "$(NEURON_ID).swc.bin") 
+const ASSET_DIR = joinpath(@__DIR__, "../asset")
+const SWC_BIN_PATH = joinpath(ASSET_DIR, "$(NEURON_ID).swc.bin") 
 const ARBOR_DENSITY_MAP_VOXEL_SIZE = (2000,2000,2000)
 
 @testset "test basic functions of Neurons..." begin 
-    swc = SWCs.load(joinpath(ASSERT_DIR, "example.swc"))
+    swc = SWCs.load(joinpath(ASSET_DIR, "example.swc"))
     nodeNet = NodeNet(swc)
     neuron = Neuron(nodeNet)
     @test length(swc) == length(nodeNet) == Neurons.get_num_nodes(neuron)
@@ -135,7 +135,9 @@ end
     @time Neurons.downsample_nodes(neuron)
 
     println("\nattaching presynapses in DataFrame...")
-    preSynapses = CSV.read( joinpath(ASSERT_DIR, "$(NEURON_ID).pre.synapses.csv") )
+    # the default reading of CSV is immutable and the dropmissing will fail!
+    # https://github.com/JuliaData/DataFrames.jl/issues/1393#issuecomment-500019773
+    preSynapses = CSV.read( joinpath(ASSET_DIR, "$(NEURON_ID).pre.synapses.csv");  copycols=true)
     @time preSynapses = SynapseTables.preprocess(preSynapses, (5,5,45))
     println("get ", DataFrames.nrow(preSynapses), " synapses.")
     @time Neurons.attach_pre_synapses!(neuron, preSynapses)
@@ -145,7 +147,7 @@ end
     @test numPreSynapses > 2 
     
     println("\nattaching postsynapses in DataFrame...")
-    postSynapses = CSV.read( joinpath(ASSERT_DIR, "$(NEURON_ID).post.synapses.csv") ) 
+    postSynapses = CSV.read( joinpath(ASSET_DIR, "$(NEURON_ID).post.synapses.csv"); copycols=true) 
     @time postSynapses = SynapseTables.preprocess(postSynapses, (5,5,45))
     println("get ", DataFrames.nrow(postSynapses), " synapses.")
     @time Neurons.attach_post_synapses!(neuron, postSynapses)

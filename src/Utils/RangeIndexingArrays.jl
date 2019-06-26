@@ -1,4 +1,6 @@
 module RangeIndexingArrays
+
+using Statistics
 using DataFrames 
 using CSV
 
@@ -168,9 +170,22 @@ function Base.setindex!(self::RangeIndexingArray{T,N}, value::T,
     tableIndexList = map((x,y)->_float_index2table_index(x,y), inds, get_septa_list_tuple(self))
     table = get_table_array(self)
     table[tableIndexList...,] = value 
-end 
+end
 
+"""
+    to_position_only(self::RangeIndexingArray{T,2})
 
-
+convert to position only range indexing array. This is used for dendrite query. 
+The dendrite seems only respect approximity rather than direction.
+"""
+function to_position_only(self::RangeIndexingArray{T,2}) where T
+    ret = deepcopy(self)
+    v = mean(ret.table; dims=2) |> vec
+    for j in size(ret.table, 2)
+        ret.table[:,j] = v
+    end
+    @assert size(ret.table, 2) == 10
+    ret
+end
 
 end # end of module 
