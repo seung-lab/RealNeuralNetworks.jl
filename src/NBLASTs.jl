@@ -3,6 +3,7 @@ module NBLASTs
 using NearestNeighbors 
 using LinearAlgebra 
 using ProgressMeter 
+using CSV
 
 using ..RealNeuralNetworks.Utils.VectorClouds 
 using ..RealNeuralNetworks.NodeNets
@@ -157,19 +158,32 @@ end
 """
     normalize the raw NBLAST score by self score of query vector cloud 
 """
-@inline function normalize_similarity_matrix!(similarityMatrix::Matrix{T}) where T
+function normalize_similarity_matrix!(similarityMatrix::Matrix)
     @inbounds for i in 1:size(similarityMatrix, 1)
         similarityMatrix[:,i] ./= similarityMatrix[i,i]
     end
 end
 
-@inline function set_mean!(similarityMatrix::Matrix{T}) where T
+@inline function normalize_similarity_matrix(similarityMatrix::Matrix)
+    ret = copy(similarityMatrix)
+    normalize_similarity_matrix!(ret)
+    ret
+end
+
+function set_mean!(similarityMatrix::Matrix{T}) where {T}
     @inbounds for i in 1:size(similarityMatrix,1) 
         for j in i+1:size(similarityMatrix,2)
             similarityMatrix[i,j] = (similarityMatrix[i,j] + similarityMatrix[j,i])/T(2)
             similarityMatrix[j,i] = similarityMatrix[i,j]
         end 
     end 
+end
+
+
+@inline function set_mean(similarityMatrix::Matrix)
+    ret = copy(similarityMatrix)
+    set_mean!(ret)
+    ret
 end
 
 """
@@ -228,8 +242,8 @@ function nblast_allbyall(neuronList::Vector{Neuron{T}};
                             k::Int=20,
                             ria::Union{Nothing, RangeIndexingArray{T,2}}=nothing,
                             downscaleFactor::Number=1000,
-                            dendPositionOnly::Bool=true,
-                            normalisation::Symbol=:raw) where T
+                            dendPositionOnly::Bool=false,
+                            normalisation::Symbol=:all) where T
     if ria == nothing 
         ria = RangeIndexingArray{T}()
     end
@@ -254,14 +268,9 @@ function nblast_allbyall(neuronList::Vector{Neuron{T}};
         similarityMatrix = nblast_allbyall(vectorCloudList; ria=ria)
     end
     
-    if normalisation==:normalised || normalisation==:mean 
-        normalize_similarity_matrix!(similarityMatrix)
-    end 
-    if normalisation==:mean
-        set_mean!(similarityMatrix) 
-    end
-
-    return similarityMatrix
+    normalizedSimilarityMatrix = normalize_similarity_matrix(similarityMatrix)
+    meanSimilarityMatrix = set_mean(normalizedSimilarityMatrix)
+    return similarityMatrix, normalizedSimilarityMatrix, meanSimilarityMatrix
 end
 
 
