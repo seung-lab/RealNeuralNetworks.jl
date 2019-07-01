@@ -4,6 +4,7 @@ using NearestNeighbors
 using LinearAlgebra 
 using ProgressMeter 
 using CSV
+using Distributed
 
 using ..RealNeuralNetworks.Utils.VectorClouds 
 using ..RealNeuralNetworks.NodeNets
@@ -274,7 +275,10 @@ function nblast_allbyall(neuronList::Vector{Neuron{T}};
 end
 
 
-function small_to_big_nblast!(similarityMatrix, vectorCloudList, i, j, treeList, selfScoreList)
+function small_to_big_nblast!(similarityMatrix::Matrix{T}, vectorCloudList, 
+                                i::Integer, j::Integer, 
+                                ria::RangeIndexingArray, 
+                                treeList, selfScoreList) where {T}
     vectorCloud1 = vectorCloudList[i]
     vectorCloud2 = vectorCloudList[j]
     # always use smaller neuron as query
@@ -297,10 +301,11 @@ end
 """
 function nblast_allbyall_small2big(neuronList::Vector{Neuron{T}}; 
             ria::Union{Nothing, RangeIndexingArray{T,2}}=nothing,
-            treeList::Vector=map(VectorClouds.to_kd_tree, vectorCloudList),
-            selfScoreList::Vector=map((v,t)->nblast(v,v; ria=ria, targetTree=t), 
-                                                        vectorCloudList, treeList)) where T
-    vectorCloudList = map(x->VectorCloud(x; k=10, downscaleFactor=1000), neuronList);
+            k::Int=10) where T
+    vectorCloudList = pmap(x->VectorCloud(x; k=k, downscaleFactor=1000), neuronList);
+    treeList::Vector=pmap(VectorClouds.to_kd_tree, vectorCloudList)
+    selfScoreList::Vector=pmap((v,t)->nblast(v,v; ria=ria, targetTree=t), 
+                                                        vectorCloudList, treeList)
     nblast_allbyall_small2big(vectorCloudList; ria=ria, treeList=treeList, 
                                                 selfScoreList=selfScoreList)
 end
@@ -314,16 +319,17 @@ end
 """
 function nblast_allbyall_small2big(vectorCloudList::Vector{X}; 
             ria::Union{Nothing, RangeIndexingArray{T,2}}=nothing,
-            treeList::Vector=map(VectorClouds.to_kd_tree, vectorCloudList),
-            selfScoreList::Vector=map((v,t)->nblast(v,v; ria=ria, targetTree=t), 
+            treeList::Vector=pmap(VectorClouds.to_kd_tree, vectorCloudList),
+            selfScoreList::Vector=pmap((v,t)->nblast(v,v; ria=ria, targetTree=t), 
                         vectorCloudList, treeList)) where {X<:Matrix{Float32}, T}
     N = length(vectorCloudList)
     similarityMatrix = ones(Float32, (N,N))
     # Threads.@threads for i in 1:N
     @showprogress for i in 1:N
         Threads.@threads for j in (i+1):N
-    #     for j in (i+1):N
-            small_to_big_nblast!(similarityMatrix, vectorCloudList, i, j, treeList, selfScoreList)
+        #for j in (i+1):N
+            small_to_big_nblast!(similarityMatrix, vectorCloudList, i, j, 
+                                                    ria, treeList, selfScoreList)
         end
     end
     similarityMatrix
