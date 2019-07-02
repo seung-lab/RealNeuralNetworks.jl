@@ -50,6 +50,7 @@ end
 function Base.isequal(self::BoundingBox, other::BoundingBox)
     self.minCorner==other.minCorner && self.maxCorner==other.maxCorner 
 end
+
 function Base.:(==)(self::BoundingBox, other::BoundingBox)
     isequal(self, other) 
 end 

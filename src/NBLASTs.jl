@@ -243,25 +243,19 @@ function nblast_allbyall(neuronList::Vector{Neuron{T}};
                             k::Int=20,
                             ria::Union{Nothing, RangeIndexingArray{T,2}}=nothing,
                             downscaleFactor::Number=1000,
-                            dendPositionOnly::Bool=false,
                             normalisation::Symbol=:all) where T
     if ria == nothing 
         ria = RangeIndexingArray{T}()
     end
     if semantic
         # transforming to vector cloud list    
-        vectorCloudListAxon = map(x->VectorCloud(x;class=Segments.AXON_CLASS,
+        axonVectorCloudList = map(x->VectorCloud(x;class=Segments.AXON_CLASS,
                                     k=k, downscaleFactor=downscaleFactor), neuronList)
-        similarityMatrixAxon = nblast_allbyall(vectorCloudListAxon; ria=ria)
-        vectorCloudListDend = map(x->VectorCloud(x;class=Segments.DENDRITE_CLASS, 
+        dendVectorCloudList = map(x->VectorCloud(x;class=Segments.DENDRITE_CLASS, 
                                     k=k, downscaleFactor=downscaleFactor), neuronList)
-        if dendPositionOnly
-            dendRia = RangeIndexingArrays.to_position_only(ria)
-        else
-            dendRia = ria
-        end
-        similarityMatrixDend = nblast_allbyall(vectorCloudListDend; ria=dendRia)
-        similarityMatrix = similarityMatrixAxon .+ similarityMatrixDend
+        axonSimilarityMatrix = nblast_allbyall(axonVectorCloudList; ria=ria)
+        dendSimilarityMatrix = nblast_allbyall(dendVectorCloudList; ria=ria)
+        similarityMatrix = axonSimilarityMatrix .+ dendSimilarityMatrix
     else
         # transforming to vector cloud list    
         vectorCloudList = map(x->VectorCloud(x;class=nothing, 
@@ -274,7 +268,6 @@ function nblast_allbyall(neuronList::Vector{Neuron{T}};
     return similarityMatrix, normalizedSimilarityMatrix, meanSimilarityMatrix
 end
 
-
 function small_to_big_nblast!(similarityMatrix::Matrix{T}, vectorCloudList, 
                                 i::Integer, j::Integer, 
                                 ria::RangeIndexingArray, 
@@ -284,30 +277,16 @@ function small_to_big_nblast!(similarityMatrix::Matrix{T}, vectorCloudList,
     # always use smaller neuron as query
     # normalize the raw score using query neuron
     if length(vectorCloud1) > length(vectorCloud2)
-        score = nblast(vectorCloud1, vectorCloud2; ria=ria, targetTree=treeList[i]) / selfScoreList[j]
+        score = nblast(vectorCloud1, vectorCloud2; ria=ria, targetTree=treeList[i]) 
+        # normalize the score 
+        score /= selfScoreList[j]
     else
-        score = nblast(vectorCloud2, vectorCloud1; ria=ria, targetTree=treeList[j]) / selfScoreList[i]
+        score = nblast(vectorCloud2, vectorCloud1; ria=ria, targetTree=treeList[j]) 
+        # normalize the score
+        score /= selfScoreList[i]
     end
     similarityMatrix[i,j] = score
     similarityMatrix[j,i] = score
-end
-
-"""
-    nblast_allbyall_small2big(neuronList::Vector{Neuron{T}}; 
-            ria::Union{Nothing, RangeIndexingArray{T,2}}=nothing,
-            treeList::Vector=map(VectorClouds.to_kd_tree, vectorCloudList),
-            selfScoreList::Vector=map((v,t)->nblast(v,v; ria=ria, targetTree=t), 
-                                                        vectorCloudList, treeList)) where T
-"""
-function nblast_allbyall_small2big(neuronList::Vector{Neuron{T}}; 
-            ria::Union{Nothing, RangeIndexingArray{T,2}}=nothing,
-            k::Int=10) where T
-    vectorCloudList = pmap(x->VectorCloud(x; k=k, downscaleFactor=1000), neuronList);
-    treeList::Vector=pmap(VectorClouds.to_kd_tree, vectorCloudList)
-    selfScoreList::Vector=pmap((v,t)->nblast(v,v; ria=ria, targetTree=t), 
-                                                        vectorCloudList, treeList)
-    nblast_allbyall_small2big(vectorCloudList; ria=ria, treeList=treeList, 
-                                                selfScoreList=selfScoreList)
 end
 
 """
@@ -328,11 +307,39 @@ function nblast_allbyall_small2big(vectorCloudList::Vector{X};
     @showprogress for i in 1:N
         Threads.@threads for j in (i+1):N
         #for j in (i+1):N
-            small_to_big_nblast!(similarityMatrix, vectorCloudList, i, j, 
+            small_to_big_nblast!(similarityMatrix, vectorCloudList, i, j,
                                                     ria, treeList, selfScoreList)
         end
     end
     similarityMatrix
+end
+
+"""
+    nblast_allbyall_small2big(neuronList::Vector{Neuron{T}}; 
+            ria::Union{Nothing, RangeIndexingArray{T,2}}=nothing,
+            treeList::Vector=map(VectorClouds.to_kd_tree, vectorCloudList),
+            selfScoreList::Vector=map((v,t)->nblast(v,v; ria=ria, targetTree=t), 
+                                                        vectorCloudList, treeList)) where T
+"""
+function nblast_allbyall_small2big(neuronList::Vector{Neuron{T}}; 
+            ria::Union{Nothing, RangeIndexingArray{T,2}}=nothing,
+            semantic::Bool=false,
+            k::Int=20) where T
+    if semantic
+        # transforming to vector cloud list    
+        axonVectorCloudList = pmap(x->VectorCloud(x; class=Segments.AXON_CLASS,
+                                    k=k, downscaleFactor=downscaleFactor), neuronList)
+        dendVectorCloudList = pmap(x->VectorCloud(x; class=Segments.DENDRITE_CLASS, 
+                                    k=k, downscaleFactor=downscaleFactor), neuronList)
+        error("not implemented.")
+    else
+        vectorCloudList = pmap(x->VectorCloud(x; k=k, downscaleFactor=1000), neuronList);
+        treeList::Vector=pmap(VectorClouds.to_kd_tree, vectorCloudList)
+        selfScoreList::Vector=pmap((v,t)->nblast(v,v; ria=ria, targetTree=t), 
+                                                            vectorCloudList, treeList)
+        return nblast_allbyall_small2big(vectorCloudList; ria=ria, 
+                                            treeList=treeList, selfScoreList=selfScoreList)
+    end
 end
 
 end # end of module
