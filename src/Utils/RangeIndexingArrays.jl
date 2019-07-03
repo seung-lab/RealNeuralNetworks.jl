@@ -134,6 +134,11 @@ end
     fill!(self.table, x)
 end 
 
+@inline function Base.lastindex(self::RangeIndexingArray{T,N}, dim::Integer) where {T,N}
+    table = get_table_array(self)
+    lastindex(table, dim)
+end
+
 function Base.getindex(self::RangeIndexingArray{T,N}, idxes::Integer...) where {T,N}
     table = get_table_array(self)
     return table[idxes...]

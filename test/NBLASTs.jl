@@ -49,35 +49,28 @@ const k = 20
     # 77641	50891.03 	101011.08
     RNBLAST_RESULT = Float32[86501.20 	53696.72; 50891.03 	101011.08]
     println("\ncompute similarity matrix...")
-    @time similarityMatrix = NBLASTs.nblast_allbyall(neuronList; ria=ria, k=k,
-                                                        downscaleFactor=1000, 
-                                                        normalisation=:raw)
-    @show similarityMatrix
-    @test isapprox.(similarityMatrix,  RNBLAST_RESULT) |> all
+    @time rawSimilarityMatrix, normalizedSimilarityMatrix, meanSimilarityMatrix = NBLASTs.nblast_allbyall(neuronList; ria=ria, k=k,
+                                                        downscaleFactor=1000)
+    @show rawSimilarityMatrix
+    @test isapprox.(rawSimilarityMatrix,  RNBLAST_RESULT) |> all
     
-    vectorCloudList = [vectorCloud1, vectorCloud2]
-    RNBLAST_RESULT = Float32[86501.20 	53696.72; 50891.03 	101011.08]
-    @time similarityMatrix = NBLASTs.nblast_allbyall(vectorCloudList; ria=ria)
-    @show similarityMatrix
-    @test isapprox.(similarityMatrix,  RNBLAST_RESULT) |> all
- 
+
     println("\ncompute normalised similarity matrix...")
     RNBLAST_RESULT = Float32[1.0 0.5315924; 0.5883275 1.0]
-    @time similarityMatrix = NBLASTs.nblast_allbyall(neuronList; ria=ria, 
-                                                        downscaleFactor=1000,
-                                                        normalisation=:normalised)
-    @show similarityMatrix
-    @test isapprox.(similarityMatrix,  RNBLAST_RESULT) |> all
-
+    @show normalizedSimilarityMatrix
+    @test isapprox.(normalizedSimilarityMatrix,  RNBLAST_RESULT) |> all
     
     RNBLAST_RESULT = Float32[1.0 0.5599599; 0.5599599 1.0]
     println("\ncompute mean similarity matrix...")
-    @time similarityMatrix = NBLASTs.nblast_allbyall(neuronList; ria=ria, 
-                                                     downscaleFactor=1000,
-                                                     normalisation=:mean)
-    @show similarityMatrix
-    @test isapprox.(similarityMatrix,  RNBLAST_RESULT) |> all
-
+    @show meanSimilarityMatrix
+    @test isapprox.(meanSimilarityMatrix,  RNBLAST_RESULT) |> all
+    
+    vectorCloudList = [vectorCloud1, vectorCloud2]
+    RNBLAST_RESULT = Float32[86501.20 	53696.72; 50891.03 	101011.08]
+    @time rawSimilarityMatrix = NBLASTs.nblast_allbyall(vectorCloudList; ria=ria)
+    @show rawSimilarityMatrix
+    @test isapprox.(rawSimilarityMatrix,  RNBLAST_RESULT) |> all
+ 
         
     println("\ncompute nblast score using default zfish score table ...")
     # this test will not work since neuron reading from swc/swc.bin 
@@ -89,10 +82,13 @@ const k = 20
     # @test isapprox(score, -63722.48f0)
     
     println("\ntest similarity measurement for dendrites...")
-    @time similarityMatrix = NBLASTs.nblast_allbyall(neuronList; ria=ria, k=k,
-                                                        downscaleFactor=1000,
-                                                        normalisation=:raw)
-    @show similarityMatrix
+    @time rawSimilarityMatrix, normalizedSimilarityMatrix, meanSimilarityMatrix = 
+                NBLASTs.nblast_allbyall(neuronList; ria=ria, k=k, downscaleFactor=1000)
+    @show rawSimilarityMatrix
     #println("similarity matrix of dendrites: ", similarityMatrix)
+
+    println("compute similarity score with semantic small-to-big...")
+    semanticSmall2bigSimilarityMatrix = 
+                NBLASTs.nblast_allbyall_small2big(neuronList; k=k, ria=ria, semantic=true);
 
 end # end of test module
