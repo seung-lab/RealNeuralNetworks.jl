@@ -133,8 +133,8 @@ function nblast(target::Matrix{T}, query::Matrix{T};
                 targetTree::Union{Nothing, KDTree}=VectorClouds.to_kd_tree(target)) where T
    
     if isempty(target) || isempty(query) 
-        # if one of them is empty, return zero 
-        return zero(T)
+        # if one of them is empty, return the largest difference
+        return ria[end, 1]
     end 
     
     totalScore = zero(T)
@@ -217,7 +217,6 @@ function nblast_allbyall(vectorCloudList::Vector{Matrix{T}};
                         ria=ria, targetTree=treeList[targetIndex] )
         end 
     end 
-   
     similarityMatrix
 end
 
@@ -225,8 +224,7 @@ end
     nblast_allbyall(neuronList::Vector{Neuron{T}}; 
                     semantic::Bool=false,
                     k::Int=20,
-                    ria::RangeIndexingArray{TR}=RangeIndexingArray{Float32}(),
-                    normalisation::Symbol=:raw) where {TR}
+                    ria::RangeIndexingArray{TR}=RangeIndexingArray{Float32}()) where {T}
     Note that the neuron coordinate unit should be nm, it will be translated to micron internally.
     The semantic NBLAST will find the nearest vector pair with same semantic labeling. 
     An axonal vector in neuron A will find closest axonal vector in neuron B.
@@ -242,8 +240,7 @@ function nblast_allbyall(neuronList::Vector{Neuron{T}};
                             semantic::Bool=false, 
                             k::Int=20,
                             ria::Union{Nothing, RangeIndexingArray{T,2}}=nothing,
-                            downscaleFactor::Number=1000,
-                            normalisation::Symbol=:all) where T
+                            downscaleFactor::Number=1000) where T
     if ria == nothing 
         ria = RangeIndexingArray{T}()
     end
@@ -255,17 +252,17 @@ function nblast_allbyall(neuronList::Vector{Neuron{T}};
                                     k=k, downscaleFactor=downscaleFactor), neuronList)
         axonSimilarityMatrix = nblast_allbyall(axonVectorCloudList; ria=ria)
         dendSimilarityMatrix = nblast_allbyall(dendVectorCloudList; ria=ria)
-        similarityMatrix = axonSimilarityMatrix .+ dendSimilarityMatrix
+        rawSimilarityMatrix = axonSimilarityMatrix .+ dendSimilarityMatrix
     else
         # transforming to vector cloud list    
         vectorCloudList = map(x->VectorCloud(x;class=nothing, 
                                     k=k, downscaleFactor=downscaleFactor), neuronList)
-        similarityMatrix = nblast_allbyall(vectorCloudList; ria=ria)
+        rawSimilarityMatrix = nblast_allbyall(vectorCloudList; ria=ria)
     end
     
-    normalizedSimilarityMatrix = normalize_similarity_matrix(similarityMatrix)
+    normalizedSimilarityMatrix = normalize_similarity_matrix(rawSimilarityMatrix)
     meanSimilarityMatrix = set_mean(normalizedSimilarityMatrix)
-    return similarityMatrix, normalizedSimilarityMatrix, meanSimilarityMatrix
+    return rawSimilarityMatrix, normalizedSimilarityMatrix, meanSimilarityMatrix
 end
 
 function small_to_big_nblast!(rawSimilarityMatrix::Matrix{T}, 
