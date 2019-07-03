@@ -163,49 +163,56 @@ function read_cell_id_list( fileName::String )
         end 
     end
     return idList
-end 
+end
+
+@everywhere function trace_queue(queueName::AbstractString)
+    queueUrl = SQS.get_queue_url(QueueName=queueName)["QueueUrl"]
+    while true
+        println("try to pull task from SQS queue: $(args["sqsqueue"])")
+        local message 
+        try 
+            message = SQS.receive_message(QueueUrl=queueUrl)["messages"][1]
+        catch err 
+            @warn("no task fetched, could be all done!")
+            println(err)
+            break
+            #println("sleep for 30 secs and then retry")
+            #sleep(30)
+            #continue 
+        end 
+        receiptHandle = message["ReceiptHandle"]
+        id = Meta.parse(message["Body"])
+        println("tracing cell: $(id)")
+        try 
+            trace(id; swcDir=args["swcdir"], mip=args["mip"], 
+                    meshName=args["meshname"],
+                    voxelSize = args["voxelsize"],
+                    segmentationLayer = args["segmentationlayer"])
+        catch err 
+            if isa(err, KeyError)
+                println("key not found: $(id)")
+            else 
+                rethrow() 
+            end 
+        end
+        println("delete task in queue: $(receiptHandle)")
+        SQS.delete_message(QueueUrl=queueUrl, ReceiptHandle=receiptHandle)
+    end
+end
 
 function main()
     args = parse_commandline()
     @show args
     if args["idlistfile"] != nothing
         idList = read_cell_id_list(args["idlistfile"])
-        map(id -> trace(id; swcDir=args["swcdir"], mip=args["mip"], 
+        pmap(id -> trace(id; swcDir=args["swcdir"], mip=args["mip"], 
                          meshName=args["meshname"],
                          voxelSize = args["voxelsize"],
                          segmentationLayer=args["segmentationlayer"]), idList)
-    elseif args["sqsqueue"] != nothing 
-        queueUrl = SQS.get_queue_url(QueueName=args["sqsqueue"])["QueueUrl"]
-        while true
-            println("try to pull task from SQS queue: $(args["sqsqueue"])")
-            local message 
-            try 
-                message = SQS.receive_message(QueueUrl=queueUrl)["messages"][1]
-            catch err 
-                @warn("no task fetched, could be all done!")
-                println(err)
-                println("sleep for 30 secs and then retry")
-                sleep(30)
-                continue 
-            end 
-            receiptHandle = message["ReceiptHandle"]
-            id = Meta.parse(message["Body"])
-            println("tracing cell: $(id)")
-            try 
-                trace(id; swcDir=args["swcdir"], mip=args["mip"], 
-                      meshName=args["meshname"],
-                      voxelSize = args["voxelsize"],
-                      segmentationLayer = args["segmentationlayer"])
-            catch err 
-                if isa(err, KeyError)
-                    println("key not found: $(id)")
-                else 
-                    rethrow() 
-                end 
-            end
-            println("delete task in queue: $(receiptHandle)")
-            SQS.delete_message(QueueUrl=queueUrl, ReceiptHandle=receiptHandle)
-        end 
+    elseif args["sqsqueue"] != nothing
+        @sync for pid in 1:Distributed.nworkers()
+            remote_do(trace_queue(args["sqsqueue"]), pid)
+        end
     else 
         trace(args["neuronid"]; swcDir = args["swcdir"],  
               mip=args["mip"], voxelSize=args["voxelsize"],
