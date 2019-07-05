@@ -42,6 +42,31 @@ function reorder_distance_matrix(distanceMatrix::Array, clust::Hclust)
 	reorderedDistanceMatrix
 end 
 
+function plot_connectivity_matrix(orderedConnMatrix::SparseMatrixCSC{T}; 
+                                    title="connectivity matrix",
+                                    max_size::Real=10) where T
+    X,Y,V = SparseArrays.findnz(orderedConnMatrix)
+    # transform to float and normalize to max_size
+    V = Float32.(V)
+    V ./= maximum(V) / Float32(max_size)
+    @show maximum(V)
+
+    trace = PlotlyJS.scatter(; x=X, y=Y, 
+        mode="markers", 
+        marker=attr(size=Float32.(V)./Float32(maximum(V)/), line_width=0, opacity=0.4))
+    data = [trace,]
+
+    layout = 
+    Layout(; title=title,
+        width=800,
+        height=800,
+        xaxis = attr(title="presynapse", range=(1, size(orderedConnMatrix,1))),
+        yaxis= attr(title="postsynapse", range=(1, size(orderedConnMatrix,2)))
+    )
+
+    return PlotlyJS.plot(data, layout)
+end
+
 function coloring(dm)
     img = Array{RGB{Float64}}(size(dm))
     for i in eachindex(dm)
