@@ -325,7 +325,7 @@ end
 """
 function nblast_allbyall_small2big(neuronList::Vector{Neuron{T}}; 
             ria::Union{Nothing, RangeIndexingArray{T,2}}=RangeIndexingArray{Float32}(),
-            downscaleFactor::Number=1000,
+            downscaleFactor::Real=1000,
             semantic::Bool=false, k::Int=20) where T
     if semantic
         # transforming to vector cloud list    
@@ -339,7 +339,7 @@ function nblast_allbyall_small2big(neuronList::Vector{Neuron{T}};
                                     dendVectorCloudList; ria=ria, normalized=false)
         # add a small number to avoid divid by zero error
         similarityMatrix = (axonRawSimilarityMatrix .+ dendRawSimilarityMatrix) ./ 
-                                    (axonSelfScoreMatrix .+ dendSelfScoreMatrix .+ 1e-6)
+                                    (axonSelfScoreMatrix .+ dendSelfScoreMatrix .+ T(1e-6))
         @assert !any(isnan.(similarityMatrix))
         return similarityMatrix
     else
