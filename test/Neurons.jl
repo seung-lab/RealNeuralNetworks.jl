@@ -15,18 +15,23 @@ const ASSET_DIR = joinpath(@__DIR__, "../asset")
 const SWC_BIN_PATH = joinpath(ASSET_DIR, "$(NEURON_ID).swc.bin") 
 const ARBOR_DENSITY_MAP_VOXEL_SIZE = (2000,2000,2000)
 
-@testset "test basic functions of Neurons..." begin 
+@testset "test data structure transformation..." begin 
     swc = SWCs.load(joinpath(ASSET_DIR, "example.swc"))
     nodeNet = NodeNet(swc)
     neuron = Neuron(nodeNet)
+    swc = SWC(neuron)
+    nodeNet = NodeNet(neuron)
     @test length(swc) == length(nodeNet) == Neurons.get_num_nodes(neuron)
 end 
 
 @testset "test Neurons" begin
     println("\nload swc of a real neuron...")
-    @time swc = SWCs.load_swc_bin( SWC_BIN_PATH )
-
+    swc = SWCs.load_swc_bin( SWC_BIN_PATH )
     neuron = Neuron( swc )
+
+    println("\nreset root node...")
+    @time Neurons.reset_root(neuron, (258150.0f0, 135510.0f0, 778175.0f0))
+
     #neuron = Neurons.resample(neuron, Float32(40))
     println("\nget node list ...")
     @time nodeList = Neurons.get_node_list(neuron)

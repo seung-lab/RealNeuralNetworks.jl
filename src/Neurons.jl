@@ -33,6 +33,14 @@ end
 a neuron modeled by interconnected segments 
 """
 function Neuron(nodeNet::NodeNet{T}) where T
+    radii = NodeNets.get_radii(nodeNet)
+    # locate the root node with largest radius
+    # theoritically this should be the center of soma 
+    _, rootNodeId = findmax(radii)
+    Neuron(nodeNet, rootNodeId)
+end
+
+function Neuron(nodeNet::NodeNet{T}, rootNodeId::Integer) where T
     # the properties from nodeNet
     nodes = NodeNets.get_node_list(nodeNet)
     radii = NodeNets.get_radii(nodeNet)
@@ -42,9 +50,6 @@ function Neuron(nodeNet::NodeNet{T}) where T
     collectedFlagVec = falses(length(nodes))
     # connectivity matrix of nodes in nodeNet 
     nodesConnectivityMatrix  = NodeNets.get_connectivity_matrix(nodeNet)
-    # locate the root node with largest radius
-    # theoritically this should be the center of soma 
-    _, rootNodeId = findmax(radii)
     seedNodeIdList::Vector = [rootNodeId]
     # grow the main net
     neuron = Neuron!(rootNodeId, nodeNet, collectedFlagVec)
@@ -1687,6 +1692,17 @@ function get_num_post_synapses(self::Neuron)
 end 
 
 ############################### manipulations ##########################################
+"""
+    reset_root(self::Neuron{T}, annotation_root_node::NTuple{3,T})
+
+change the root node according to an annotation. 
+Note that this operation will lost all the semantic information of segments.
+"""
+function reset_root(self::Neuron{T}, annotationRootNode::NTuple{3,T}) where T
+    nodeNet = NodeNet(self)
+    rootId = NodeNets.find_closest_node_id(nodeNet, annotationRootNode)
+    Neuron(nodeNet, rootId)
+end
 
 """
     attach_pre_synapses!(self::Neuron{T}, synapseList::Vector{Synapse{T}})

@@ -10,12 +10,12 @@ import LightGraphs
 import BigArrays
 using SparseArrays 
 import DataStructures: IntSet 
+using NearestNeighbors
+
 
 const OFFSET = (zero(UInt32), zero(UInt32), zero(UInt32))
-
 # rescale the skeleton
 const EXPANSION = (one(UInt32), one(UInt32), one(UInt32))
-
 # control the removing points around path based on DBF
 const REMOVE_PATH_SCALE = 3 
 const REMOVE_PATH_CONST = 4
@@ -225,6 +225,27 @@ end
     end 
 end
 
+function node_list_to_array(nodeList::Vector{NTuple{4,T}}) where T
+    N = length(nodeList)
+    ret = Array{T,2}(undef, 4, N)
+    for (i,node) in enumerate(nodeList)
+        ret[:,i] = [node...]
+    end
+    ret
+end
+
+"""
+    get_node_array(self::NodeNet)
+
+Return:
+    nodeArray::Array{T,2}: size is (nd, np), nd is the dimention of each node, 
+                np is the number of nodes
+"""
+@inline function get_node_array(self::NodeNet)
+    nodeList = get_node_list(self)
+    node_list_to_array(nodeList)
+end
+
 """ 
 the connectivity matrix is symmetric, so the connection is undirected
 """
@@ -324,6 +345,23 @@ function Base.UnitRange(self::NodeNet)
             minCoordinates[2]:maxCoordinates[2], 
             minCoordinates[3]:maxCoordinates[3]]
 end 
+
+"""
+    find_closest_node_id(self::NodeNet{T}, point::NTuple{3,T}) where T
+
+look for the id of the closest node
+"""
+@inline function find_closest_node_id(self::NodeNet{T}, point::NTuple{N,T}) where {N,T}
+    @assert N>=3 && N<=4
+    find_closest_node_id(self, [point[1:3]...])
+end
+
+function find_closest_node_id(self::NodeNet{T}, point::Vector{T}) where T
+    nodeArray = get_node_array(self)
+    kdtree = KDTree(nodeArray; leafsize=10)
+    idxs, _ = knn(kdtree, point, 1)
+    return idxs[1]
+end
 
 ##################### transformation ##########################
 """
