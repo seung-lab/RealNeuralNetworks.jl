@@ -49,21 +49,20 @@ end
 
 
 ###################### properties ###################
-
 """
     get_features(self::Segment) 
 aggregate features to a named tuple 
 """
 function get_features(self::Segment)
     (pathLength=get_path_length(self),
-        surfaceArea=get_surface_area(self),
-        volume=get_volume(self),
-        meanRadius=mean(get_radius_list(self)),
-        stdRadius=std(get_radius_list(self)),
-        tortuosity=get_tortuosity(self),
-        numPreSynapses=get_num_pre_synapses(self),
-        numPostSynapses=get_num_post_synapses(self),
-        likeFirstAxon=like_first_axon(self))
+     surfaceArea=get_surface_area(self),
+     volume=get_volume(self),
+     meanRadius=mean(get_radius_list(self)),
+     stdRadius=std(get_radius_list(self)),
+     tortuosity=get_tortuosity(self),
+     numPreSynapses=get_num_pre_synapses(self),
+     numPostSynapses=get_num_post_synapses(self),
+     likeFirstAxon=like_first_axon(self))
 end  
 
 """
