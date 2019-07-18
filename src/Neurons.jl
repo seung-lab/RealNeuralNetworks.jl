@@ -37,15 +37,13 @@ function Neuron(nodeNet::NodeNet{T}) where T
     # locate the root node with largest radius
     # theoritically this should be the center of soma 
     _, rootNodeId = findmax(radii)
-    Neuron(nodeNet, rootNodeId)
+    Neuron(nodeNet, rootNodeId; radii=radii)
 end
 
-function Neuron(nodeNet::NodeNet{T}, rootNodeId::Integer) where T
+function Neuron(nodeNet::NodeNet{T}, rootNodeId::Integer; 
+                radii=NodeNets.get_radii(nodeNet)) where T
     # the properties from nodeNet
     nodes = NodeNets.get_node_list(nodeNet)
-    radii = NodeNets.get_radii(nodeNet)
-    # TO-DO: add node class information
-    #nodeClassList = NodeNets.get_node_class_list(nodeNet)
     # flags labeling whether this node was collected to the net
     collectedFlagVec = falses(length(nodes))
     # connectivity matrix of nodes in nodeNet 
@@ -54,7 +52,6 @@ function Neuron(nodeNet::NodeNet{T}, rootNodeId::Integer) where T
     # grow the main net
     neuron = Neuron!(rootNodeId, nodeNet, collectedFlagVec)
     # println(sum(collectedFlagVec), " visited voxels in ", length(collectedFlagVec))
-    #return neuron # only use the main segment for evaluation
 
     while !all(collectedFlagVec)
         # println(sum(collectedFlagVec), " visited voxels in ", length(collectedFlagVec))
@@ -104,6 +101,7 @@ function Neuron!(seedNodeId::Integer, nodeNet::NodeNet{T}, collectedFlagVec::Bit
     childSegmentIdList  = Vector{Int}()
 
     nodes = NodeNets.get_node_list(nodeNet)
+    nodeClassList = NodeNets.get_node_class_list(nodeNet)
     nodesConnectivityMatrix = NodeNets.get_connectivity_matrix( nodeNet )
     @assert length(collectedFlagVec) == length(nodes)
     
@@ -117,9 +115,18 @@ function Neuron!(seedNodeId::Integer, nodeNet::NodeNet{T}, collectedFlagVec::Bit
         # grow a segment from seed
         nodeListInSegment = Vector{NTuple{4, T}}()
         seedNodeIdList = [seedNodeId]
+        #firstSeedNodeId = seedNodeId
+        #segmentClass = nodeClassList[seedNodeId]
         while true
             # construct this segment
             seedNodeId = pop!(seedNodeIdList)
+            # make sure that all the node class is the same with the seed
+            #if segmentClass != nodeClassList[seedNodeId]
+            #    @show firstSeedNodeId, segmentClass, seedNodeId, nodeClassList[seedNodeId]
+            #end
+            # Note that this assertion do not work, might be a bug somewhere!
+            #@assert segmentClass == nodeClassList[seedNodeId]
+
             # push the seed node
             push!(nodeListInSegment, nodes[seedNodeId])
             # label this node index as collected
@@ -137,7 +144,8 @@ function Neuron!(seedNodeId::Integer, nodeNet::NodeNet{T}, collectedFlagVec::Bit
             else
                 # finish constructing this segment
                 # because this is the terminal branching point or multiple branching points
-                segment = Segment(nodeListInSegment)
+                segmentClass = nodeClassList[seedNodeId]
+                segment = Segment(nodeListInSegment; class = segmentClass)
                 push!(segmentList, segment)
                 if segmentParentId != -1
                     # this is not the root segment, establish the segment connection
