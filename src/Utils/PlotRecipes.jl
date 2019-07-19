@@ -65,7 +65,8 @@ function plot_connectivity_matrix(orderedConnMatrix::SparseMatrixCSC{T};
     return PlotlyJS.plot(data, layout)
 end
 
-function plot(neuron::Neuron; nodeStep::Integer=10, semantic::Bool=true, showSynapse::Bool=true)
+function plot(neuron::Neuron; nodeStep::Integer=1, semantic::Bool=true, 
+                showgrid::Bool=true, showSynapse::Bool=true)
     traces = PlotlyJS.GenericTrace[]
     # plot soma
     root = Neurons.get_root_node(neuron)
@@ -111,7 +112,12 @@ function plot(neuron::Neuron; nodeStep::Integer=10, semantic::Bool=true, showSyn
             push!(traces, postTrace)
         end
     end
-    layout = PlotlyJS.Layout(; showlegend=false)
+    layout = PlotlyJS.Layout(; showlegend=false, showticklabels=false,
+                            scene=attr( 
+                                xaxis=attr(showgrid=showgrid, showticklabels=false),
+                                yaxis=attr(showgrid=showgrid, showticklabels=false),
+                                zaxis=attr(showgrid=showgrid, showticklabels=false))
+    )
     PlotlyJS.plot(traces, layout)
 end 
 
