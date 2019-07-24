@@ -132,9 +132,13 @@ function nblast(target::Matrix{T}, query::Matrix{T};
                 ria::RangeIndexingArray{T,2}=RangeIndexingArray{Float32}(), 
                 targetTree::Union{Nothing, KDTree}=VectorClouds.to_kd_tree(target)) where T
    
-    if isempty(target) || isempty(query) 
+    if isempty(target) 
+        #return ria[end, 1] * size(query, 2)
+        return -Inf32
+    elseif isempty(query) 
         # if one of them is empty, return the largest difference
-        return ria[end, 1]
+        #return ria[end, 1] * size(target, 2)
+        return -Inf32
     end 
     
     totalScore = zero(T)
