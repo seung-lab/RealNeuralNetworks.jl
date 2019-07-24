@@ -22,7 +22,7 @@ function preprocess(self::SynapseTable, voxelSize::Tuple)
 		#if key!=:presyn_wt && key!=:postsyn_wt
 		#	self[key] = round.(Int, value)
         #end
-        self[key] = Vector{Float32}(value)
+        self[!, key] = Vector{Float32}(value)
     end
 
     println("remove self connections...")
@@ -44,25 +44,25 @@ function preprocess(self::SynapseTable, voxelSize::Tuple)
     end
 
     println("transform to physical coordinate...")
-    self[:BBOX_bx]      = (self[:BBOX_bx]   .- one(Float32)) .* voxelSize[1]
-    self[:BBOX_by]      = (self[:BBOX_by]   .- one(Float32)) .* voxelSize[2]
-    self[:BBOX_bz]      = (self[:BBOX_bz]   .- one(Float32)) .* voxelSize[3]
+    self[!, :BBOX_bx]      = (self[!, :BBOX_bx]   .- one(Float32)) .* voxelSize[1]
+    self[!, :BBOX_by]      = (self[!, :BBOX_by]   .- one(Float32)) .* voxelSize[2]
+    self[!, :BBOX_bz]      = (self[!, :BBOX_bz]   .- one(Float32)) .* voxelSize[3]
     
-    self[:BBOX_ex]      = (self[:BBOX_ex]   .- one(Float32)) .* voxelSize[1]
-    self[:BBOX_ey]      = (self[:BBOX_ey]   .- one(Float32)) .* voxelSize[2]
-    self[:BBOX_ez]      = (self[:BBOX_ez]   .- one(Float32)) .* voxelSize[3]
+    self[!, :BBOX_ex]      = (self[!, :BBOX_ex]   .- one(Float32)) .* voxelSize[1]
+    self[!, :BBOX_ey]      = (self[!, :BBOX_ey]   .- one(Float32)) .* voxelSize[2]
+    self[!, :BBOX_ez]      = (self[!, :BBOX_ez]   .- one(Float32)) .* voxelSize[3]
 
-    self[:psd_x]        = (self[:psd_x]     .-one(Float32)) .* voxelSize[1]
-    self[:psd_y]        = (self[:psd_y]     .-one(Float32)) .* voxelSize[2]
-    self[:psd_z]        = (self[:psd_z]     .-one(Float32)) .* voxelSize[3]
+    self[!, :psd_x]        = (self[!, :psd_x]     .-one(Float32)) .* voxelSize[1]
+    self[!, :psd_y]        = (self[!, :psd_y]     .-one(Float32)) .* voxelSize[2]
+    self[!, :psd_z]        = (self[!, :psd_z]     .-one(Float32)) .* voxelSize[3]
     
-    self[:presyn_x]     = (self[:presyn_x]  .- one(Float32)) .* voxelSize[1]
-    self[:presyn_y]     = (self[:presyn_y]  .- one(Float32)) .* voxelSize[2]
-    self[:presyn_z]     = (self[:presyn_z]  .- one(Float32)) .* voxelSize[3]
+    self[!, :presyn_x]     = (self[!, :presyn_x]  .- one(Float32)) .* voxelSize[1]
+    self[!, :presyn_y]     = (self[!, :presyn_y]  .- one(Float32)) .* voxelSize[2]
+    self[!, :presyn_z]     = (self[!, :presyn_z]  .- one(Float32)) .* voxelSize[3]
     
-    self[:postsyn_x]    = (self[:postsyn_x] .- one(Float32)) .* voxelSize[1]
-    self[:postsyn_y]    = (self[:postsyn_y] .- one(Float32)) .* voxelSize[2]
-    self[:postsyn_z]    = (self[:postsyn_z] .- one(Float32)) .* voxelSize[3]
+    self[!, :postsyn_x]    = (self[!, :postsyn_x] .- one(Float32)) .* voxelSize[1]
+    self[!, :postsyn_y]    = (self[!, :postsyn_y] .- one(Float32)) .* voxelSize[2]
+    self[!, :postsyn_z]    = (self[!, :postsyn_z] .- one(Float32)) .* voxelSize[3]
 	return self
 end
 
@@ -71,35 +71,35 @@ function postprocess(self::SynapseTable, voxelSize::Union{Vector, Tuple})
     voxelSize = map(Float32, voxelSize)
 
     println("transform to voxel coordinate...")
-    self[:BBOX_bx]      = (self[:BBOX_bx]./voxelSize[1]) .+ one(Float32)
-    self[:BBOX_by]      = (self[:BBOX_by]./voxelSize[2]) .+ one(Float32)
-    self[:BBOX_bz]      = (self[:BBOX_bz]./voxelSize[3]) .+ one(Float32)
+    self[!, :BBOX_bx]      = (self[!, :BBOX_bx]./voxelSize[1]) .+ one(Float32)
+    self[!, :BBOX_by]      = (self[!, :BBOX_by]./voxelSize[2]) .+ one(Float32)
+    self[!, :BBOX_bz]      = (self[!, :BBOX_bz]./voxelSize[3]) .+ one(Float32)
     
-    self[:BBOX_ex]      = (self[:BBOX_ex]./voxelSize[1]) .+ one(Float32)
-    self[:BBOX_ey]      = (self[:BBOX_ey]./voxelSize[2]) .+ one(Float32)
-    self[:BBOX_ez]      = (self[:BBOX_ez]./voxelSize[3]) .+ one(Float32)
+    self[!, :BBOX_ex]      = (self[!, :BBOX_ex]./voxelSize[1]) .+ one(Float32)
+    self[!, :BBOX_ey]      = (self[!, :BBOX_ey]./voxelSize[2]) .+ one(Float32)
+    self[!, :BBOX_ez]      = (self[!, :BBOX_ez]./voxelSize[3]) .+ one(Float32)
 
     
-    self[:psd_x]        = (self[:psd_x]./voxelSize[1]) .+ one(Float32)
-    self[:psd_y]        = (self[:psd_y]./voxelSize[2]) .+ one(Float32)
-    self[:psd_z]        = (self[:psd_z]./voxelSize[3]) .+ one(Float32)
+    self[!, :psd_x]        = (self[!, :psd_x]./voxelSize[1]) .+ one(Float32)
+    self[!, :psd_y]        = (self[!, :psd_y]./voxelSize[2]) .+ one(Float32)
+    self[!, :psd_z]        = (self[!, :psd_z]./voxelSize[3]) .+ one(Float32)
     
-    self[:presyn_x]     = (self[:presyn_x]./voxelSize[1]) .+ one(Float32)
-    self[:presyn_y]     = (self[:presyn_y]./voxelSize[2]) .+ one(Float32)
-    self[:presyn_z]     = (self[:presyn_z]./voxelSize[3]) .+ one(Float32)
+    self[!, :presyn_x]     = (self[!, :presyn_x]./voxelSize[1]) .+ one(Float32)
+    self[!, :presyn_y]     = (self[!, :presyn_y]./voxelSize[2]) .+ one(Float32)
+    self[!, :presyn_z]     = (self[!, :presyn_z]./voxelSize[3]) .+ one(Float32)
  
-    self[:postsyn_x]     = (self[:postsyn_x]./voxelSize[1]) .+ one(Float32)
-    self[:postsyn_y]     = (self[:postsyn_y]./voxelSize[2]) .+ one(Float32)
-    self[:postsyn_z]     = (self[:postsyn_z]./voxelSize[3]) .+ one(Float32)
+    self[!, :postsyn_x]     = (self[!, :postsyn_x]./voxelSize[1]) .+ one(Float32)
+    self[!, :postsyn_y]     = (self[!, :postsyn_y]./voxelSize[2]) .+ one(Float32)
+    self[!, :postsyn_z]     = (self[!, :postsyn_z]./voxelSize[3]) .+ one(Float32)
     
     return self
 end 
 
 function get_coordinate_array(self::SynapseTable, prefix::String)
 	coordinateNames = get_coordinate_names(prefix)
-	hcat(	self[coordinateNames[1]], 
-			self[coordinateNames[2]], 
-			self[coordinateNames[3]])
+	hcat(	self[!, coordinateNames[1]], 
+			self[!, coordinateNames[2]], 
+			self[!, coordinateNames[3]])
 end 
 
 function get_coordinate(self::DataFrameRow, prefix::String)
@@ -160,7 +160,7 @@ function get_mask(self::SynapseTable;
     voxelSize = map(Float32, voxelSize)
 	for coordinatePrefix in coordinatePrefixList 
 		coordinateNames = SynapseTables.get_coordinate_names( coordinatePrefix )
-		coordinateList = map((c,s)->self[c]/s, coordinateNames, voxelSize)
+		coordinateList = map((c,s)->self[!, c]/s, coordinateNames, voxelSize)
         coordinateList = map(x->round.(Int, x), coordinateList)
 		for i in 1:length(coordinateList[1])
 			mask[   coordinateList[1][i], 
@@ -181,8 +181,8 @@ end
         @warn("empty synapse table!")
         return nothing
     else 
-        minCorner = map(x->minimum(self[x]), coordinateNames)
-        maxCorner = map(x->maximum(self[x]), coordinateNames)
+        minCorner = map(x->minimum(self[!, x]), coordinateNames)
+        maxCorner = map(x->maximum(self[!, x]), coordinateNames)
         return BoundingBoxes.BoundingBox(minCorner, maxCorner)
     end 
 end 
