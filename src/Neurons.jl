@@ -1461,6 +1461,8 @@ function remove_hair( self::Neuron; radiiScale::Float32 = Float32(2),
     return remove_segments(self, removeSegmentIdList)
 end
 
+prune_twigs = remove_hair
+
 """
     remove_terminal_blobs( self::Neuron )
 some terminal segmentation was fragmented. a lot of blobs was attatched to dendrite.
