@@ -369,6 +369,25 @@ get total number of nodes
 end 
 
 """
+    get_node_array(self::Neuron)
+get the node array. the first axis is the x,y,z,r, 
+the second axis is the number of nodes.
+"""
+function get_node_array( self::Neuron{T} ) where T
+    N = get_node_num(self)
+    nodeArray = Matrix{T}(undef, 4, N)
+
+    i = 0
+    for segment in get_segment_list(self)
+        for node in Segments.get_node_list(segment)
+            i += 1
+            nodeArray[:, i] = [node...]
+        end
+    end 
+    nodeArray
+end 
+
+"""
     get_node_list(self::Neuron)
 get the node list. the first one is root node.
 """
@@ -1561,7 +1580,8 @@ end
 transform to NodeNet, the first node is the root node.
 """
 function NodeNets.NodeNet(self::Neuron)
-    nodeList = get_node_list( self )
+    nodeArray = get_node_array( self )
+    N = size(nodeArray, 2)
     edges = get_edge_list( self )
     nodeClassList = get_node_class_list(self)
     
@@ -1569,9 +1589,8 @@ function NodeNets.NodeNet(self::Neuron)
     J = map(x->UInt32(x[2]), edges)
     
     # the connectivity matrix should be symmetric
-    connectivityMatrix = sparse([I..., J...,], [J..., I...,],true, 
-                                length(nodeList), length(nodeList))
-    NodeNet(nodeList, nodeClassList, connectivityMatrix)    
+    connectivityMatrix = sparse([I..., J...,], [J..., I...,],true, N, N)
+    NodeNet(nodeArray, nodeClassList, connectivityMatrix)    
 end 
 
 function SWCs.SWC(self::Neuron)
@@ -2076,14 +2095,22 @@ function build_tree_with_position(self::Neuron{T}; leafSize::Integer=1) where T
     return kdTree, nodePosition 
 end
 
-function find_closest_node(self::Neuron{T}, seedNode::NTuple{3,T}) where T
+@inline function find_closest_node(self::Neuron{T}, seedNode::NTuple{3, T}) where T
+    find_closest_node(self, [seedNode...])
+end
+
+function find_closest_node(self::Neuron{T}, seedNode::Vector{T}) where T
     kdTree, nodePosition = build_tree_with_position(self)
     find_closest_node(kdTree, nodePosition, seedNode)
 end 
 
-function find_closest_node(kdTree::KDTree, nodePosition::Matrix{Int}, 
-                           seedNode::Union{Tuple, Vector})
-    idxs, dists = knn(kdTree, [seedNode[1:3]...], 1, false)
+@inline function find_closest_node(kdTree::KDTree, nodePosition::Matrix{Int}, 
+                                        seedNode::NTuple{3,T}) where T 
+    find_closest_node(kdTree, nodePosition, [seedNode...])
+end
+
+function find_closest_node(kdTree::KDTree, nodePosition::Matrix{Int}, seedNode::Vector)
+    idxs, dists = knn(kdTree, seedNode[1:3], 1, false)
     segmentId, nodeIdInSegment = nodePosition[:, idxs[1]]
     return segmentId, nodeIdInSegment, dists[1]
 end 
@@ -2135,7 +2162,7 @@ end
 #this function has a nice property that shrinking the distance within 45 degrees  
 #and enlarge it with angle greater than 45 degrees 
 """
-function find_merging_terminal_node_id(self::Neuron{T}, seedNode2::NTuple{4, T}) where T
+function find_merging_terminal_node_id(self::Neuron{T}, seedNode2::Vector{T}) where T
     # initialization 
     closestTerminalSegmentId1 = 0
     terminalNodeIdInSegment1 = 0
@@ -2147,7 +2174,7 @@ function find_merging_terminal_node_id(self::Neuron{T}, seedNode2::NTuple{4, T})
     for terminalSegmentId1 in terminalSegmentIdList1 
         terminalSegment1 = segmentList1[terminalSegmentId1]
         terminalNode1 = terminalSegment1[end]
-        b = [ [seedNode2[1:3]...] .- [terminalNode1[1:3]...] ]
+        b = [ seedNode2[1:3] .- [terminalNode1[1:3]...] ]
         physicalDistance::T = norm(b)
         
         if physicalDistance < weightedDistance 

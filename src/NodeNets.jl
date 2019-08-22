@@ -23,7 +23,7 @@ const REMOVE_PATH_CONST = 4
 
 mutable struct NodeNet{T}  
     # x,y,z,r
-    nodeList            :: Vector{NTuple{4,T}}
+    nodeArray               :: Matrix{T}
     nodeClassList       :: Vector{UInt8}
     # connectivity matrix to represent edges
     # conn[2,3]=true means node 2 and 3 connected with each other
@@ -31,10 +31,16 @@ mutable struct NodeNet{T}
     connectivityMatrix  :: SparseMatrixCSC{Bool,UInt32}
 end 
 
+function NodeNet(nodeArray::Matrix{T}, 
+                    connectivityMatrix::SparseMatrixCSC{Bool, UInt32}) where T
+    nodeClassList = zeros(UInt8, size(nodeArray, 2))
+    NodeNet(nodeArray, nodeClassList, connectivityMatrix)
+end
+
 @inline function NodeNet(nodeList::Vector{NTuple{4,T}}, 
                          connectivityMatrix::SparseMatrixCSC{Bool, UInt32}) where {T}
-    nodeClassList = zeros(UInt8, length(nodeList))
-    NodeNet{T}(nodeList, nodeClassList, connectivityMatrix)
+    nodeArray = node_list_to_array(nodeList)
+    NodeNet{T}(nodeArray, connectivityMatrix)
 end 
 
 """
@@ -165,7 +171,8 @@ function NodeNet( points::Matrix{T}; dbf::DBF=DBFs.compute_DBF(points),
         push!(nodeList, (map(Float32,nodes[i,:])..., node_radii[i]))
     end
 
-    nodeNet = NodeNet(nodeList, conn)
+    nodeArray = node_list_to_array(nodeList)
+    nodeNet = NodeNet(nodeArray, conn)
     # add the offset from shift bounding box function
     bbox_offset = map(Float32, bbox_offset)
     @show bbox_offset
@@ -174,14 +181,20 @@ function NodeNet( points::Matrix{T}; dbf::DBF=DBFs.compute_DBF(points),
 end
 
 function NodeNet(swc::SWC)
-    nodeList = Vector{NTuple{4, Float32}}()
-    nodeClassList = Vector{UInt8}()
+    N = length(swc)
+    nodeArray = Matrix{Float32}(undef, 4, N)
+    nodeClassList = Vector{UInt8}(undef, N)
     I = Vector{UInt32}()
+    sizehint!(I, 2*N)
     J = Vector{UInt32}()
-    for (index, point) in enumerate(swc) 
-        push!(nodeList, (point.x, point.y, point.z, point.radius))
-        push!(nodeClassList, point.class)
-        if point.parent != -one(typeof(point.parent))
+    sizehint!(J, 2*N)
+
+    rootNodeParent = -one(Int32)
+
+    for (index, point) in enumerate(swc)
+        nodeArray[:, index] = [point.x, point.y, point.z, point.radius] 
+        nodeClassList[index] = point.class
+        if point.parent != rootNodeParent
             # the connectivity matrix is symetric
             push!(I, index)
             push!(J, point.parent)
@@ -190,7 +203,7 @@ function NodeNet(swc::SWC)
         end 
     end 
     connectivityMatrix = sparse(I,J,true, length(swc), length(swc))
-    NodeNet(nodeList, nodeClassList, connectivityMatrix)
+    NodeNet(nodeArray, nodeClassList, connectivityMatrix)
 end 
 
 function SWCs.SWC(nodeNet::NodeNet)
@@ -198,8 +211,9 @@ function SWCs.SWC(nodeNet::NodeNet)
     swc = SWC()
     sizehint!(swc, NodeNets.get_node_num(nodeNet))
     nodeClassList = get_node_class_list(nodeNet) 
-
-    for (i, node) in NodeNets.get_node_list(nodeNet) |> enumerate 
+    nodeArray = get_node_array(nodeNet)
+    for i in 1:size(nodeArray, 2)
+        node = view(nodeArray, :, i)
         point = SWCs.PointObj(nodeClassList[i], node[1], node[2], node[3], node[4], -1)
         push!(swc, point)
     end
@@ -210,40 +224,45 @@ function SWCs.SWC(nodeNet::NodeNet)
     swc
 end
 
-
 ##################### properties ###############################
-@inline function get_node_list(self::NodeNet) self.nodeList end 
+@inline function get_node_array(self::NodeNet) self.nodeArray end 
+
+@inline function get_node_list(self::NodeNet{T}) where T 
+    nodeArray = get_node_array(self)
+    N = size(nodeArray, 2)
+    nodeList = Vector{NTuple{4,T}}()
+    sizehint!(nodeList, N)
+    for i in 1:N 
+        node = tuple(nodeArray[:, i]...)
+        push!(nodeList, node)
+    end
+    nodeList
+end
+
 @inline function get_connectivity_matrix(self::NodeNet) self.connectivityMatrix end
 @inline function get_node_class_list(self::NodeNet) self.nodeClassList end 
-@inline function get_xyz(self::NodeNet) map(x->x[1:3], self.nodeList) end
-@inline function get_radii(self::NodeNet) map(x->x[4],  self.nodeList) end 
+@inline function get_radii(self::NodeNet) self.nodeArray[4,:] end 
 @inline function get_node_num(self::NodeNet; class::Union{Nothing, UInt8}=nothing)
     if class == nothing 
-        return length(self.nodeList) 
+        return length(self.nodeClassList) 
     else 
         return count(self.nodeClassList .== class)
     end 
 end
 
+"""
+    node_list_to_array(nodeList::Vector{NTuple{4,T}}) where T
+
+transform a list of nodes to array. The size of array is (4, N).
+The first axis is the x,y,z,r, the second axis is the nodes.
+"""
 function node_list_to_array(nodeList::Vector{NTuple{4,T}}) where T
     N = length(nodeList)
     ret = Array{T,2}(undef, 4, N)
-    for (i,node) in enumerate(nodeList)
+    @inbounds for (i,node) in enumerate(nodeList)
         ret[:,i] = [node...]
     end
     ret
-end
-
-"""
-    get_node_array(self::NodeNet)
-
-Return:
-    nodeArray::Array{T,2}: size is (nd, np), nd is the dimention of each node, 
-                np is the number of nodes
-"""
-@inline function get_node_array(self::NodeNet)
-    nodeList = get_node_list(self)
-    node_list_to_array(nodeList)
 end
 
 """ 
@@ -282,27 +301,36 @@ function get_terminal_node_id_list(self::NodeNet)
     return terminalNodeIdList
 end 
 
+function get_branching_node_id_list(self::NodeNet)
+    branchingNodeIdList = Vector{Int}()
+    connectivityMatrix = get_connectivity_matrix(self)
+    dropzeros!(connectivityMatrix)
+    for i in 1:get_node_num(self)
+        if nnz(connectivityMatrix[i,:]) > 2
+            push!(branchingNodeIdList, i)
+        end 
+    end
+    return branchingNodeIdList
+end 
+
 """
     get_segment_point_num(self::NodeNet)
 
 get number of branching points 
 """
-function get_num_segment_point(self::NodeNet)
-    conn = get_connectivity_matrix(self)
-    num_segment_point = 0
-    for col in size(conn, 2)
-        if nnz(conn[:,col]) > 2
-            num_segment_point += 1
-        end
-    end 
-    return num_segment_point 
+@inline function get_branching_node_num(self::NodeNet)
+    get_branching_node_id_list(self) |> length
 end
 
 """
 assume that the graph is acyclic, no loop.
 """
 @inline function get_num_segmentes(self::NodeNet)
-    get_num_segment_point(self) + 2
+    get_branching_node_num(self) + 2
+end
+
+@inline function euclidean_distance(node1::Tuple, node2::Tuple)
+    norm([node1[1:3]...] .- [node2[1:3]...])
 end
 
 """
@@ -317,8 +345,8 @@ function get_sholl_number(self::NodeNet, radius::AbstractFloat; rootNodeIndex::I
     for edge in get_edges(self)
         node1 = nodeList[ edge[1] ]
         node2 = nodeList[ edge[2] ]
-        r1 = distance_from( rootNode, node1 )
-        r2 = distance_from( rootNode, node2 )
+        r1 = euclidean_distance( rootNode, node1 )
+        r2 = euclidean_distance( rootNode, node2 )
         if r1>radius != r2>radius
             shollNum += 1
         end 
@@ -327,17 +355,18 @@ function get_sholl_number(self::NodeNet, radius::AbstractFloat; rootNodeIndex::I
 end 
 
 @inline function Base.length(self::NodeNet)
-    length(self.nodeList)
+    length(self.nodeClassList)
 end 
 
 @inline function Base.getindex(self::NodeNet, i::Integer)
-    get_node_list(self)[i]
+    self.nodeArray[:, i]
 end 
 
 function Base.UnitRange(self::NodeNet)
     minCoordinates = [typemax(UInt32), typemax(UInt32), typemax(UInt32)]
     maxCoordinates = [zero(UInt32), zero(UInt32), zero(UInt32)]
-    for node in get_node_list(self)
+    for i in 1:length(self)
+        node = self[i]
         minCoordinates = map(min, minCoordinates, node[1:3])
         maxCoordinates = map(max, maxCoordinates, node[1:3])
     end 
@@ -385,8 +414,8 @@ function get_neuroglancer_precomputed(self::NodeNet)
     write(buffer, UInt32(get_node_num(self)))
     write(buffer, UInt32(get_edge_num(self)))
     # write the node coordinates
-    for node in get_node_list(self)
-        write(buffer, [node[1:3]...])
+    for i in 1:length(self)
+        write(buffer, self[i][1:3])
     end
     # write the edges
     for edge in get_edges( self )
@@ -450,30 +479,39 @@ function save_edges(self::NodeNet, fileName::String)
 end 
 
 ##################### manipulate ############################
-@inline function add_offset!(self::NodeNet{T}, offset::Union{Vector{T},NTuple{3,T}} ) where T
+@inline function add_offset!(self::NodeNet{T}, offset::NTuple{3,T} ) where T
+    add_offset!(self, [offset...])
+end
+
+function add_offset!(self::NodeNet{T}, offset::Vector{T} ) where T
     @assert length(offset) == 3
-    for i in 1:get_node_num(self)
-        xyz = map((x,y)->x+y, self.nodeList[i][1:3],offset)
-        self.nodeList[i] = (xyz..., self.nodeList[i][4])
-    end 
+    nodeArray = get_node_array(self)
+    @inbounds for i in size(nodeArray, 2)
+        nodeArray[i, 1:3] .+= offset
+    end
 end
 
 @inline function stretch_coordinates!(self::NodeNet, mip::Real)
     expansion = (2^(mip-1), 2^(mip-1), 1) 
     stretch_coordinates!(self, expansion)
 end 
-@inline function stretch_coordinates!(self::NodeNet, expansion::Union{Vector, Tuple})
+
+@inline function stretch_coordinates!(self::NodeNet{T}, expansion::Tuple) where T
+    stretch_coordinates!(self, [expansion])
+end
+function stretch_coordinates!(self::NodeNet{T}, expansion::Vector) where T
     @assert length(expansion) == 3
-    nodeList = get_node_list(self)
-    for (nodeIndex, node) in enumerate(nodeList)
-        self.nodeList[ nodeIndex ] = (map((x,y)->x*y, node[1:3], expansion)..., 
-                                      node[4]* (prod(expansion)^(1/3)))
-    end 
+    expansion = T.(expansion)
+    radiusExpansion = prod(expansion)^(1/3)
+    push!(expansion, radiusExpansion)
+
+    nodeArray = get_node_array(self)
+    @inbounds for i in 1:size(nodeArray, 2)
+        nodeArray[:, i] .*= expansion
+    end
 end 
 
 #---------------------------------------------------------------
-
-
 """
 
     translate_to_origin!( points::Matrix{T} )
@@ -517,8 +555,6 @@ function create_node_lookup( points::Matrix{T} ) where T
 
   volumeIndex2NodeIndex, max_dims
 end
-
-
 
 """
 
