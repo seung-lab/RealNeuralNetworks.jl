@@ -34,6 +34,7 @@ function get_seg_from_gs()
     seg = ba[2457:2968, 1777:2288, 16401:16912]
 end 
 
+
 function create_fake_seg()
     seg = zeros(UInt32,(100,100,100))
     seg[50,50,:] .= one(UInt32)
@@ -54,8 +55,8 @@ end
     # open("/tmp/fake.bin", "w") do f write(f, bin)  end 
     @time swc = SWCs.SWC( nodeNet )
     SWCs.stretch_coordinates!(swc, MIP)
+    # this will fail since the radius are all Inf32!
+    SWCs.set_radius!(swc, one(Float32))
     SWCs.save(swc, "/tmp/test.swc")
     @test length(swc) > 1
 end 
-
-

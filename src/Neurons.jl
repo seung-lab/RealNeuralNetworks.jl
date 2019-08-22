@@ -53,12 +53,15 @@ function Neuron(nodeNet::NodeNet{T}, rootNodeId::Integer;
     neuron = Neuron!(rootNodeId, nodeNet, collectedFlagVec)
     # println(sum(collectedFlagVec), " visited voxels in ", length(collectedFlagVec))
 
+    # precompute the terminal node Id List
+    terminalNodeIdList2 = NodeNets.get_terminal_node_id_list(nodeNet)
     while !all(collectedFlagVec)
         # println(sum(collectedFlagVec), " visited voxels in ", length(collectedFlagVec))
         # there exist some uncollected nodes 
         # find the uncollected node that is closest to the terminal nodes as seed
         # terminal node should have high priority than normal nodes. 
-        seedNodeId2 = find_seed_node_id(neuron, nodeNet, collectedFlagVec)
+        seedNodeId2 = find_seed_node_id(neuron, nodeNet, collectedFlagVec; 
+                                        terminalNodeIdList2=terminalNodeIdList2)
 
         mergingSegmentId1, mergingNodeIdInSegment1, weightedTerminalDistance = 
                                 find_merging_terminal_node_id(neuron, nodeNet[seedNodeId2])
@@ -2221,17 +2224,19 @@ end
 
 find the closest terminal node in uncollected node set as new growing seed.  
 """
-function find_seed_node_id(neuron::Neuron, nodeNet::NodeNet, collectedFlagVec::BitArray{1})
+function find_seed_node_id(neuron::Neuron, nodeNet::NodeNet, collectedFlagVec::BitArray{1};
+                            terminalNodeIdList2::Vector{Int} = NodeNets.get_terminal_node_id_list(nodeNet))
     # number 1 means the alread grown neuron 
     # number 2 means the id in the raw node net 
     segmentList1 = get_segment_list(neuron)
     # the new seed will be chosen this terminal node set 
-    terminalNodeIdList2 = NodeNets.get_terminal_node_id_list(nodeNet)
+    @assert all(terminalNodeIdList2 .> 0)
 
     # initialization
     seedNodeId2 = 0
     distance = typemax(Float32)
     
+    @assert !isempty(terminalNodeIdList2)
     @assert !isempty(segmentList1)
     @assert !all(collectedFlagVec)
     
@@ -2247,14 +2252,19 @@ function find_seed_node_id(neuron::Neuron, nodeNet::NodeNet, collectedFlagVec::B
                 bbox_distance = Segments.get_bounding_box_distance(segment1, node2)
                 if bbox_distance < distance 
                     d, _ = Segments.distance_from(segment1, node2)
-                    if d < distance 
+                    if d < distance
+                        # @show bbox_distance, distance, d, seedNodeId2, candidateSeedId2
                         distance = d
-                        seedNodeId2 = candidateSeedId2 
+                        seedNodeId2 = candidateSeedId2
+                        if seedNodeId2 == 0
+                            @show d, bbox_distance
+                        end
                     end 
                 end 
             end
         end 
     end
+    @assert seedNodeId2 > 0
     return seedNodeId2 
 end 
 
