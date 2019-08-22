@@ -5,6 +5,7 @@ using LinearAlgebra
 using ProgressMeter 
 using CSV
 using Distributed
+import Statistics: mean
 
 using ..RealNeuralNetworks.Utils.VectorClouds 
 using ..RealNeuralNetworks.NodeNets
@@ -23,8 +24,10 @@ export nblast, nblast_allbyall
 """
 @inline function VectorCloud(neuron::SWC; k::Integer=20, 
                              class::Union{Nothing, UInt8}=nothing,
-                             downscaleFactor::Int=1) 
-    VectorCloud(NodeNet(neuron); k=k, class=class, downscaleFactor=downscaleFactor)
+                             downscaleFactor::Int=1,
+                             recenter::Bool=false) 
+    VectorCloud(NodeNet(neuron); k=k, class=class, 
+        downscaleFactor=downscaleFactor, recenter=recenter)
 end 
 
 """
@@ -32,8 +35,10 @@ end
 """
 @inline function VectorCloud(neuron::Neuron{T}; k::Integer=20, 
                              class::Union{Nothing, UInt8}=nothing,
-                             downscaleFactor::Int=1) where T
-    VectorCloud(NodeNet(neuron); k=k, class=class, downscaleFactor=downscaleFactor)
+                             downscaleFactor::Int=1,
+                             recenter::Bool=false) where T
+    VectorCloud(NodeNet(neuron); k=k, class=class, 
+        downscaleFactor=downscaleFactor, recenter=recenter)
 end 
 
 """
@@ -49,7 +54,8 @@ Return:
 """
 function VectorCloud(neuron::NodeNet{T}; k::Integer=20, 
                     class::Union{Nothing, UInt8}=nothing,
-                    downscaleFactor::Int=1) where T 
+                    downscaleFactor::Int=1,
+                    recenter::Bool=false) where T 
     nodeClassList = NodeNets.get_node_class_list(neuron) 
 
     # transform neuron to xyzmatrix
@@ -96,6 +102,10 @@ function VectorCloud(neuron::NodeNet{T}; k::Integer=20,
     if downscaleFactor != 1
         ret[1:3,:] ./= T(1000)
     end
+
+    if recenter
+        ret[1:3,:] .-= mean(ret[1:3,:], dims=2)
+    end
     ret 
 end
 
@@ -133,15 +143,16 @@ function nblast(target::Matrix{T}, query::Matrix{T};
                 targetTree::Union{Nothing, KDTree}=VectorClouds.to_kd_tree(target)) where T
    
     if isempty(target) 
-        #return ria[end, 1] * size(query, 2)
-        return -Inf32
+        return ria[end, 1] * size(query, 2)
+        #return -Inf32
     elseif isempty(query) 
         # if one of them is empty, return the largest difference
-        #return ria[end, 1] * size(target, 2)
-        return -Inf32
+        return ria[end, 1] * size(target, 2)
+        #return -Inf32
     end 
     
     totalScore = zero(T)
+
 
     idxs, dists = knn(targetTree, query[1:3, :], 1, false)
 
@@ -212,15 +223,18 @@ function nblast_allbyall(vectorCloudList::Vector{Matrix{T}};
     num = length(vectorCloudList)
     similarityMatrix = Matrix{T}(undef, num, num)
 
-    @inbounds @showprogress 1 "computing similarity matrix..." for targetIndex in 1:num 
-    #Threads.@threads for targetIndex in 1:num 
-        Threads.@threads for queryIndex in 1:num 
-        #for queryIndex in 1:num 
-            similarityMatrix[targetIndex, queryIndex] = nblast( 
+    tasks = Task[]
+    @inbounds for targetIndex in 1:num 
+        for queryIndex in 1:num 
+            task = Threads.@spawn similarityMatrix[targetIndex, queryIndex] = nblast( 
                         vectorCloudList, targetIndex, queryIndex;
-                        ria=ria, targetTree=treeList[targetIndex] )
+                        ria=ria, targetTree=treeList[targetIndex])
+            push!(tasks, task)
         end 
     end 
+    for task in tasks
+        wait(task)
+    end
     similarityMatrix
 end
 
@@ -228,7 +242,9 @@ end
     nblast_allbyall(neuronList::Vector{Neuron{T}}; 
                     semantic::Bool=false,
                     k::Int=20,
-                    ria::RangeIndexingArray{TR}=RangeIndexingArray{Float32}()) where {T}
+                    ria::RangeIndexingArray{TR}=RangeIndexingArray{Float32}(),
+                    downsacleFactor::Number=1000,
+                    recenter::Bool=false) where {T}
     Note that the neuron coordinate unit should be nm, it will be translated to micron internally.
     The semantic NBLAST will find the nearest vector pair with same semantic labeling. 
     An axonal vector in neuron A will find closest axonal vector in neuron B.
@@ -244,23 +260,27 @@ function nblast_allbyall(neuronList::Vector{Neuron{T}};
                             semantic::Bool=false, 
                             k::Int=20,
                             ria::Union{Nothing, RangeIndexingArray{T,2}}=nothing,
-                            downscaleFactor::Number=1000) where T
+                            downscaleFactor::Number=1000,
+                            recenter::Bool=false) where T
     if ria == nothing 
         ria = RangeIndexingArray{T}()
     end
     if semantic
         # transforming to vector cloud list    
         axonVectorCloudList = map(x->VectorCloud(x;class=Segments.AXON_CLASS,
-                                    k=k, downscaleFactor=downscaleFactor), neuronList)
+                                    k=k, downscaleFactor=downscaleFactor,
+                                    recenter=recenter), neuronList)
         dendVectorCloudList = map(x->VectorCloud(x;class=Segments.DENDRITE_CLASS, 
-                                    k=k, downscaleFactor=downscaleFactor), neuronList)
+                                    k=k, downscaleFactor=downscaleFactor, 
+                                    recenter=recenter), neuronList)
         axonSimilarityMatrix = nblast_allbyall(axonVectorCloudList; ria=ria)
         dendSimilarityMatrix = nblast_allbyall(dendVectorCloudList; ria=ria)
         rawSimilarityMatrix = axonSimilarityMatrix .+ dendSimilarityMatrix
     else
         # transforming to vector cloud list    
         vectorCloudList = map(x->VectorCloud(x;class=nothing, 
-                                    k=k, downscaleFactor=downscaleFactor), neuronList)
+                                    k=k, downscaleFactor=downscaleFactor, 
+                                    recenter=recenter), neuronList)
         rawSimilarityMatrix = nblast_allbyall(vectorCloudList; ria=ria)
     end
     
@@ -300,26 +320,24 @@ end
 function nblast_allbyall_small2big(vectorCloudList::Vector{X}; 
             ria::Union{Nothing, RangeIndexingArray{T,2}}=nothing,
             treeList::Vector=pmap(VectorClouds.to_kd_tree, vectorCloudList),
-            normalized::Bool=true
-            ) where {X<:Matrix{Float32}, T}
+            normalized::Bool = true) where {X<:Matrix{Float32}, T}
     N = length(vectorCloudList)
     rawSimilarityMatrix = ones(Float32, (N,N))
     selfScoreMatrix = ones(Float32, (N,N))
 
-    # Threads.@threads for i in 1:N
-    @showprogress for i in 1:N
-        Threads.@threads for j in (i+1):N
-        #for j in (i+1):N
-            small_to_big_nblast!(rawSimilarityMatrix, selfScoreMatrix, 
+    tasks = Task[]
+    @inbounds for i in 1:N
+        for j in (i+1):N
+            task = Threads.@spawn small_to_big_nblast!(rawSimilarityMatrix, selfScoreMatrix, 
                                     vectorCloudList, i, j, ria, treeList)
+            push!(tasks, task)
         end
     end
-
-    if normalized
-        return rawSimilarityMatrix ./ selfScoreMatrix
-    else
-        return rawSimilarityMatrix, selfScoreMatrix
+    for task in tasks
+        wait(task)
     end
+
+    return rawSimilarityMatrix, selfScoreMatrix
 end
 
 """
@@ -338,18 +356,22 @@ function nblast_allbyall_small2big(neuronList::Vector{Neuron{T}};
         dendVectorCloudList = pmap(x->VectorCloud(x; class=Segments.DENDRITE_CLASS, 
                                     k=k, downscaleFactor=downscaleFactor), neuronList)
         axonRawSimilarityMatrix, axonSelfScoreMatrix = nblast_allbyall_small2big(
-                                    axonVectorCloudList; ria=ria, normalized=false)
+                                    axonVectorCloudList; ria=ria)
         dendRawSimilarityMatrix, dendSelfScoreMatrix = nblast_allbyall_small2big(
-                                    dendVectorCloudList; ria=ria, normalized=false)
+                                    dendVectorCloudList; ria=ria)
+        # normalization
         # add a small number to avoid divid by zero error
         similarityMatrix = (axonRawSimilarityMatrix .+ dendRawSimilarityMatrix) ./ 
                                     (axonSelfScoreMatrix .+ dendSelfScoreMatrix .+ T(1e-6))
         @assert !any(isnan.(similarityMatrix))
-        return similarityMatrix
     else
         vectorCloudList = pmap(x->VectorCloud(x; k=k, downscaleFactor=downscaleFactor), neuronList);
-        return nblast_allbyall_small2big(vectorCloudList; ria=ria, normalized=true)
+
+        rawSimilarityMatrix, selfScoreMatrix = nblast_allbyall_small2big(vectorCloudList; ria=ria)
+        # normalization
+        similarityMatrix = rawSimilarityMatrix ./ selfScoreMatrix
     end
+    return similarityMatrix
 end
 
 end # end of module

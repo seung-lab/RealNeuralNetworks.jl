@@ -1,4 +1,6 @@
 module SWCs
+import DelimitedFiles: readdlm, writedlm
+
 include("PointObjs.jl")
 using .PointObjs 
 const ONE_UINT32 = UInt32(1)
@@ -7,28 +9,40 @@ export SWC
 const SWC = Vector{PointObj}
 
 
-function SWC( swcString::AbstractString )
-    swc = SWC()
-    for line in split(swcString, "\n")
-        if isempty(line)
-            continue 
-        end 
-        try 
-            numbers = map(Meta.parse, split(line))
-            # construct a point object
-            pointObj = PointObj( numbers[2:7]... )
-            push!(swc, pointObj)
-        catch err 
-            if occursin(r"^\s*#", line)
-                println("comment in swc file: $line")
-            elseif isempty(line) || line == " " || line == "\n"
-                continue 
-            else
-                @warn("invalid line: $line")
-            end 
-        end 
+function SWC( data::Array{T,2} ) where T
+    swc = SWC() 
+    for i in 1:size(data,1)
+        pointObj = PointObj( data[i, 2:7]... )
+        push!(swc, pointObj)
     end
     swc
+end
+
+"""
+this implementation is pretty slow
+"""
+function SWC( swcString::AbstractString )
+    swc = SWC()
+    for line in split(swcString, '\n')
+        if isempty(line) || startswith(line, '#')
+            continue 
+        end
+        numbers = map(Meta.parse, split(line))
+        # construct a point object
+        pointObj = PointObj( numbers[2:7]... )
+        push!(swc, pointObj)
+    end
+    swc
+end
+
+function Matrix{T}(swc::SWC) where T 
+    N = length(swc)
+    data = Matrix{T}(undef, N, 7)
+    @inbounds for (i,p) in enumerate(swc)
+        data[i, :] = Vector{T}([i, p.class, round(T,p.x), round(T,p.y), 
+                                round(T,p.z), round(T,p.radius), p.parent])
+    end
+    data
 end
 
 ################## properties #######################
@@ -145,9 +159,17 @@ function load_swc_bin( fileName::AbstractString )
     read( fileName ) |> deserialize
 end 
 
-function load_swc(fileName::AbstractString)
+"""
+this implementation is very slow
+"""
+function load_swc_v1(fileName::AbstractString)
     swcString = read( fileName , String)
     SWC( swcString )    
+end
+
+function load_swc(fileName::AbstractString)
+    data = readdlm(fileName, ' ', Float32, '\n', comments=true, comment_char='#')
+    SWC( data )    
 end
 
 function load(fileName::AbstractString)
@@ -177,13 +199,34 @@ function save_swc_bin( self::SWC, fileName::AbstractString )
     write(fileName, data)
 end 
 
-function save_swc(self::SWC, file_name::AbstractString)
+function save_swc_v1(self::SWC, file_name::AbstractString)
     f = open(file_name, "w")
     for (index, pointObj) in enumerate(self)
-        write(f, "$index $(String(pointObj)) \n")
+        write(f, "$index $(String(pointObj))\n")
     end
     close(f)
-end 
+end
+
+"""
+current implementation ignores the number smaller than 1!
+The integration transformation will loos some precision!
+Currently, it is ok because our unit is nm and the resolution is high enough.
+If it becomes a problem, we can use list of tuple, and the types are mixed in the tuple.
+
+```julia
+x = [1; 2; 3; 4];
+y = [5.2; 6.3; 7.5; 8.7];
+open("delim_file.txt", "w") do io
+    writedlm(io, map(identity, zip(x,y)), ' ')
+end
+```
+"""
+function save_swc(self::SWC, file_name::AbstractString)
+    data = Matrix{Int}(self)
+    open(file_name, "w") do io
+        writedlm(io, data, ' ', dims=size(data))
+    end
+end
 
 function save(self::SWC, fileName::AbstractString)
     if endswith(fileName, ".swc")

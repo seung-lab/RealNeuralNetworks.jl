@@ -2200,6 +2200,8 @@ function find_seed_node_id(neuron::Neuron, nodeNet::NodeNet, collectedFlagVec::B
     segmentList1 = get_segment_list(neuron)
     # the new seed will be chosen this terminal node set 
     terminalNodeIdList2 = NodeNets.get_terminal_node_id_list(nodeNet)
+    @assert all(terminalNodeIdList2 .> 0)
+    @show terminalNodeIdList2
 
     # initialization
     seedNodeId2 = 0
@@ -2220,14 +2222,19 @@ function find_seed_node_id(neuron::Neuron, nodeNet::NodeNet, collectedFlagVec::B
                 bbox_distance = Segments.get_bounding_box_distance(segment1, node2)
                 if bbox_distance < distance 
                     d, _ = Segments.distance_from(segment1, node2)
-                    if d < distance 
+                    if d < distance
+                        #@show bbox_distance, distance, d, seedNodeId2, candidateSeedId2
                         distance = d
-                        seedNodeId2 = candidateSeedId2 
+                        seedNodeId2 = candidateSeedId2
+                        if seedNodeId2 == 0
+                            @show d, bbox_distance
+                        end
                     end 
                 end 
             end
         end 
     end
+    @assert seedNodeId2 > 0
     return seedNodeId2 
 end 
 

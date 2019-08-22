@@ -176,8 +176,8 @@ end
 function NodeNet(swc::SWC)
     nodeList = Vector{NTuple{4, Float32}}()
     nodeClassList = Vector{UInt8}()
-    I = Vector{UInt32}()
-    J = Vector{UInt32}()
+    I = UInt32[]
+    J = UInt32[]
     for (index, point) in enumerate(swc) 
         push!(nodeList, (point.x, point.y, point.z, point.radius))
         push!(nodeClassList, point.class)
@@ -189,7 +189,7 @@ function NodeNet(swc::SWC)
             push!(J, index)
         end 
     end 
-    connectivityMatrix = sparse(I,J,true, length(swc), length(swc))
+    connectivityMatrix = sparse(I,J, true, length(swc), length(swc))
     NodeNet(nodeList, nodeClassList, connectivityMatrix)
 end 
 
