@@ -169,6 +169,7 @@ end
 
 function load_swc(fileName::AbstractString)
     data = readdlm(fileName, ' ', Float32, '\n', comments=true, comment_char='#')
+    data = data[sortperm(data[:, 1]), :]
     SWC( data )    
 end
 

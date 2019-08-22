@@ -34,6 +34,7 @@ function get_seg_from_gs()
     seg = ba[2457:2968, 1777:2288, 16401:16912]
 end 
 
+
 function create_fake_seg()
     seg = zeros(UInt32,(100,100,100))
     seg[50,50,:] .= one(UInt32)
@@ -57,5 +58,3 @@ end
     SWCs.save(swc, "/tmp/test.swc")
     @test length(swc) > 1
 end 
-
-

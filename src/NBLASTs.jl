@@ -65,12 +65,13 @@ function VectorCloud(neuron::NodeNet{T}; k::Integer=20,
         return zeros(T, (0,0))
     end 
 
-    xyzmatrix = Matrix{Float32}(undef, 3, N)
+    # the first 3 rows will be X,Y,Z, and the last 3 rows will be X,Y,Z of direction vector
+    vectorCloud = Matrix{Float32}(undef, 6, N)
 
     if class == nothing 
         # all the nodes should be included 
         @inbounds for (i, node) in NodeNets.get_node_list(neuron) |> enumerate 
-            xyzmatrix[:,i] = [node[1:3]...,]
+            vectorCloud[1:3, i] = [node[1:3]...,]
         end 
     else 
         # only nodes match the class should be included 
@@ -79,34 +80,30 @@ function VectorCloud(neuron::NodeNet{T}; k::Integer=20,
         @inbounds for (i, node) in NodeNets.get_node_list(neuron) |> enumerate 
             if nodeClassList[i] == class 
                 j += 1
-                xyzmatrix[:, j] = [node[1:3]...,]
+                vectorCloud[1:3, j] = [node[1:3]...,]
             end 
         end
     end 
 
+    xyzmatrix = vectorCloud[1:3, :]
     tree = KDTree(xyzmatrix; leafsize=k)
-
-    # the first 3 rows will be X,Y,Z, and the last 3 rows will be X,Y,Z of direction vector
-    ret = Matrix{Float32}(undef, 6, N)
 
     idxs, dists = knn(tree, xyzmatrix, k, false)
 
-    data = Matrix{Float32}(undef, 3, k)
     @inbounds for (nodeIndex, indexList) in idxs |> enumerate
-        data = xyzmatrix[:, indexList]
-        PCs, eigenValueList = Mathes.pca(data)
+        PCs, eigenValueList = Mathes.pca(xyzmatrix[:, indexList])
         # use the first principle component as the direction vector
-        ret[:, nodeIndex] = [xyzmatrix[:, nodeIndex]..., PCs[1]...,]
+        vectorCloud[:, nodeIndex] = [xyzmatrix[:, nodeIndex]..., PCs[1]...,]
     end
 
     if downscaleFactor != 1
-        ret[1:3,:] ./= T(1000)
+        vectorCloud[1:3,:] ./= T(1000)
     end
 
     if recenter
-        ret[1:3,:] .-= mean(ret[1:3,:], dims=2)
+        vectorCloud[1:3,:] .-= mean(vectorCloud[1:3,:], dims=2)
     end
-    ret 
+    vectorCloud 
 end
 
 function nblast(targetNeuron::Neuron{T}, queryNeuron::Neuron{T};
