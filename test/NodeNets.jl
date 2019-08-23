@@ -4,13 +4,52 @@ using HDF5
 using BigArrays
 using BigArrays.GSDicts 
 using RealNeuralNetworks.NodeNets
-using RealNeuralNetworks.SWCs
 
 using LinearAlgebra
 
 const CELL_ID = UInt32(76880)
 const EXPANSION= (UInt32(80), UInt32(80), UInt32(40))
 const MIP = 4
+
+@testset "test NodeNet module" begin 
+    # read swc
+    exampleFile = joinpath(@__DIR__, "../asset/77625.swc")
+    println("load plain text swc...")
+    @time nodeNet = NodeNets.load_swc( exampleFile )
+
+    tempFile = tempname() * ".swc"
+
+    println("save plain text swc ...")
+    @time NodeNets.save_swc(nodeNet, tempFile)
+    #@test read(exampleFile, String) == read( tempFile , String)
+    rm(tempFile)
+    
+    println("save binary nodenet ...")
+    @time NodeNets.save_nodenet_bin( nodeNet, "$(tempFile).nodenet.bin" )
+    println("load binary nodenet ...")
+    @time nodeNet2 = NodeNets.load_nodenet_bin( "$(tempFile).nodenet.bin" )
+    @test nodeNet == nodeNet2
+    rm("$(tempFile).nodenet.bin")
+ 
+    println("add offset...")
+    NodeNets.add_offset!(nodeNet, (-one(Float32),-one(Float32),-one(Float32)))
+    println("get neuroglancer precomputed...")
+    bin = NodeNets.get_neuroglancer_precomputed(nodeNet)
+    # open("/tmp/fake.bin", "w") do f write(f, bin)  end 
+    println("stretch coordinates...")
+    NodeNets.stretch_coordinates!(nodeNet, MIP)
+    # this will fail since the radius are all Inf32!
+    println("set radius...")
+    NodeNets.set_radius!(nodeNet, one(Float32))
+    @test length(nodeNet) > 1
+    
+    println("compute total path length")
+    pathLength = NodeNets.get_total_path_length(nodeNet)
+    @show pathLength
+    @test pathLength > 0
+    # test stretch
+    NodeNets.stretch_coordinates!(nodeNet, (2,3,4))
+end 
 
 function get_seg_from_h5()
     # read seg data
@@ -43,20 +82,11 @@ function create_fake_seg()
     return seg 
 end 
 
-@testset "test NodeNets module" begin
-    seg = create_fake_seg()
-    # @time seg = get_seg_from_h5()
-    # @time seg = get_seg_from_gs()
-    println("building nodeNet ...")
-    #@time nodeNet = NodeNet( seg; obj_id = CELL_ID )
-    @time nodeNet = NodeNet( seg; obj_id = one(UInt32) )
-    NodeNets.add_offset!(nodeNet, (-one(Float32),-one(Float32),-one(Float32)))
-    bin = NodeNets.get_neuroglancer_precomputed(nodeNet)
-    # open("/tmp/fake.bin", "w") do f write(f, bin)  end 
-    @time swc = SWCs.SWC( nodeNet )
-    SWCs.stretch_coordinates!(swc, MIP)
-    # this will fail since the radius are all Inf32!
-    SWCs.set_radius!(swc, one(Float32))
-    SWCs.save(swc, "/tmp/test.swc")
-    @test length(swc) > 1
-end 
+#@testset "test TEASAR" begin
+#    seg = create_fake_seg()
+#    # @time seg = get_seg_from_h5()
+#    # @time seg = get_seg_from_gs()
+#    println("building nodeNet ...")
+#    #@time nodeNet = NodeNet( seg; obj_id = CELL_ID )
+#    @time nodeNet = NodeNet( seg; obj_id = one(UInt32) )
+#end 

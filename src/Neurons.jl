@@ -2,7 +2,6 @@ module Neurons
 include("Segments.jl")
 using .Segments
 using ..NodeNets
-using ..SWCs
 using ..Utils.BoundingBoxes 
 using .Segments.Synapses 
 
@@ -191,21 +190,6 @@ function Neuron( seg::Array{ST,3}; obj_id::ST = convert(ST,1),
     Neuron( nodeNet )
 end
 
-function Neuron( swc::SWC )
-    nodeNet = NodeNet( swc )
-    # respect the point class 
-    Neuron( nodeNet )
-end 
-
-"""
-    Neuron( swcString::AbstractString )
-transform string from swc content to Neuron 
-"""
-function Neuron( swcString::AbstractString )
-    swc = SWC(swcString)
-    Neuron( swc )
-end
-
 ######################### IO ################
 function load(fileName::AbstractString)
     if endswith(fileName, ".swc")
@@ -237,17 +221,8 @@ function load_swc( fileName::AbstractString )
 end
 
 function save_swc(self::Neuron, fileName::AbstractString)
-    swc = SWC(self)
-    SWCs.save( swc, fileName )
-end 
-
-function load_swc_bin( fileName::AbstractString )
-    swc = SWCs.load_swc_bin( fileName )
-    Neuron( swc )
-end 
-
-function save_swc_bin( self::Neuron, fileName::AbstractString )
-    SWCs.save_swc_bin( SWCs.SWC(self), fileName )
+    nodeNet = NodeNet(self)
+    NodeNets.save_swc( nodeNet, fileName )
 end 
 
 function load_bin(fileName::AbstractString)
@@ -1594,39 +1569,6 @@ function NodeNets.NodeNet(self::Neuron)
     # the connectivity matrix should be symmetric
     connectivityMatrix = sparse([I..., J...,], [J..., I...,],true, N, N)
     NodeNet(nodeArray, nodeClassList, connectivityMatrix)    
-end 
-
-function SWCs.SWC(self::Neuron)
-    # initialize swc, which is a list of point objects
-    swc = SWCs.SWC()
-    # the node index of each segment, will be used for connecting the child segment
-    segmentEndNodeIdList = get_segment_end_node_id_list(self)
-    # connectivity matrix of segments
-    segmentConnectivityMatrix = get_connectivity_matrix(self)
-
-    for (segmentId, segment) in enumerate( get_segment_list(self) )
-        for (nodeId, node) in enumerate( Segments.get_node_list( segment ))
-            # type, x, y, z, r, parent
-            # in default, this was assumed that the connection is inside a segment, 
-            # the parent is simply the previous node 
-            pointObj = SWCs.PointObj( Segments.get_class(segment), 
-                                     node[1], node[2], node[3], node[4], length(swc) )
-            
-            if nodeId == 1
-                # the first node should connect to other segment or be root node
-                if length(swc) == 0
-                    pointObj.parent = -1
-                else
-                    # find the connected parent segment index
-                    parentSegmentId = get_parent_segment_id(self, segmentId)
-                    # the node index of parent segment end
-                    pointObj.parent= segmentEndNodeIdList[ parentSegmentId ]
-                end 
-            end 
-            push!(swc, pointObj)
-        end 
-    end
-    swc
 end 
 
 """

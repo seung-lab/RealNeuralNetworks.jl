@@ -9,7 +9,6 @@ import Statistics: mean
 
 using ..RealNeuralNetworks.Utils.VectorClouds 
 using ..RealNeuralNetworks.NodeNets
-using ..RealNeuralNetworks.SWCs 
 using ..RealNeuralNetworks.Neurons 
 using ..RealNeuralNetworks.Utils.Mathes
 using ..RealNeuralNetworks.Utils.RangeIndexingArrays 
@@ -18,17 +17,6 @@ using ..RealNeuralNetworks.Neurons.Segments
 
 export nblast, nblast_allbyall
 
-
-"""
-    VectorCloud(neuron::SWC; k::Integer=20, class::Union{Nothing, UInt8}=nothing) 
-"""
-@inline function VectorCloud(neuron::SWC; k::Integer=20, 
-                             class::Union{Nothing, UInt8}=nothing,
-                             downscaleFactor::Int=1,
-                             recenter::Bool=false) 
-    VectorCloud(NodeNet(neuron); k=k, class=class, 
-        downscaleFactor=downscaleFactor, recenter=recenter)
-end 
 
 """
     VectorCloud(neuron::Neuron; k::Integer=20, class::Union{Nothing, UInt8}=nothing) 
@@ -56,7 +44,7 @@ function VectorCloud(neuron::NodeNet{T}; k::Integer=20,
                     class::Union{Nothing, UInt8}=nothing,
                     downscaleFactor::Int=1,
                     recenter::Bool=false) where T 
-    nodeClassList = NodeNets.get_node_class_list(neuron) 
+    classes = NodeNets.get_node_class_list(neuron) 
 
     # transform neuron to xyzmatrix
     N = NodeNets.get_node_num(neuron; class=class) 
@@ -75,10 +63,10 @@ function VectorCloud(neuron::NodeNet{T}; k::Integer=20,
         end 
     else 
         # only nodes match the class should be included 
-        @assert isa(nodeClassList, Vector{UInt8})
+        @assert isa(classes, Vector{UInt8})
         j = 0
         @inbounds for (i, node) in NodeNets.get_node_list(neuron) |> enumerate 
-            if nodeClassList[i] == class 
+            if classes[i] == class 
                 j += 1
                 vectorCloud[1:3, j] = [node[1:3]...,]
             end 
