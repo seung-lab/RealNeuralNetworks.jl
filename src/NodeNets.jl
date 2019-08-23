@@ -3,7 +3,6 @@ include("TEASAR.jl")
 
 import LinearAlgebra: norm
 import DelimitedFiles: readdlm, writedlm
-const ONE_UINT32 = UInt32(1)
 using SparseArrays 
 using NearestNeighbors
 
@@ -14,24 +13,26 @@ const OFFSET = (zero(UInt32), zero(UInt32), zero(UInt32))
 # rescale the skeleton
 const EXPANSION = (one(UInt32), one(UInt32), one(UInt32))
 
-mutable struct NodeNet{T}  
-    # x,y,z,r
+mutable struct NodeNet{T} 
+    # the classes following the definition of swc 
+    # 0 - undefined
+    # 1 - soma
+    # 2 - axon
+    # 3 - (basal) dendrite
+    # 4 - apical dendrite
+    # 5 - fork point
+    # 6 - end point
+    # 7 - custom
     classes             :: Vector{UInt8}
+    # each column: x,y,z,r
+    # the size should be (4, nodeNum) 
     nodeArray           :: Matrix{T}
     # connectivity matrix to represent edges
-    # conn[2,3]=true means node 2's parent is node 3 
+    # conn[2,3]=true means node 2's parent is node 3
+    # we have not using an array to store family relationship 
+    # because we are assuming arbitrary trees with multiple childrent!
     connectivityMatrix  :: SparseMatrixCSC{Bool,UInt32}
 end 
-
-function NodeNet( data::Matrix{T} ) where T
-    @assert size(data, 2) == 7
-    data = data[sortperm(data[:, 1]), :]
-    classes = UInt8.(data[:, 2])
-    nodeArray = Float32.(data[:, 3:6])
-    parents = Int32.(data[:, 7])
-    connectivityMatrix = parents_to_connectivity_matrix(parents)
-    NodeNet(classes, nodeArray, connectivityMatrix)
-end
 
 @inline function Matrix{T}(self::NodeNet) where T
     parents = connectivity_matrix_to_parents(self.connectivityMatrix)
@@ -40,8 +41,9 @@ end
 
 function NodeNet(nodeArray::Matrix{T}, 
                     connectivityMatrix::SparseMatrixCSC{Bool, UInt32}) where T
-    @assert size(nodeArray, 2) == 4
-    classes = zeros(UInt8, size(nodeArray, 1))
+    @assert size(nodeArray, 1) == 4
+    classes = zeros(UInt8, size(nodeArray, 2))
+    dropzeros!(connectivityMatrix)
     NodeNet(nodeArray, classes, connectivityMatrix)
 end
 
@@ -188,7 +190,10 @@ function teasar( points::Matrix{T}; dbf::DBF=DBFs.compute_DBF(points),
     return nodeNet
 end
 
-function parents_to_connectivity_matrix(parents::Vector{Int32})
+"""
+Note that the root node id is 0 rather than -1
+"""
+function parents_to_connectivity_matrix(parents::Vector{UInt32})
     nodeNum = length(parents)
 
     childNodeIdxList = Vector{UInt32}()
@@ -196,7 +201,7 @@ function parents_to_connectivity_matrix(parents::Vector{Int32})
     parentNodeIdxList = Vector{UInt32}()
     sizehint!(parentNodeIdxList, nodeNum)
 
-    rootNodeParent = -one(Int32)
+    rootNodeParent = zero(UInt32)
 
     @inbounds for childNodeIdx in 1:nodeNum
         parentNodeIdx = parents[childNodeIdx]
@@ -212,25 +217,25 @@ function parents_to_connectivity_matrix(parents::Vector{Int32})
 end
 
 function connectivity_matrix_to_edges(conn::SparseMatrixCSC{Bool, UInt32})
-    I,J,_ = findnz(conn)
-    edgeNum = length(I)
+    childNodeIxdList, parentNodeIdxList,_ = findnz(conn)
+    edgeNum = length(childNodeIxdList)
     # the first one is child, and the second one is parent
-    edges = Matrix{UInt32}(undef, edgeNum, 2)
+    edges = Matrix{UInt32}(undef, 2, edgeNum)
     # only record the triangular part of the connectivity matrix
     for index in 1:edgeNum
-        edges[index, 1] = I[index]
-        edges[index, 2] = J[index]
+        edges[1, index] = childNodeIxdList[index]
+        edges[2, index] = parentNodeIdxList[index]
     end 
     edges
 end 
 
 function connectivity_matrix_to_parents(connectivityMatrix::SparseMatrixCSC{Bool, UInt32})
     nodeNum = size(connectivityMatrix, 1)
-    parents = ones(Int32, nodeNum) .* -one(Int32)
+    parents = zeros(UInt32, nodeNum)
     
     edges = connectivity_matrix_to_edges(connectivityMatrix)
-    @inbounds for i in 1:size(edges, 1)
-        parents[edges[i, 1]] = edges[i, 2]
+    @inbounds for i in 1:size(edges, 2)
+        parents[edges[1, i]] = edges[2, i]
     end  
     parents
 end
@@ -240,11 +245,11 @@ end
 
 @inline function get_node_list(self::NodeNet{T}) where T 
     nodeArray = get_node_array(self)
-    N = size(nodeArray, 1)
+    nodeNum = size(nodeArray, 2)
     nodeList = Vector{NTuple{4,T}}()
-    sizehint!(nodeList, N)
-    for i in 1:N 
-        node = tuple(nodeArray[i, :]...)
+    sizehint!(nodeList, nodeNum)
+    @inbounds for i in 1:nodeNum
+        node = tuple(view(nodeArray, :, i)...)
         push!(nodeList, node)
     end
     nodeList
@@ -252,7 +257,7 @@ end
 
 @inline function get_connectivity_matrix(self::NodeNet) self.connectivityMatrix end
 @inline function get_classes(self::NodeNet) self.classes end 
-@inline function get_radii(self::NodeNet) self.nodeArray[:, 4] end 
+@inline function get_radii(self::NodeNet) self.nodeArray[4, :] end 
 function get_node_num(self::NodeNet; class::Union{Nothing, UInt8}=nothing)
     if class == nothing 
         return length(self.classes) 
@@ -273,10 +278,10 @@ transform a list of nodes to array. The size of array is (4, N).
 The first axis is the x,y,z,r, the second axis is the nodes.
 """
 function node_list_to_array(nodeList::Vector{NTuple{4,T}}) where T
-    N = length(nodeList)
-    ret = Array{T,2}(undef, 4, N)
+    nodeNum = length(nodeList)
+    ret = Array{T,2}(undef, 4, nodeNum)
     @inbounds for (i,node) in enumerate(nodeList)
-        ret[:,i] = [node...]
+        ret[:, i] = [node...]
     end
     ret
 end
@@ -284,25 +289,19 @@ end
 """ 
 the connectivity matrix is symmetric, so the connection is undirected
 """
-@inline function get_edge_num(self::NodeNet) div(nnz(self.connectivityMatrix), 2) end
+@inline function get_edge_num(self::NodeNet) nnz(self.connectivityMatrix) end
 
 @inline function get_edges(self::NodeNet) 
     conn = get_connectivity_matrix(self)
     connectivity_matrix_to_edges(conn)
 end 
 
-@inline function is_terminal_node(self::NodeNet, i::Integer)
-    connectivityMatrix = get_connectivity_matrix(self)
-    dropzeros!(connectivityMatrix)
-    return nnz(connectivityMatrix[i,:]) < 2
-end
-
 function get_terminal_node_id_list(self::NodeNet)
     terminalNodeIdList = Vector{Int}()
     connectivityMatrix = get_connectivity_matrix(self)
     dropzeros!(connectivityMatrix)
     for i in 1:get_node_num(self)
-        if nnz(connectivityMatrix[i,:]) < 2
+        if nnz(connectivityMatrix[:, i]) == 0
             push!(terminalNodeIdList, i)
         end 
     end
@@ -314,60 +313,18 @@ function get_branching_node_id_list(self::NodeNet)
     connectivityMatrix = get_connectivity_matrix(self)
     dropzeros!(connectivityMatrix)
     for i in 1:get_node_num(self)
-        if nnz(connectivityMatrix[i,:]) > 2
+        if nnz(connectivityMatrix[:, i]) > 1
             push!(branchingNodeIdList, i)
         end 
     end
     return branchingNodeIdList
 end 
 
-"""
-    get_segment_point_num(self::NodeNet)
-
-get number of branching points 
-"""
-@inline function get_branching_node_num(self::NodeNet)
-    get_branching_node_id_list(self) |> length
-end
-
-"""
-assume that the graph is acyclic, no loop.
-"""
-@inline function get_num_segmentes(self::NodeNet)
-    get_branching_node_num(self) + 2
-end
-
-@inline function euclidean_distance(node1::Tuple, node2::Tuple)
-    norm([node1[1:3]...] .- [node2[1:3]...])
-end
-
-"""
-    get_sholl_number(self::NodeNet, radius::AbstractFloat)
-get the number of points which is in neurite and incounters with a sphere centered on root node 
-"""
-function get_sholl_number(self::NodeNet, radius::AbstractFloat; rootNodeIndex::Integer=1)
-    error("depracated, use the function in Neurons.")
-    shollNum = 0
-    nodeList = get_node_list(self)
-    rootNode = nodeList[ rootNodeIndex ]
-    for edge in get_edges(self)
-        node1 = nodeList[ edge[1] ]
-        node2 = nodeList[ edge[2] ]
-        r1 = euclidean_distance( rootNode, node1 )
-        r2 = euclidean_distance( rootNode, node2 )
-        if r1>radius != r2>radius
-            shollNum += 1
-        end 
-    end 
-    shollNum
-end 
-
 #################### Setters ############################################
 function set_radius!(self::NodeNet, radius::Float32)
     nodeArray = get_node_array(self)
-    nodeArray[:, 4] .= radius
+    nodeArray[4, :] .= radius
 end
-
 
 #################### Base functions ######################################
 function Base.isequal(self::NodeNet{T}, other::NodeNet{T}) where T
@@ -387,7 +344,7 @@ end
 end 
 
 @inline function Base.getindex(self::NodeNet, i::Integer)
-    self.nodeArray[i, :]
+    self.nodeArray[:, i]
 end 
 
 function Base.UnitRange(self::NodeNet)
@@ -409,13 +366,12 @@ end
 look for the id of the closest node
 """
 @inline function find_closest_node_id(self::NodeNet{T}, point::NTuple{N,T}) where {N,T}
-    @assert N>=3 && N<=4
     find_closest_node_id(self, [point[1:3]...])
 end
 
 function find_closest_node_id(self::NodeNet{T}, point::Vector{T}) where T
     nodeArray = get_node_array(self)
-    kdtree = KDTree(nodeArray' |> Matrix; leafsize=10)
+    kdtree = KDTree(nodeArray[1:3, :]; leafsize=10)
     idxs, _ = knn(kdtree, point, 1)
     return idxs[1]
 end
@@ -429,11 +385,11 @@ function get_total_path_length( self::NodeNet{T} ) where T
     edges = get_edges(self)
     
     totalPathLength = zero(T)
-    @inbounds for edgeIdx in 1:size(edges, 2)
-        nodeIdx1 = edges[edgeIdx, 1]
-        nodeIdx2 = edges[edgeIdx, 2]
-        node1 = view(nodeArray, nodeIdx1, 1:3)
-        node2 = view(nodeArray, nodeIdx2, 1:3)
+    @inbounds for edgeIdx in 1:size(edges, 1)
+        nodeIdx1 = edges[1, edgeIdx]
+        nodeIdx2 = edges[2, edgeIdx]
+        node1 = view(nodeArray, 1:3, nodeIdx1)
+        node2 = view(nodeArray, 1:3, nodeIdx2)
         totalPathLength += norm(node1 .- node2)
     end
     totalPathLength
@@ -455,29 +411,29 @@ TO-DO:
 Will have saved the radius as attributes, we can try to read that.
 """
 function get_neuroglancer_precomputed(self::NodeNet)
-    @show get_node_num(self)
-    @show get_edge_num(self)
+    nodeNum = get_node_num(self)
+    edgeNum = get_edge_num(self)
     # total number of bytes
-    num_bytes = 4 + 4 + 4*3*get_node_num(self) + 4*2*get_edge_num(self)
-    io = IOBuffer( read=false, write=true, maxsize=num_bytes )
-    
+    byteNum = 4 + 4 + 4*3*nodeNum + 4*2*edgeNum
+    io = IOBuffer( read=false, write=true, maxsize=byteNum )
+
     # write the number of vertex, and edges
-    write(io, UInt32(get_node_num(self)))
-    write(io, UInt32(get_edge_num(self)))
+    write(io, UInt32(nodeNum))
+    write(io, UInt32(edgeNum))
     
     # write the node coordinates
     nodeArray = get_node_array(self)
-    write(io, nodeArray[1:3, :]' |> Matrix)
+    write(io, nodeArray[1:3, :])
     
     # write the edges
     edges = get_edges(self)
     # neuroglancer index start from 0
     edges = UInt32.(edges) .- one(UInt32)
-    write(io, edges' |> Matrix)
+    write(io, edges)
     
-    bin = Vector{UInt8}(take!(io))
+    data = take!(io)
     close(io)
-    return bin 
+    return data
 end 
 
 function deserialize(data::Vector{UInt8})
@@ -485,19 +441,20 @@ function deserialize(data::Vector{UInt8})
     @assert mod(length(data), 21) == 0 "the binary file do not match the byte layout of pointObj."
     nodeNum = div(length(data), 21)
     classes = Vector{UInt8}(undef, nodeNum)
-    nodeArray = Matrix{Float32}(undef, nodeNum, 4)
-    parents = Vector{Int32}(undef, nodeNum) 
+    nodeArray = Matrix{Float32}(undef, 4, nodeNum)
+    parents = zeros(UInt32, nodeNum) 
 
     @inbounds for i in 1:nodeNum
         nodeData = view(data, (i-1)*21+1 : i*21)
         classes[i] = nodeData[1]
-        nodeArray[i, :] = reinterpret(Float32, nodeData[2:17])
-        parents[i] = reinterpret(Int32, nodeData[18:21])[1] 
+        nodeArray[:, i] = reinterpret(Float32, nodeData[2:17])
+        parents[i] = reinterpret(UInt32, nodeData[18:21])[1] 
     end 
     connectivityMatrix = parents_to_connectivity_matrix(parents)    
     
     NodeNet(classes, nodeArray, connectivityMatrix)
-end 
+end
+
 """
     load_nodenet_bin( fileName::AbstractString )
 """
@@ -517,12 +474,12 @@ function serialize(self::NodeNet)
     io = IOBuffer( read=false, write=true, maxsize=byteNum )
     for i in 1:nodeNum
         write(io, classes[i])
-        write(io, nodeArray[i, :])
+        write(io, nodeArray[:, i])
         write(io, parents[i])
     end
+    
     data = take!(io)  
     close(io)
-
     @assert length(data) == byteNum
     data 
 end 
@@ -539,7 +496,18 @@ end
 
 @inline function load_swc(fileName::AbstractString)
     data = readdlm(fileName, ' ', Float32, '\n', comments=true, comment_char='#')
-    NodeNet( data )    
+    @assert size(data, 2) == 7
+    # the node ID should in order, so we can ignore this redundent information
+    data = data[sortperm(data[:, 1]), :]
+
+    classes = UInt8.(data[:, 2])
+    nodeArray = Float32.(data[:, 3:6]'|>Matrix)
+    # the root node id should be zero rather than -1 in our data structure 
+    parents = data[:, 7]
+    parents[parents.<zero(Float32)] .= zero(Float32)
+    parents = UInt32.(parents)
+    connectivityMatrix = parents_to_connectivity_matrix(parents)
+    NodeNet(classes, nodeArray, connectivityMatrix)
 end
 
 """
@@ -562,10 +530,10 @@ function save_swc(self::NodeNet, file_name::AbstractString; truncDigits::Int=3)
     parents = get_parents(self)
 
     truncedNodeArray = trunc.(nodeArray; digits=truncDigits)
-    xs = view(truncedNodeArray, :, 1)
-    ys = view(truncedNodeArray, :, 2)
-    zs = view(truncedNodeArray, :, 3)
-    rs = view(truncedNodeArray, :, 4) 
+    xs = view(truncedNodeArray, 1, :)
+    ys = view(truncedNodeArray, 2, :)
+    zs = view(truncedNodeArray, 3, :)
+    rs = view(truncedNodeArray, 4, :) 
 
     @show size(nodeArray), size(truncedNodeArray)
 
@@ -582,8 +550,8 @@ end
 function add_offset!(self::NodeNet{T}, offset::Vector{T} ) where T
     @assert length(offset) == 3
     nodeArray = get_node_array(self)
-    @inbounds for i in size(nodeArray, 1)
-        nodeArray[i, 1:3] .+= offset
+    @inbounds for i in size(nodeArray, 2)
+        nodeArray[1:3, i] .+= offset
     end
 end
 
@@ -598,8 +566,8 @@ function stretch_coordinates!(self::NodeNet{T}, expansion::Union{Vector, Tuple})
     expansion = T.([expansion..., radiusExpansion])
 
     nodeArray = get_node_array(self)
-    @inbounds for i in 1:size(nodeArray, 1)
-        nodeArray[i, :] .*= expansion
+    @inbounds for i in 1:size(nodeArray, 2)
+        nodeArray[:, i] .*= expansion
     end
 end 
 
