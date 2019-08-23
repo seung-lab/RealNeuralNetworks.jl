@@ -46,7 +46,14 @@ const MIP = 4
     println("compute total path length")
     pathLength = NodeNets.get_total_path_length(nodeNet)
     @show pathLength
-    @test pathLength > 0
+
+    println("indexing by vectors and range...")
+    nodeNet2 = nodeNet[[3, 6, 10, 20]]
+    nodeNet2 = nodeNet[1:div(length(nodeNet), 2)]
+    @test length(nodeNet2) < length(nodeNet)
+    pathLength2 = NodeNets.get_total_path_length(nodeNet2)
+    @test pathLength2 < pathLength
+
     # test stretch
     NodeNets.stretch_coordinates!(nodeNet, (2,3,4))
 end 

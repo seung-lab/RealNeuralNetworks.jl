@@ -7,7 +7,6 @@ include("Neurons.jl")
 include("NeuralNets.jl")
 include("NBLASTs.jl")
 
-using .NodeNets 
 using .Manifests
 using .Neurons
 using .NeuralNets

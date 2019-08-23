@@ -240,7 +240,7 @@ function connectivity_matrix_to_parents(connectivityMatrix::SparseMatrixCSC{Bool
     parents
 end
 
-##################### properties ###############################
+##################### getters ###############################
 @inline function get_node_array(self::NodeNet) self.nodeArray end 
 
 @inline function get_node_list(self::NodeNet{T}) where T 
@@ -266,9 +266,32 @@ function get_node_num(self::NodeNet; class::Union{Nothing, UInt8}=nothing)
     end 
 end
 
-@inline function get_parents(self)
+@inline function get_parents(self::NodeNet)
     connectivityMatrix = get_connectivity_matrix(self)
     connectivity_matrix_to_parents(connectivityMatrix)
+end
+
+@inline function get_root_node_index_list(self::NodeNet)
+    parents = get_parents(self)
+    findall(parents.==zero(UInt32))
+end
+
+function get_children_node_index_list(self::NodeNet, nodeIdx::Integer)
+    connectivityMatrix = get_connectivity_matrix(self)
+    childrenNodeIdxes,_ = findnz(connectivityMatrix[:, nodeIdx])
+    childrenNodeIdxes
+end
+
+function get_parent_node_index(self::NodeNet, nodeIdx::Integer)
+    connectivityMatrix = get_connectivity_matrix(self)
+    parentNodeIdxes,_ = findnz(connectivityMatrix[:, nodeIdx])
+    if length(parentNodeIdxes) == 1
+        return parentNodeIdxes[1]
+    elseif isempty(parentNodeIdxes)
+        return zero(UInt32)
+    else
+        error("you should not have multiple parents!")
+    end
 end
 
 """
@@ -343,17 +366,74 @@ end
     length(self.classes)
 end 
 
-@inline function Base.getindex(self::NodeNet, i::Integer)
-    self.nodeArray[:, i]
+"""
+    Base.iterate(self::NodeNet, state::NTuple{2,Int}=(1,1))
+
+depth first search of tree. 
+We assume that nodeNet is a forest of trees.
+The first element of state is tree index.
+The second element of state is node index in forrest (not in tree!).
+"""
+function Base.iterate(self::NodeNet, state::NTuple{2,Int}=(1,1); root)
+    treeIdx, nodeIdx = state
+    error("unimplemented")
+end
+
+############################### Base functions #######################################
+function get_old_index_to_new_index_map(idx::Union{UnitRange, Vector}; 
+                                        nodeNum::Integer=maximum(idx))
+    # this is a map connecting old and new index
+    oldIdx2newIdx = zeros(Int, nodeNum)
+    for (newIdx, oldIdx) in enumerate(idx)
+        oldIdx2newIdx[ oldIdx ] = newIdx
+    end
+    oldIdx2newIdx
+end
+
+"""
+    Base.getindex(self::NodeNet, idx::Union{UnitRange, Int, Vector{Int}, Colon})
+
+Create a new NodeNet with a subset of current nodeNet
+"""
+function Base.getindex(self::NodeNet, idx::Union{UnitRange, Vector{Int}})
+    nodeNum = length(self)
+    newClasses = get_classes(self)[idx]
+    newNodeArray = get_node_array(self)[:, idx]
+
+    newNodeNum = length(idx)
+    
+    newParents = zeros(UInt32, newNodeNum)
+    if isa(idx, Vector)
+        idx = Set(idx)
+    end
+    for (newIdx, oldIdx) in enumerate(idx)
+        nodeIdx = oldIdx
+        parentNodeIdx = get_parent_node_index(self, nodeIdx)
+
+        # find the parent/grandpar node and connect them
+        while !(parentNodeIdx in idx)
+            nodeIdx = parentNodeIdx
+            parentNodeIdx = get_parent_node_index(self, nodeIdx)
+        end
+        newParents[newIdx] = parentNodeIdx
+    end
+    # map the parents index from old to new
+    oldIdx2newIdx = get_old_index_to_new_index_map(idx)
+    newParents = oldIdx2newIdx[ newParents ]
+
+    connectivityMatrix = get_connectivity_matrix(self)
+    newConnectivityMatrix = connectivityMatrix[idx, idx]
+    NodeNet(newClasses, newNodeArray, newConnectivityMatrix)
 end 
 
 function Base.UnitRange(self::NodeNet)
+    nodeArray = get_node_array(self)
     minCoordinates = [typemax(UInt32), typemax(UInt32), typemax(UInt32)]
     maxCoordinates = [zero(UInt32), zero(UInt32), zero(UInt32)]
-    for i in 1:length(self)
-        node = self[i]
-        minCoordinates = map(min, minCoordinates, node[1:3])
-        maxCoordinates = map(max, maxCoordinates, node[1:3])
+    @inbounds for i in 1:length(self)
+        node = @view nodeArray[1:3, i]
+        minCoordinates = map(min, minCoordinates, node)
+        maxCoordinates = map(max, maxCoordinates, node)
     end 
     return [minCoordinates[1]:maxCoordinates[1], 
             minCoordinates[2]:maxCoordinates[2], 
@@ -385,7 +465,7 @@ function get_total_path_length( self::NodeNet{T} ) where T
     edges = get_edges(self)
     
     totalPathLength = zero(T)
-    @inbounds for edgeIdx in 1:size(edges, 1)
+    @inbounds for edgeIdx in 1:size(edges, 2)
         nodeIdx1 = edges[1, edgeIdx]
         nodeIdx2 = edges[2, edgeIdx]
         node1 = view(nodeArray, 1:3, nodeIdx1)
@@ -499,6 +579,8 @@ end
     @assert size(data, 2) == 7
     # the node ID should in order, so we can ignore this redundent information
     data = data[sortperm(data[:, 1]), :]
+    # the index should be 1 based and continous
+    @assert data[end, 1] == size(data, 1)
 
     classes = UInt8.(data[:, 2])
     nodeArray = Float32.(data[:, 3:6]'|>Matrix)
@@ -543,6 +625,109 @@ function save_swc(self::NodeNet, file_name::AbstractString; truncDigits::Int=3)
 end
 
 ##################### manipulate ############################
+
+@inline function squred_distance(node1, node2)
+    @fastmath   (node1[1] - node2[1]) * (node1[1] - node2[1]) + 
+                (node1[2] - node2[2]) * (node1[2] - node2[2]) +
+                (node1[3] - node2[3]) * (node1[3] - node2[3])
+end
+
+"""
+    downsample!(self::NodeNet{T}; step::T = Float32(1000))
+
+get the mean coordinate and radius of neighboring nodes in a segment 
+replace the nearby nodes.
+The default is 1 micron.
+"""
+function downsample!(self::NodeNet{T}; step::T = Float32(1000)) where T
+    nodeNum = length(self)
+    nodeArray = get_node_array(self)
+    
+    # this is used as a threshold, so we do not need to compute the sqrt
+    stepSquared = step * step
+
+    # use the root nodes as seeds
+    seedNodeIdxes = UInt32.(get_root_node_index_list(self))
+    seedNodeParentIdexes = zeros(UInt32, length(seedNodeIdxes))
+
+    # we select some nodes out as new nodeNet 
+    # this selection should include all the seed node indexes
+    selectedNodeIdxes = UInt32[]
+    # we need to update the parents when we add new seletected nodes.
+    newParents = UInt32[]
+
+    @fastmath @inbounds while !isempty(seedNodeIdxes)
+        seedNodeIdx = pop!(seedNodeIdxes)
+        parentNodeIdx = pop!(seedNodeParentIdexes)
+        push!(selectedNodeIdxes, seedNodeIdx)
+        push!(newParents, parentNodeIdx)
+
+        childrenNodeIdxes = get_children_node_index_list(self, seedNodeIdx)
+        childrenNum = length(childrenNodeIdxes)
+
+        # measure the walking distance 
+        walkDistance = zero(T)
+        startNodeIdx = seedNodeIdx
+        startNode = @view nodeArray[:, startNodeIdx]
+        # the parent node index of current search
+
+        # walk through a segment
+        while childrenNum == 1
+            # this node inside a segment 
+            nodeIdx = childrenNodeIdxes[1]
+            node = @view nodeArray[:, nodeIdx]
+            childrenNodeIdxes = get_children_node_index_list(self, nodeIdx)
+            childrenNum = length(childrenNodeIdxes)
+            d2 = squred_distance(startNode, node)
+            if d2 < stepSquared
+                # continue search                    
+                # current node becomes parent and will give birth of children
+                parentNodeIdx = nodeIdx
+            else
+                # have enough walking distance, will include this node in new nodeNet
+                push!(selectedNodeIdxes, nodeIdx)
+                push!(newParents, startNodeIdx)
+
+                # now we walk start from here
+                startNodeIdx = nodeIdx
+                startNode = @view nodeArray[:, startNodeIdx]
+               
+                # adjust the coordinate and radius by mean of nearest nodes.
+                parentNode = @view nodeArray[:, parentNodeIdx]
+                if childrenNum == 1
+                    childNode = @view nodeArray[:, childrenNodeIdxes[1]]
+                    nodeArray[:, nodeIdx] = (parentNode .+ node .+ childNode) ./ T(3)
+                else
+                    # this node is the end of segment
+                    nodeArray[:, nodeIdx] = (parentNode .+ node) ./ T(2)
+                end
+            end
+        end
+        # add all children nodes as sees.
+        # if reaching the terminal and there is no children
+        # nothing will be added 
+        append!(seedNodeIdxes, childrenNodeIdxes)
+        for idx in childrenNodeIdxes
+            push!(seedNodeParentIdexes, parentNodeIdx)
+        end
+    end
+    
+    # map the parents index from old to new
+    oldIdx2newIdx = get_old_index_to_new_index_map(selectedNodeIdxes)
+    # since the root node have parent index 0, it can not be indexed directly
+    @inbounds for (i, oldParentIdx) in enumerate(newParents)
+        if oldParentIdx > zero(UInt32)
+            newParents[i] = oldIdx2newIdx[oldParentIdx]
+        end
+    end
+
+    # pickout the selected nodes as new nodeNet
+    newClasses = get_classes(self)[selectedNodeIdxes]
+    newNodeArray = nodeArray[:, selectedNodeIdxes]
+    newConnectivityMatrix = parents_to_connectivity_matrix(newParents)
+    NodeNet(newClasses, newNodeArray, newConnectivityMatrix)
+end
+
 @inline function add_offset!(self::NodeNet{T}, offset::NTuple{3,T} ) where T
     add_offset!(self, [offset...])
 end
