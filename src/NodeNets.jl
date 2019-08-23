@@ -185,7 +185,6 @@ function teasar( points::Matrix{T}; dbf::DBF=DBFs.compute_DBF(points),
     nodeNet = NodeNet(nodeArray, conn)
     # add the offset from shift bounding box function
     bbox_offset = map(Float32, bbox_offset)
-    @show bbox_offset
     add_offset!(nodeNet, bbox_offset)
     return nodeNet
 end
@@ -616,8 +615,6 @@ function save_swc(self::NodeNet, file_name::AbstractString; truncDigits::Int=3)
     ys = view(truncedNodeArray, 2, :)
     zs = view(truncedNodeArray, 3, :)
     rs = view(truncedNodeArray, 4, :) 
-
-    @show size(nodeArray), size(truncedNodeArray)
 
     nodeNum = length(classes)
     data = zip(1:nodeNum, classes, xs, ys, zs, rs, parents)
