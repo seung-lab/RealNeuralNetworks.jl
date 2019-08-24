@@ -1,7 +1,7 @@
 export load_swc, save_swc, get_neuroglancer_precomputed, save_nodenet_bin, load_nodenet_bin
 export stretch_coordinates!, add_offset!
 export set_radius!
-export get_total_path_length, downsample!, find_closest_node_id, get_radii
+export get_path_length, downsample!, find_closest_node_id, get_radii
 
 include("TEASAR.jl")
 
@@ -84,11 +84,9 @@ function parents_to_connectivity_matrix(parents::Vector{UInt32})
     parentNodeIdxList = Vector{UInt32}()
     sizehint!(parentNodeIdxList, nodeNum)
 
-    rootNodeParent = zero(UInt32)
-
     @inbounds for childNodeIdx in 1:nodeNum
         parentNodeIdx = parents[childNodeIdx]
-        if parentNodeIdx != rootNodeParent
+        if parentNodeIdx > zero(UInt32)
             push!(childNodeIdxList, childNodeIdx)
             push!(parentNodeIdxList, parentNodeIdx)
         end
@@ -99,26 +97,13 @@ function parents_to_connectivity_matrix(parents::Vector{UInt32})
     connectivityMatrix
 end
 
-function connectivity_matrix_to_edges(conn::SparseMatrixCSC{Bool, UInt32})
-    childNodeIxdList, parentNodeIdxList,_ = findnz(conn)
-    edgeNum = length(childNodeIxdList)
-    # the first one is child, and the second one is parent
-    edges = Matrix{UInt32}(undef, 2, edgeNum)
-    # only record the triangular part of the connectivity matrix
-    for index in 1:edgeNum
-        edges[1, index] = childNodeIxdList[index]
-        edges[2, index] = parentNodeIdxList[index]
-    end 
-    edges
-end 
-
 function connectivity_matrix_to_parents(connectivityMatrix::SparseMatrixCSC{Bool, UInt32})
     nodeNum = size(connectivityMatrix, 1)
     parents = zeros(UInt32, nodeNum)
     
-    edges = connectivity_matrix_to_edges(connectivityMatrix)
-    @inbounds for i in 1:size(edges, 2)
-        parents[edges[1, i]] = edges[2, i]
+    childNodeIdxes, parentNodeIdxes, _ = findnz(connectivityMatrix)
+    @inbounds for (childNodeIdx, parentNodeIdx) in zip(childNodeIdxes, parentNodeIdxes)
+        parents[ childNodeIdx ] = parentNodeIdx
     end  
     parents
 end
@@ -173,7 +158,7 @@ function get_parent_node_index(self::NodeNet, nodeIdx::Integer)
     elseif isempty(parentNodeIdxes)
         return zero(UInt32)
     else
-        error("you should not have multiple parents!")
+        error("you should not have multiple parents: ", parentNodeIdxes)
     end
 end
 
@@ -196,11 +181,6 @@ end
 the connectivity matrix is symmetric, so the connection is undirected
 """
 @inline function get_edge_num(self::NodeNet) nnz(self.connectivityMatrix) end
-
-@inline function get_edges(self::NodeNet) 
-    conn = get_connectivity_matrix(self)
-    connectivity_matrix_to_edges(conn)
-end 
 
 function get_terminal_node_id_list(self::NodeNet)
     terminalNodeIdList = Vector{Int}()
@@ -280,18 +260,20 @@ end
 
 Create a new NodeNet with a subset of current nodeNet
 """
-function Base.getindex(self::NodeNet, idx::Union{UnitRange, Vector{Int}})
+function Base.getindex(self::NodeNet, selectedNodeIdxes::Union{UnitRange, Vector{Int}})
+    error("this is not working correctly now.")
     nodeNum = length(self)
-    newClasses = get_classes(self)[idx]
-    newNodeArray = get_node_array(self)[:, idx]
+    newClasses = get_classes(self)[selectedNodeIdxes]
+    newNodeArray = get_node_array(self)[:, selectedNodeIdxes]
 
-    newNodeNum = length(idx)
+    newNodeNum = length( selectedNodeIdxes )
     
     newParents = zeros(UInt32, newNodeNum)
-    if isa(idx, Vector)
-        idx = Set(idx)
+    if isa(selectedNodeIdxes, Vector)
+        selectedNodeIdxes = Set( selectedNodeIdxes )
     end
-    for (newIdx, oldIdx) in enumerate(idx)
+
+    for (newIdx, oldIdx) in enumerate( selectedNodeIdxes )
         nodeIdx = oldIdx
         parentNodeIdx = get_parent_node_index(self, nodeIdx)
 
@@ -306,8 +288,7 @@ function Base.getindex(self::NodeNet, idx::Union{UnitRange, Vector{Int}})
     # map the parents index from old to new
     update_parents!(newParents, idx)
 
-    connectivityMatrix = get_connectivity_matrix(self)
-    newConnectivityMatrix = connectivityMatrix[idx, idx]
+    newConnectivityMatrix = parents_to_connectivity_matrix(newParents)
     NodeNet(newClasses, newNodeArray, newConnectivityMatrix)
 end 
 
@@ -342,22 +323,21 @@ function find_closest_node_id(self::NodeNet{T}, point::Vector{T}) where T
 end
 
 """
-    get_total_path_length( self::NodeNet )
+    get_path_length( self::NodeNet )
 accumulate all the euclidean distance of edges 
 """
-function get_total_path_length( self::NodeNet{T} ) where T
+function get_path_length( self::NodeNet{T} ) where T
     nodeArray = get_node_array(self)
-    edges = get_edges(self)
-    
-    totalPathLength = zero(T)
-    @inbounds for edgeIdx in 1:size(edges, 2)
-        nodeIdx1 = edges[1, edgeIdx]
-        nodeIdx2 = edges[2, edgeIdx]
-        node1 = view(nodeArray, 1:3, nodeIdx1)
-        node2 = view(nodeArray, 1:3, nodeIdx2)
-        totalPathLength += norm(node1 .- node2)
+    connectivityMatrix = get_connectivity_matrix(self)
+    childNodeIdxes, parentNodeIdxes, _ = findnz(connectivityMatrix)
+
+    pathLength = zero(T)
+    @inbounds for (childNodeIdx, parentNodeIdx) in zip(childNodeIdxes, parentNodeIdxes)
+        childNode = view(nodeArray, 1:3, childNodeIdx)
+        parentNode = view(nodeArray, 1:3, parentNodeIdx)
+        pathLength += norm(childNode .- parentNode)
     end
-    totalPathLength
+    pathLength
 end 
 
 ##################### transformation ##########################
@@ -391,9 +371,12 @@ function get_neuroglancer_precomputed(self::NodeNet)
     write(io, nodeArray[1:3, :])
     
     # write the edges
-    edges = get_edges(self)
+    connectivityMatrix = get_connectivity_matrix(self)
+    childNodeIdxes, parentNodeIdxes, _ = findnz(connectivityMatrix)
+    edges = Matrix{UInt32}(undef, 2, edgeNum)
     # neuroglancer index start from 0
-    edges = UInt32.(edges) .- one(UInt32)
+    edges[1, :] = childNodeIdxes .- one(UInt32)
+    edges[2, :] = parentNodeIdxes .- one(UInt32)
     write(io, edges)
     
     data = take!(io)

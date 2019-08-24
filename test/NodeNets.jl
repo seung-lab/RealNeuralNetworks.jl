@@ -12,7 +12,7 @@ const MIP = 4
 
 @testset "test NodeNet type methods..." begin 
     # read swc
-    exampleFile = joinpath(@__DIR__, "../asset/77625.swc")
+    exampleFile = joinpath(@__DIR__, "../asset/Nov10IR3e.CNG.swc")
     println("load plain text swc...")
     @time nodeNet = load_swc( exampleFile )
 
@@ -43,15 +43,10 @@ const MIP = 4
     @test length(nodeNet) > 1
     
     println("compute total path length")
-    pathLength = get_total_path_length(nodeNet)
-    @show pathLength
-
-    println("indexing by vectors and range...")
-    nodeNet2 = nodeNet[[3, 6, 10, 20]]
-    nodeNet2 = nodeNet[1:div(length(nodeNet), 2)]
-    @test length(nodeNet2) < length(nodeNet)
-    pathLength2 = get_total_path_length(nodeNet2)
-    @test pathLength2 < pathLength
+    pathLength = get_path_length(nodeNet)
+    println("path length of this neuron: ", pathLength)
+    # we need to verify the L-measure number using other tools
+    # @test  isapprox(pathLength, 3505.76; atol = 0.1)
 
     # test stretch
     stretch_coordinates!(nodeNet, (2,3,4))
