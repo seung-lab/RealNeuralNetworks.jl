@@ -263,20 +263,6 @@ function Base.iterate(self::NodeNet, state::NTuple{2,Int}=(1,1); root)
 end
 
 ############################### Base functions #######################################
-function update_parents!(parents::Vector{UInt32}, idx::Union{UnitRange, Vector})
-    # this is a map connecting old and new index
-    oldIdx2newIdx = zeros(Int, nodeNum)
-    for (newIdx, oldIdx) in enumerate(idx)
-        oldIdx2newIdx[ oldIdx ] = newIdx
-    end
-    
-    # since the root node have parent index 0, it can not be indexed directly
-    @inbounds for (i, oldParentIdx) in enumerate(parents)
-        if oldParentIdx > zero(UInt32)
-            parents[i] = oldIdx2newIdx[oldParentIdx]
-        end
-    end
-end
 
 """
     Base.getindex(self::NodeNet, idx::Integer)
@@ -482,9 +468,10 @@ end
     @assert data[end, 1] == size(data, 1)
 
     classes = UInt8.(data[:, 2])
-    nodeArray = Float32.(data[:, 3:6]'|>Matrix)
+    nodeArray = data[:, 3:6]'|>Matrix
+
     # the root node id should be zero rather than -1 in our data structure 
-    parents = data[:, 7]
+    parents = @view data[:, 7]
     parents[parents.<zero(Float32)] .= zero(Float32)
     parents = UInt32.(parents)
     connectivityMatrix = parents_to_connectivity_matrix(parents)
@@ -644,4 +631,22 @@ function stretch_coordinates!(self::NodeNet{T}, expansion::Union{Vector, Tuple})
     @inbounds for i in 1:size(nodeArray, 2)
         nodeArray[:, i] .*= expansion
     end
-end 
+end
+
+################################ utilities #################################################
+function update_parents!(parents::Vector{UInt32}, selectedNodeIdxes::Union{UnitRange, Vector})
+    # this is a map connecting old and new index
+    oldIdx2newIdx = zeros(UInt32, maximum(selectedNodeIdxes))
+    newIdx = zero(UInt32)
+    for oldIdx in selectedNodeIdxes
+        newIdx += one(UInt32)
+        oldIdx2newIdx[ oldIdx ] = newIdx
+    end
+    
+    # since the root node have parent index 0, it can not be indexed directly
+    @inbounds for (i, oldParentIdx) in enumerate(parents)
+        if oldParentIdx > zero(UInt32)
+            parents[i] = oldIdx2newIdx[oldParentIdx]
+        end
+    end
+end
