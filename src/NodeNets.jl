@@ -279,7 +279,18 @@ function update_parents!(parents::Vector{UInt32}, idx::Union{UnitRange, Vector})
 end
 
 """
-    Base.getindex(self::NodeNet, idx::Union{UnitRange, Int, Vector{Int}, Colon})
+    Base.getindex(self::NodeNet, idx::Integer)
+
+return a node of this neuron. The node is a view without memory copy.
+The vector is [x,y,z,r] 
+"""
+@inline function Base.getindex(self::NodeNet, idx::Integer)
+    nodeArray = get_node_array(self)
+    @view nodeArray[:, idx]
+end
+
+"""
+    Base.getindex(self::NodeNet, idx::Union{UnitRange, Vector{Int}})
 
 Create a new NodeNet with a subset of current nodeNet
 """
