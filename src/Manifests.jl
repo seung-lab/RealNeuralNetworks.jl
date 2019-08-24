@@ -6,9 +6,6 @@ include("PointArrays.jl"); using .PointArrays;
 using BigArrays
 using BigArrays.GSDicts
 
-using ..RealNeuralNetworks.NodeNets
-#import ..RealNeuralNetworks.NodeNets.DBFs
-#import ..RealNeuralNetworks.NodeNets.PointArrays
 using OffsetArrays
 using JSON
 #import Distributed: pmap 

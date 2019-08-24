@@ -3,7 +3,6 @@ using Test
 using HDF5
 using BigArrays
 using BigArrays.GSDicts 
-using RealNeuralNetworks.NodeNets
 
 using LinearAlgebra
 
@@ -11,51 +10,51 @@ const CELL_ID = UInt32(76880)
 const EXPANSION= (UInt32(80), UInt32(80), UInt32(40))
 const MIP = 4
 
-@testset "test NodeNet module" begin 
+@testset "test NodeNet type methods..." begin 
     # read swc
     exampleFile = joinpath(@__DIR__, "../asset/77625.swc")
     println("load plain text swc...")
-    @time nodeNet = NodeNets.load_swc( exampleFile )
+    @time nodeNet = load_swc( exampleFile )
 
     tempFile = tempname() * ".swc"
 
     println("save plain text swc ...")
-    @time NodeNets.save_swc(nodeNet, tempFile)
+    @time save_swc(nodeNet, tempFile)
     #@test read(exampleFile, String) == read( tempFile , String)
     rm(tempFile)
     
     println("save binary nodenet ...")
-    @time NodeNets.save_nodenet_bin( nodeNet, "$(tempFile).nodenet.bin" )
+    @time save_nodenet_bin( nodeNet, "$(tempFile).nodenet.bin" )
     println("load binary nodenet ...")
-    @time nodeNet2 = NodeNets.load_nodenet_bin( "$(tempFile).nodenet.bin" )
+    @time nodeNet2 = load_nodenet_bin( "$(tempFile).nodenet.bin" )
     @test nodeNet == nodeNet2
     rm("$(tempFile).nodenet.bin")
  
     println("add offset...")
-    NodeNets.add_offset!(nodeNet, (-one(Float32),-one(Float32),-one(Float32)))
+    add_offset!(nodeNet, (-one(Float32),-one(Float32),-one(Float32)))
     println("get neuroglancer precomputed...")
-    bin = NodeNets.get_neuroglancer_precomputed(nodeNet)
+    bin = get_neuroglancer_precomputed(nodeNet)
     # open("/tmp/fake.bin", "w") do f write(f, bin)  end 
     println("stretch coordinates...")
-    NodeNets.stretch_coordinates!(nodeNet, MIP)
+    stretch_coordinates!(nodeNet, MIP)
     # this will fail since the radius are all Inf32!
     println("set radius...")
-    NodeNets.set_radius!(nodeNet, one(Float32))
+    set_radius!(nodeNet, one(Float32))
     @test length(nodeNet) > 1
     
     println("compute total path length")
-    pathLength = NodeNets.get_total_path_length(nodeNet)
+    pathLength = get_total_path_length(nodeNet)
     @show pathLength
 
     println("indexing by vectors and range...")
     nodeNet2 = nodeNet[[3, 6, 10, 20]]
     nodeNet2 = nodeNet[1:div(length(nodeNet), 2)]
     @test length(nodeNet2) < length(nodeNet)
-    pathLength2 = NodeNets.get_total_path_length(nodeNet2)
+    pathLength2 = get_total_path_length(nodeNet2)
     @test pathLength2 < pathLength
 
     # test stretch
-    NodeNets.stretch_coordinates!(nodeNet, (2,3,4))
+    stretch_coordinates!(nodeNet, (2,3,4))
 end 
 
 function get_seg_from_h5()

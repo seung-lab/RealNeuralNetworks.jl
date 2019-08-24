@@ -9,6 +9,105 @@ const REMOVE_PATH_SCALE = 3
 const REMOVE_PATH_CONST = 4
 
 """
+    teasar( points; penalty_fn = alexs_penalty )
+
+  Perform the teasar algorithm on the passed Nxd array of points
+"""
+function teasar( points::Matrix{T}; dbf::DBF=DBFs.compute_DBF(points),
+                         penalty_fn::Function = alexs_penalty,
+                         expansion::NTuple{3, UInt32} = EXPANSION) where T
+    @assert length(dbf) == size(points, 1)
+    println("total number of points: $(size(points,1))")
+    points, bbox_offset = translate_to_origin!( points );
+    # volumeIndex2NodeIndex represent points as a sparse vector containing the whole volume
+    # in this way, we can fetch the node directly according to the coordinate.
+    # the coordinate should be transfered to vector index though
+    volumeIndex2NodeId, max_dims = create_node_lookup( points );
+    max_dims_arr = [max_dims...];#use this for rm_nodes, but ideally wouldn't
+    # transfer the coordinate to node 
+    # sub2node = x -> volumeIndex2NodeIndex[ sub2ind(max_dims, x[1],x[2],x[3]) ];#currently only used in line 48
+    
+    println("making graph (2 parts)");
+    @time G, weights = make_neighbor_graph( points, volumeIndex2NodeId, max_dims;)
+    println("build dbf weights from penalty function ...")
+    @time dbf_weights = penalty_fn( weights, dbf, G )
+
+    #init
+    #nonzeros SHOULD remove duplicates, but it doesn't so
+    # I have to do something a bit more complicated
+    _,nonzero_vals = findnz(volumeIndex2NodeId);
+    disconnectedNodeIdSet = IntSet( nonzero_vals );
+    pathList = Vector(); # holds vector of nodeNet paths
+    destinationNodeIdList = Vector{Int}(); #host dest node for each path
+    # set of nodes for which we've "inspected" already
+    # removing their neighbors based on DBF
+    inspectedNodeIdList = Set{Int}();
+
+    println("Finding paths")
+    while length(disconnectedNodeIdSet) > 0
+        rootNodeId = find_new_root_node_id( dbf, disconnectedNodeIdSet );
+        @assert rootNodeId in disconnectedNodeIdSet 
+
+        #do a graph traversal to find farthest node and
+        # find reachable nodes
+        dsp_euclidean = LightGraphs.dijkstra_shortest_paths(G, rootNodeId, weights);
+        #and another to find the min DBF-weighted paths to all nodes
+        dsp_dbf       = LightGraphs.dijkstra_shortest_paths(G, rootNodeId, dbf_weights);
+
+        #remove reachable nodes from the disconnected ones
+        reachableNodeIdList = findall(.!(isinf.(dsp_euclidean.dists)));
+        #another necessary precaution for duplicate nodes
+        reachableNodeIdList = intersect(reachableNodeIdList, disconnectedNodeIdSet);
+        setdiff!(disconnectedNodeIdSet, reachableNodeIdList);
+        empty!(inspectedNodeIdList);
+
+        while length(reachableNodeIdList) > 0
+
+            #find the node farthest away from the root
+            # by euc distance
+            _, farthestNodeIndex = findmax( dsp_euclidean.dists[[reachableNodeIdList...]] );
+            farthestNodeId = reachableNodeIdList[farthestNodeIndex];
+            push!(destinationNodeIdList, farthestNodeId);
+            println("dest node index: $(farthestNodeId)")
+
+            if farthestNodeId == rootNodeId break end #this can happen apparently
+
+            new_path = LightGraphs.enumerate_paths( dsp_dbf, farthestNodeId );
+
+            push!(pathList, new_path)
+            #can't do this in-place with arrays
+            #this fn call is getting ridiculous
+            @time reachableNodeIdList = remove_path_from_rns!( reachableNodeIdList, 
+                                                        new_path, points, volumeIndex2NodeId,
+                                                        dbf, max_dims_arr,
+                                                        inspectedNodeIdList );
+        end #while reachable nodes from root
+    end #while disconnected nodes
+
+    println("Consolidating Paths...")
+    path_nodes, path_edges = consolidate_paths( pathList );
+    node_radii = dbf[path_nodes];
+
+    # build a new graph containing only the nodeNet nodes and edges
+    nodes, edges = distill!(points, path_nodes, path_edges)
+
+    conn = get_connectivity_matrix(edges)
+    nodeList = Vector{NTuple{4,Float32}}()
+    sizehint!(nodeList, length(node_radii))
+    for i in 1:length(node_radii)
+        push!(nodeList, (map(Float32,nodes[i,:])..., node_radii[i]))
+    end
+
+    nodeArray = node_list_to_array(nodeList)
+    nodeNet = NodeNet(nodeArray, conn)
+    # add the offset from shift bounding box function
+    bbox_offset = map(Float32, bbox_offset)
+    add_offset!(nodeNet, bbox_offset)
+    return nodeNet
+end
+
+
+"""
 
     translate_to_origin!( points::Matrix{T} )
 

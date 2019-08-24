@@ -1,7 +1,6 @@
 module Neurons
 include("Segments.jl")
 using .Segments
-using ..NodeNets
 using ..Utils.BoundingBoxes 
 using .Segments.Synapses 
 
@@ -32,7 +31,7 @@ end
 a neuron modeled by interconnected segments 
 """
 function Neuron(nodeNet::NodeNet{T}) where T
-    radii = NodeNets.get_radii(nodeNet)
+    radii = get_radii(nodeNet)
     # locate the root node with largest radius
     # theoritically this should be the center of soma 
     _, rootNodeId = findmax(radii)
@@ -1674,7 +1673,7 @@ Note that this operation will lost all the semantic information of segments.
 """
 function reset_root(self::Neuron{T}, annotationRootNode::NTuple{3,T}) where T
     nodeNet = NodeNet(self)
-    rootId = NodeNets.find_closest_node_id(nodeNet, annotationRootNode)
+    rootId = find_closest_node_id(nodeNet, annotationRootNode)
     Neuron(nodeNet, rootId)
 end
 
