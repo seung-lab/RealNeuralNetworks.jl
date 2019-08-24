@@ -255,43 +255,6 @@ The vector is [x,y,z,r]
     @view nodeArray[:, idx]
 end
 
-"""
-    Base.getindex(self::NodeNet, idx::Union{UnitRange, Vector{Int}})
-
-Create a new NodeNet with a subset of current nodeNet
-"""
-function Base.getindex(self::NodeNet, selectedNodeIdxes::Union{UnitRange, Vector{Int}})
-    error("this is not working correctly now.")
-    nodeNum = length(self)
-    newClasses = get_classes(self)[selectedNodeIdxes]
-    newNodeArray = get_node_array(self)[:, selectedNodeIdxes]
-
-    newNodeNum = length( selectedNodeIdxes )
-    
-    newParents = zeros(UInt32, newNodeNum)
-    if isa(selectedNodeIdxes, Vector)
-        selectedNodeIdxes = Set( selectedNodeIdxes )
-    end
-
-    for (newIdx, oldIdx) in enumerate( selectedNodeIdxes )
-        nodeIdx = oldIdx
-        parentNodeIdx = get_parent_node_index(self, nodeIdx)
-
-        # find the parent/grandpar node and connect them
-        while !(parentNodeIdx in idx)
-            nodeIdx = parentNodeIdx
-            parentNodeIdx = get_parent_node_index(self, nodeIdx)
-        end
-        newParents[newIdx] = parentNodeIdx
-    end
-    
-    # map the parents index from old to new
-    update_parents!(newParents, idx)
-
-    newConnectivityMatrix = parents_to_connectivity_matrix(newParents)
-    NodeNet(newClasses, newNodeArray, newConnectivityMatrix)
-end 
-
 function Base.UnitRange(self::NodeNet)
     nodeArray = get_node_array(self)
     minCoordinates = [typemax(UInt32), typemax(UInt32), typemax(UInt32)]
