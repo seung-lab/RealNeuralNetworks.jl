@@ -4,11 +4,49 @@ import LightGraphs
 import DataStructures: IntSet 
 
 include("DBFs.jl"); using .DBFs;
-include("PointArrays.jl"); using .PointArrays;
 
 # control the removing points around path based on DBF
 const REMOVE_PATH_SCALE = 3 
 const REMOVE_PATH_CONST = 4
+
+"""
+    teasar( seg, obj_id; penalty_fn=alexs_penalty)
+Perform the teasar algorithm on the passed binary array.
+"""
+function teasar( seg::Array{T,3}; 
+                     obj_id::T = convert(T,1), 
+                     expansion::NTuple{3, UInt32} = EXPANSION,
+                     penalty_fn::Function = alexs_penalty ) where T
+    # note that the object voxels are false and non-object voxels are true!
+    # bin_im = DBFs.create_binary_image( seg, obj_id ) 
+    points = from_seg(seg; obj_id=obj_id)
+    teasar(points; expansion=expansion, penalty_fn=penalty_fn) 
+end 
+
+"""
+    teasar(bin_im)
+Parameters:
+    bin_im: binary mask. the object voxel should be false, non-object voxel should be true
+Return:
+    nodeNet object
+"""
+function teasar(bin_im::Union{BitArray, Array{Bool,3}}; 
+                 offset::NTuple{3, UInt32} = OFFSET,
+                 expansion::NTuple{3, UInt32} = EXPANSION,
+                 penalty_fn::Function = alexs_penalty)
+        # transform segmentation to points
+    points = from_binary_image(bin_im)
+    
+    println("computing DBF");
+    # boundary_point_indexes = PointArrays.get_boundary_point_indexes(points, seg; obj_id=obj_id)
+    #@time DBF = DBFs.compute_DBF( points, boundary_point_indexes );
+    @time DBF = DBFs.compute_DBF(points)
+    # @time dbf = DBFs.compute_DBF(points, bin_im)
+
+    add_offset!(points, offset)
+    teasar(points; dbf=dbf, penalty_fn=penalty_fn, expansion = expansion)
+end 
+
 
 """
     teasar( points; penalty_fn = alexs_penalty )
@@ -349,7 +387,6 @@ function create_dummy_matrix( s )
     points = points[[1:i-1;i+1:end],:];
     points;
 end
-
 
 """
 

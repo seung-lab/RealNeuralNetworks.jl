@@ -34,45 +34,6 @@ end
 end 
 
 """
-    NodeNet( seg, obj_id; penalty_fn=alexs_penalty)
-Perform the teasar algorithm on the passed binary array.
-"""
-function NodeNet( seg::Array{T,3}; 
-                     obj_id::T = convert(T,1), 
-                     expansion::NTuple{3, UInt32} = EXPANSION,
-                     penalty_fn::Function = alexs_penalty ) where T
-    # note that the object voxels are false and non-object voxels are true!
-    # bin_im = DBFs.create_binary_image( seg, obj_id ) 
-    points = PointArrays.from_seg(seg; obj_id=obj_id)
-    teasar(points; expansion=expansion, penalty_fn=penalty_fn) 
-end 
-
-"""
-    NodeNet(bin_im)
-Parameters:
-    bin_im: binary mask. the object voxel should be false, non-object voxel should be true
-Return:
-    nodeNet object
-"""
-function NodeNet(bin_im::Union{BitArray, Array{Bool,3}}; 
-                 offset::NTuple{3, UInt32} = OFFSET,
-                 expansion::NTuple{3, UInt32} = EXPANSION,
-                 penalty_fn::Function = alexs_penalty)
-        # transform segmentation to points
-    points = PointArrays.from_binary_image(bin_im)
-    
-    println("computing DBF");
-    # boundary_point_indexes = PointArrays.get_boundary_point_indexes(points, seg; obj_id=obj_id)
-    #@time DBF = DBFs.compute_DBF( points, boundary_point_indexes );
-    @time DBF = DBFs.compute_DBF(points)
-    # @time dbf = DBFs.compute_DBF(points, bin_im)
-
-    PointArrays.add_offset!(points, offset)
-    teasar(points; dbf=dbf, penalty_fn=penalty_fn, expansion = expansion)
-end 
-
-
-"""
 Note that the root node id is 0 rather than -1
 """
 function parents_to_connectivity_matrix(parents::Vector{UInt32})

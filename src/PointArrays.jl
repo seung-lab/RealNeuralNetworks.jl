@@ -1,7 +1,3 @@
-module PointArrays
-
-export PointArray
-
 const PointArray = Array{UInt32, 2}
 
 const ZERO_UINT32 = zero(UInt32)
@@ -105,5 +101,3 @@ end
 function merge(self::Array{T,2}, other::Array{T,2}) where T
     vcat(self, other)
 end 
-
-end # module
