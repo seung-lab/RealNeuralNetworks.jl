@@ -1,3 +1,5 @@
+export teasar 
+
 import LightGraphs
 import DataStructures: IntSet 
 
@@ -11,7 +13,7 @@ const REMOVE_PATH_CONST = 4
 """
     teasar( points; penalty_fn = alexs_penalty )
 
-  Perform the teasar algorithm on the passed Nxd array of points
+Perform the teasar algorithm on the passed Nxd array of points
 """
 function teasar( points::Matrix{T}; dbf::DBF=DBFs.compute_DBF(points),
                          penalty_fn::Function = alexs_penalty,
@@ -89,21 +91,13 @@ function teasar( points::Matrix{T}; dbf::DBF=DBFs.compute_DBF(points),
     node_radii = dbf[path_nodes];
 
     # build a new graph containing only the nodeNet nodes and edges
-    nodes, edges = distill!(points, path_nodes, path_edges)
+    nodeNet = distill!(points, path_nodes, path_edges)
+    set_radii!(nodeNet, node_radii)
 
-    conn = get_connectivity_matrix(edges)
-    nodeList = Vector{NTuple{4,Float32}}()
-    sizehint!(nodeList, length(node_radii))
-    for i in 1:length(node_radii)
-        push!(nodeList, (map(Float32,nodes[i,:])..., node_radii[i]))
-    end
-
-    nodeArray = node_list_to_array(nodeList)
-    nodeNet = NodeNet(nodeArray, conn)
     # add the offset from shift bounding box function
     bbox_offset = map(Float32, bbox_offset)
     add_offset!(nodeNet, bbox_offset)
-    return nodeNet
+    nodeNet
 end
 
 
@@ -192,8 +186,8 @@ function make_neighbor_graph( points::Array{T,2}, volumeIndex2NodeIndex=nothing,
 
   for i in eachindex(nhood)
 
-  	#only need to explicitly tell LightGraphs to add the edges in
-  	# one direction (undirected), though doing this properly
+    #only need to explicitly tell LightGraphs to add the edges in
+    # one direction (undirected), though doing this properly
     # can be tricky
     #direction = ind2sub((3,3,3),i)
     direction = Tuple(CartesianIndices((3,3,3))[i]) 
@@ -208,12 +202,12 @@ function make_neighbor_graph( points::Array{T,2}, volumeIndex2NodeIndex=nothing,
 
       #bounds_checking
       if (dest_sub[1] < 1 ||
-      	  dest_sub[2] < 1 ||
-      	  dest_sub[3] < 1 ) continue end
+          dest_sub[2] < 1 ||
+          dest_sub[3] < 1 ) continue end
 
       if (dest_sub[1] > max_dims[1] ||
-      	  dest_sub[2] > max_dims[2] ||
-      	  dest_sub[3] > max_dims[3] ) continue end
+          dest_sub[2] > max_dims[2] ||
+          dest_sub[3] > max_dims[3] ) continue end
 
       #fetching the id of the proposed node location
       dest_ind = (LinearIndices(max_dims))[dest_sub[1:3]...,]
@@ -283,33 +277,32 @@ end
   each node
 """
 function local_max_multiplicative_penalty( weights, dbf, G )
+    ns = LightGraphs.vertices(G)
+    dbf_star = Vector{Float64}( length(ns) );
 
-  ns = LightGraphs.vertices(G)
-  dbf_star = Vector{Float64}( length(ns) );
+    #this is ok since ns is always an int range 1:N
+    for n in ns
+        neighborhood = LightGraphs.out_neighbors(G, n);
 
-  #this is ok since ns is always an int range 1:N
-  for n in ns
-    neighborhood = LightGraphs.out_neighbors(G, n);
-
-    if length(neighborhood) > 0
-      dbf_star[n] = maximum(dbf[neighborhood]);
-    else
-      dbf_star[n] = 1
+        if length(neighborhood) > 0
+            dbf_star[n] = maximum(dbf[neighborhood]);
+        else
+            dbf_star[n] = 1
+        end
     end
-  end
 
-  is, js = findn(weights)
-  ws = nonzeros(weights)
-  new_ws = Vector{Float64}(length(ws));
+    is, js = findn(weights)
+    ws = nonzeros(weights)
+    new_ws = Vector{Float64}(length(ws));
 
-  for i in eachindex(is)
-    dbf_dest = dbf[js[i]];
-    dbf_s = dbf_star[is[i]];
+    for i in eachindex(is)
+        dbf_dest = dbf[js[i]];
+        dbf_s = dbf_star[is[i]];
 
-    new_ws[i] = ws[i] * (1 - dbf_dest/dbf_s);
-  end
+        new_ws[i] = ws[i] * (1 - dbf_dest/dbf_s);
+    end
 
-  sparse( is, js, new_ws, size(weights)... );
+    sparse( is, js, new_ws, size(weights)... );
 end
 
 """
@@ -336,28 +329,25 @@ end
 """
 @inline function find_new_root_node_V1( points::Array{T,2} ) where T
 
-  res = points;
-  for i in 3:-1:1
-    res = filter_rows_by_min( res, i );
-  end
+    res = points;
+    for i in 3:-1:1
+        res = filter_rows_by_min( res, i );
+    end
 
-  res
+    res
 end
 
-
 function filter_rows_by_min( arr::Array{T,2}, dim ) where T
-
-  selected_rows = arr[:,dim] .== minimum(arr,1)[dim];
-
-  arr[selected_rows,:];
+    selected_rows = arr[:,dim] .== minimum(arr,1)[dim];
+    arr[selected_rows,:];
 end 
 
 function create_dummy_matrix( s )
-  points = hcat( findn(ones(s,s,s))... );
-  i = div(size(points,1),2)+1;
+    points = hcat( findn(ones(s,s,s))... );
+    i = div(size(points,1),2)+1;
 
-  points = points[[1:i-1;i+1:end],:];
-  points;
+    points = points[[1:i-1;i+1:end],:];
+    points;
 end
 
 
@@ -374,19 +364,19 @@ function remove_path_from_rns!( reachableNodeList::Vector, path::Vector{Int},
                 points, volumeIndex2NodeIndex, dbf, max_dims, inspectedNodeIdList,
                 scale_param::Integer=REMOVE_PATH_SCALE, 
                 const_param::Integer=REMOVE_PATH_CONST )
-  radii = dbf[path].*scale_param .+ const_param;
+    radii = dbf[path].*scale_param .+ const_param;
 
-  to_remove = Set{Int}();
-  for i in eachindex(path)
-    nodeIndex = path[i];
-    if !(nodeIndex in inspectedNodeIdList)
-        push!(inspectedNodeIdList, nodeIndex);
-	    union!( to_remove, nodes_within_radius(points[nodeIndex,:], volumeIndex2NodeIndex, 
-                                               radii[i], max_dims ) );
+    to_remove = Set{Int}();
+    for i in eachindex(path)
+        nodeIndex = path[i];
+        if !(nodeIndex in inspectedNodeIdList)
+            push!(inspectedNodeIdList, nodeIndex);
+            union!( to_remove, nodes_within_radius(points[nodeIndex,:], 
+                    volumeIndex2NodeIndex, radii[i], max_dims ) );
+        end
     end
-  end
 
-  return setdiff(reachableNodeList, to_remove);
+    return setdiff(reachableNodeList, to_remove);
 end
 
 
@@ -398,25 +388,25 @@ end
 """
 function nodes_within_radius( sub::Array{T,1}, volumeIndex2NodeIndex, r, max_dims::Vector ) where T;
 
-  beginning = convert(Vector{Int}, ceil.(max.(sub[:] .- r,1)));
-  ending    = convert(Vector{Int}, floor.(min.(sub[:] .+ r, max_dims)));
-  ind::Int = convert(Int,0);
-    max_dims = Vector{Int}(max_dims)
+    beginning = convert(Vector{Int}, ceil.(max.(sub[:] .- r,1)));
+    ending    = convert(Vector{Int}, floor.(min.(sub[:] .+ r, max_dims)));
+    ind::Int = convert(Int,0);
+      max_dims = Vector{Int}(max_dims)
 
-  nodes = Set{T}();
-  for x in beginning[1]:ending[1]
-    for y in beginning[2]:ending[2]
-      for z in beginning[3]:ending[3]
-        ind = x + (y-1)*max_dims[1] + (z-1)*max_dims[2]*max_dims[1];
-        push!( nodes, volumeIndex2NodeIndex[ind] );
-        #don't need to worry about the '0 node' here as
-        # the only result that matters is the setdiff from
-        # the reachable nodes
-      end
+    nodes = Set{T}();
+    for x in beginning[1]:ending[1]
+        for y in beginning[2]:ending[2]
+            for z in beginning[3]:ending[3]
+                ind = x + (y-1)*max_dims[1] + (z-1)*max_dims[2]*max_dims[1];
+                push!( nodes, volumeIndex2NodeIndex[ind] );
+                #don't need to worry about the '0 node' here as
+                # the only result that matters is the setdiff from
+                # the reachable nodes
+            end
+        end
     end
-  end
 
-  nodes
+    nodes
 end
 
 
@@ -471,27 +461,36 @@ coordinates and let the gc release the point_array.
 the same applys to path_edges 
 """
 function distill!(point_array::Array{T,2}, 
-                  path_nodes::Vector, path_edges::Vector) where T 
-    num_nodes = length(path_nodes) 
-    num_edges = length(path_edges)
-    nodes = Array{T}(undef, num_nodes, 3)
-    # map the old path node id to new id 
-    id_map = Dict{T, T}()
-    sizehint!(id_map, num_nodes)
+                  path_nodes::Vector, path_edges::Vector) where T
+    @assert size(point_array, 2) == 3
+    nodeNum = length(path_nodes) 
+    edgeNum = length(path_edges)
+    nodes = Matrix{Float32}(undef, 4, nodeNum)
+
+    # map the old path node id to new id
+    # the old node index number is more than new nodes
+    oldIdx2newIdx = zeros(UInt32, size(point_array, 1)) 
     # build new nodes and the id map
-    for i in 1:num_nodes 
-        nodes[i,:] = point_array[path_nodes[i], :]
-        id_map[path_nodes[i]] = i
+    for i in one(UInt32):UInt32(nodeNum)
+        # we'll deal with radius later 
+        nodes[1:3, i] = Float32.(point_array[path_nodes[i], :])
+        oldIdx2newIdx[path_nodes[i]] = i
     end 
 
     # rebuild the edges
-    for i in 1:num_edges
-        path_edges[i] = (id_map[path_edges[i][1]], id_map[path_edges[i][2]])
+    childIdxes = zeros(UInt32, edgeNum)
+    parentIdxes = zeros(UInt32, edgeNum)
+    for i in 1:edgeNum
+        childIdx, parentIdx = path_edges[i]
+        # map to new index 
+        childIdx = oldIdx2newIdx[ childIdx ]
+        parentIdx = oldIdx2newIdx[ parentIdx ]
+        @assert childIdx != parentIdx
+        childIdxes[i] = childIdx
+        parentIdxes[i] = parentIdx
     end
-    for edge in path_edges 
-        # no self connecting edge!
-        @assert edge[1] != edge[2]
-    end 
-    return nodes, path_edges
-end 
 
+    connectivityMatrix = sparse(childIdxes, parentIdxes, true, nodeNum, nodeNum)
+
+    NodeNet(nodes, connectivityMatrix)
+end 

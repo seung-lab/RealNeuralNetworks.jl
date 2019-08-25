@@ -1,6 +1,6 @@
 export load_swc, save_swc, get_neuroglancer_precomputed, save_nodenet_bin, load_nodenet_bin
 export stretch_coordinates!, add_offset!
-export set_radius!
+export set_radii!
 export get_path_length, downsample!, find_closest_node_id, get_radii
 
 include("TEASAR.jl")
@@ -8,7 +8,6 @@ include("TEASAR.jl")
 import LinearAlgebra: norm
 import DelimitedFiles: readdlm, writedlm
 using NearestNeighbors
-
 
 const OFFSET = (zero(UInt32), zero(UInt32), zero(UInt32))
 # rescale the skeleton
@@ -25,7 +24,7 @@ function NodeNet(nodeArray::Matrix{T},
     @assert size(nodeArray, 1) == 4
     classes = zeros(UInt8, size(nodeArray, 2))
     dropzeros!(connectivityMatrix)
-    NodeNet(nodeArray, classes, connectivityMatrix)
+    NodeNet(classes, nodeArray, connectivityMatrix)
 end
 
 @inline function NodeNet(nodeList::Vector{NTuple{4,T}}, 
@@ -207,9 +206,14 @@ function get_branching_node_id_list(self::NodeNet)
 end 
 
 #################### Setters ############################################
-function set_radius!(self::NodeNet, radius::Float32)
+@inline function set_radii!(self::NodeNet, radius::Float32)
     nodeArray = get_node_array(self)
     nodeArray[4, :] .= radius
+end
+
+@inline function set_radii!(self::NodeNet{T}, radii::Vector{T}) where T
+    nodeArray = get_node_array(self)
+    nodeArray[4, :] = radii
 end
 
 #################### Base functions ######################################
@@ -278,7 +282,7 @@ look for the id of the closest node
     find_closest_node_id(self, [point[1:3]...])
 end
 
-function find_closest_node_id(self::NodeNet{T}, point::Vector{T}) where T
+function find_closest_node_id(self::NodeNet{T}, point::Vector{T}; kdtree = KDTree(nodeArray)) where T
     nodeArray = get_node_array(self)
     kdtree = KDTree(nodeArray[1:3, :]; leafsize=10)
     idxs, _ = knn(kdtree, point, 1)
@@ -584,13 +588,15 @@ function update_parents!(parents::Vector{UInt32}, selectedNodeIdxes::Union{UnitR
     # this is a map connecting old and new index
     oldIdx2newIdx = zeros(UInt32, maximum(selectedNodeIdxes))
     newIdx = zero(UInt32)
-    for oldIdx in selectedNodeIdxes
+    @inbounds for oldIdx in selectedNodeIdxes
         newIdx += one(UInt32)
         oldIdx2newIdx[ oldIdx ] = newIdx
     end
     
     # since the root node have parent index 0, it can not be indexed directly
-    @inbounds for (i, oldParentIdx) in enumerate(parents)
+    i = zero(UInt32)
+    @inbounds for oldParentIdx in parents
+        i += one(UInt32)
         if oldParentIdx > zero(UInt32)
             parents[i] = oldIdx2newIdx[oldParentIdx]
         end
