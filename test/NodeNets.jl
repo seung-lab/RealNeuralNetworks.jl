@@ -6,7 +6,9 @@ using Test
     # read swc
     exampleFile = joinpath(@__DIR__, "../asset/Nov10IR3e.CNG.swc")
     println("load plain text swc...")
+    nodeNet = load_swc( exampleFile )
     @time nodeNet = load_swc( exampleFile )
+    println("loaded swc with nodes: ", length(nodeNet))
 
     tempFile = tempname() * ".swc"
 
