@@ -8,6 +8,7 @@ include("TEASAR.jl")
 import LinearAlgebra: norm
 import DelimitedFiles: readdlm, writedlm
 using NearestNeighbors
+using Memoize
 
 const OFFSET = (zero(UInt32), zero(UInt32), zero(UInt32))
 # rescale the skeleton
@@ -57,7 +58,7 @@ function parents_to_connectivity_matrix(parents::Vector{UInt32})
     connectivityMatrix
 end
 
-function connectivity_matrix_to_parents(connectivityMatrix::SparseMatrixCSC{Bool, UInt32})
+@memoize function connectivity_matrix_to_parents(connectivityMatrix::SparseMatrixCSC{Bool, UInt32})
     nodeNum = size(connectivityMatrix, 1)
     parents = zeros(UInt32, nodeNum)
     
@@ -240,13 +241,14 @@ end
 
 look for the id of the closest node
 """
-@inline function find_closest_node_id(self::Neuron{T}, point::NTuple{N,T}) where {N,T}
+@inline function find_closest_node_id(self::Neuron{T}, point::NTuple{N,T};
+                                        kdtree::KDTree=get_kdtree(self)) where {N,T}
     find_closest_node_id(self, [point[1:3]...])
 end
 
-function find_closest_node_id(self::Neuron{T}, point::Vector{T}; kdtree = KDTree(nodeArray)) where T
+function find_closest_node_id(self::Neuron{T}, point::Vector{T}; 
+                                kdtree::KDTree = get_kdtree(self)) where T
     nodeArray = get_node_array(self)
-    kdtree = KDTree(nodeArray[1:3, :]; leafsize=10)
     idxs, _ = knn(kdtree, point, 1)
     return idxs[1]
 end
@@ -267,6 +269,11 @@ function get_path_length( self::Neuron{T} ) where T
         @fastmath pathLength += norm(childNode .- parentNode)
     end
     pathLength
+end
+
+@memoize function get_kdtree(self; leafsize::Integer=10)
+    nodeArray = get_node_array(self)
+    KDTree(nodeArray[1:3, :]; leafsize=leafsize)
 end
 
 function get_segment_start_stop_node_indexes(self)
