@@ -226,6 +226,7 @@ function Base.UnitRange(self::Neuron)
     maxCoordinates = [zero(UInt32), zero(UInt32), zero(UInt32)]
     @inbounds for i in 1:length(self)
         node = @view nodeArray[1:3, i]
+
         minCoordinates = map(min, minCoordinates, node)
         maxCoordinates = map(max, maxCoordinates, node)
     end 
@@ -263,10 +264,36 @@ function get_path_length( self::Neuron{T} ) where T
     @inbounds for (childNodeIdx, parentNodeIdx) in zip(childNodeIdxes, parentNodeIdxes)
         childNode = view(nodeArray, 1:3, childNodeIdx)
         parentNode = view(nodeArray, 1:3, parentNodeIdx)
-        pathLength += norm(childNode .- parentNode)
+        @fastmath pathLength += norm(childNode .- parentNode)
     end
     pathLength
-end 
+end
+
+function get_segment_start_stop_node_indexes(self)
+    segmentStopNodeIdxList = Int[]
+
+    connectivityMatrix = get_connectivity_matrix(self)
+    for nodeIdx in 1:length(self)
+        childrenNum = nnz(connectivityMatrix[:, nodeIdx])
+        if childrenNum>1 || childrenNum==0
+            # braching node or terminal node is the end of segment
+            push!(segmentStopNodeIdxList, nodeIdx)
+        end
+    end
+
+    segmentStopNodeIdxSet = Set{Int}( segmentStopNodeIdxList )
+    segmentStartNodeIdxList = similar(segmentStopNodeIdxList)
+    parents = connectivity_matrix_to_parents(connectivityMatrix)
+    for (i, nodeIdx) in enumerate(segmentStopNodeIdxList)
+        parentNodeIdx = parents[ nodeIdx ]
+        while parentNodeIdx!=0 && !(parentNodeIdx in segmentStopNodeIdxSet)
+            nodeIdx = parentNodeIdx
+            parentNodeIdx = parents[ parentNodeIdx ]
+        end
+        segmentStartNodeIdxList[ i ] = nodeIdx
+    end
+    segmentStartNodeIdxList, segmentStopNodeIdxList
+end
 
 ##################### transformation ##########################
 """
