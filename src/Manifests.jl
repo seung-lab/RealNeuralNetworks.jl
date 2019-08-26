@@ -46,7 +46,7 @@ end
 """
 example: ["770048087:0:2968-3480_1776-2288_16912-17424"]
 """
-function Manifest( ranges::Vector, ba::BigArray{D,T,N} ) where {D,T,N}
+function Manifest( ranges::Vector, ba::BigArray )
     obj_id = Meta.parse( split(ranges[1], ":")[1] )
     obj_id = convert(T, obj_id)
     ranges = map(x-> split(x,":")[end], ranges)
