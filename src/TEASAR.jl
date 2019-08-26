@@ -28,7 +28,7 @@ end
 Parameters:
     bin_im: binary mask. the object voxel should be false, non-object voxel should be true
 Return:
-    nodeNet object
+    neuron object
 """
 function teasar(bin_im::Union{BitArray, Array{Bool,3}}; 
                  offset::NTuple{3, UInt32} = OFFSET,
@@ -77,7 +77,7 @@ function teasar( points::Matrix{T}; dbf::DBF=DBFs.compute_DBF(points),
     # I have to do something a bit more complicated
     _,nonzero_vals = findnz(volumeIndex2NodeId);
     disconnectedNodeIdSet = IntSet( nonzero_vals );
-    pathList = Vector(); # holds vector of nodeNet paths
+    pathList = Vector(); # holds vector of neuron paths
     destinationNodeIdList = Vector{Int}(); #host dest node for each path
     # set of nodes for which we've "inspected" already
     # removing their neighbors based on DBF
@@ -128,14 +128,14 @@ function teasar( points::Matrix{T}; dbf::DBF=DBFs.compute_DBF(points),
     path_nodes, path_edges = consolidate_paths( pathList );
     node_radii = dbf[path_nodes];
 
-    # build a new graph containing only the nodeNet nodes and edges
-    nodeNet = distill!(points, path_nodes, path_edges)
-    set_radii!(nodeNet, node_radii)
+    # build a new graph containing only the neuron nodes and edges
+    neuron = distill!(points, path_nodes, path_edges)
+    set_radii!(neuron, node_radii)
 
     # add the offset from shift bounding box function
     bbox_offset = map(Float32, bbox_offset)
-    add_offset!(nodeNet, bbox_offset)
-    nodeNet
+    add_offset!(neuron, bbox_offset)
+    neuron
 end
 
 
@@ -146,7 +146,7 @@ end
   Normalize the point dimensions by subtracting the min
   across each dimension. This step isn't extremely necessary,
   but might be useful for compatibility with the MATLAB code.
-  record the offset and add it back after building the nodeNet
+  record the offset and add it back after building the neuron
 """
 function translate_to_origin!( points::Matrix{T} ) where T
     offset = minimum( points, dims=1 ) .- one(T) ;
@@ -489,11 +489,11 @@ end
 Parameters:
 ===========
     point_array: a Nx3 array recording all the voxel coordinates inside the object.
-    path_nodes: the indexes of nodeNet voxels in the point_array 
-    path_edges: the index pairs of nodeNet in the point_array  
+    path_nodes: the indexes of neuron voxels in the point_array 
+    path_edges: the index pairs of neuron in the point_array  
 
 In the path_nodes, the nodes were encoded as the index of the point_array. Since we do 
-not need point_array anymore, which could be pretty big, we'll only reserve the nodeNet 
+not need point_array anymore, which could be pretty big, we'll only reserve the neuron 
 coordinates and let the gc release the point_array. 
 the same applys to path_edges 
 """
@@ -529,5 +529,5 @@ function distill!(point_array::Array{T,2},
 
     connectivityMatrix = sparse(childIdxes, parentIdxes, true, nodeNum, nodeNum)
 
-    NodeNet(nodes, connectivityMatrix)
+    Neuron(nodes, connectivityMatrix)
 end 

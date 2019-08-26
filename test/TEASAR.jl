@@ -43,8 +43,7 @@ end
     seg = create_fake_seg()
     # @time seg = get_seg_from_h5()
     # @time seg = get_seg_from_gs()
-    println("\nbuilding nodeNet ...")
-    #@time nodeNet = NodeNet( seg; obj_id = CELL_ID )
-    @time nodeNet = teasar( seg; obj_id = one(UInt32) )
-    @test length(nodeNet) > 0
+    println("\nbuilding neuron ...")
+    @time neuron = teasar( seg; obj_id = one(UInt32) )
+    @test length(neuron) > 0
 end 

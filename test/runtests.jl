@@ -1,7 +1,8 @@
 #include("Synapses.jl")
 #include("DBFs.jl")
 #include("PointArrays.jl")
-include("NodeNets.jl")
+include("Neurons.jl")
+include("TEASAR.jl")
 #include("Manifests.jl")
 
 

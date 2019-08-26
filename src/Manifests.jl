@@ -88,8 +88,8 @@ function trace(self::Manifest)
     # save temporal variables for debug
     # @save "/tmp/$(neuronId).jld" pointClouds, pointCloud, dbf
     println("skeletonization from global point cloud and dbf using RealNeuralNetworks algorithm...")
-    @time nodeNet = teasar(pointCloud; dbf=dbf) 
-    return nodeNet
+    @time neuron = teasar(pointCloud; dbf=dbf) 
+    return neuron
 end 
 
 function _get_point_cloud_dbf(self::Manifest, ranges::Vector)

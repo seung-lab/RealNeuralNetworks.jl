@@ -1,7 +1,7 @@
 using SparseArrays 
 
-export NodeNet 
-mutable struct NodeNet{T} 
+export Neuron 
+mutable struct Neuron{T} 
     # the classes following the definition of swc 
     # 0 - undefined
     # 1 - soma

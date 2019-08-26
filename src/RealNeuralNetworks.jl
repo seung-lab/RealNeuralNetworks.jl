@@ -3,7 +3,7 @@ module RealNeuralNetworks
 include("types.jl")
 include("Utils/include.jl"); 
 include("PointArrays.jl")
-include("NodeNets.jl"); 
+include("Neurons.jl"); 
 include("Manifests.jl"); 
 #include("Neurons.jl")
 #include("NeuralNets.jl")
