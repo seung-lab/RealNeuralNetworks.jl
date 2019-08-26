@@ -1,8 +1,6 @@
 module Neurons
 include("Segments.jl")
 using .Segments
-using ..NodeNets
-using ..SWCs
 using ..Utils.BoundingBoxes 
 using .Segments.Synapses 
 
@@ -33,7 +31,7 @@ end
 a neuron modeled by interconnected segments 
 """
 function Neuron(nodeNet::NodeNet{T}) where T
-    radii = NodeNets.get_radii(nodeNet)
+    radii = get_radii(nodeNet)
     # locate the root node with largest radius
     # theoritically this should be the center of soma 
     _, rootNodeId = findmax(radii)
@@ -53,12 +51,15 @@ function Neuron(nodeNet::NodeNet{T}, rootNodeId::Integer;
     neuron = Neuron!(rootNodeId, nodeNet, collectedFlagVec)
     # println(sum(collectedFlagVec), " visited voxels in ", length(collectedFlagVec))
 
+    # precompute the terminal node Id List
+    terminalNodeIdList2 = NodeNets.get_terminal_node_id_list(nodeNet)
     while !all(collectedFlagVec)
         # println(sum(collectedFlagVec), " visited voxels in ", length(collectedFlagVec))
         # there exist some uncollected nodes 
         # find the uncollected node that is closest to the terminal nodes as seed
         # terminal node should have high priority than normal nodes. 
-        seedNodeId2 = find_seed_node_id(neuron, nodeNet, collectedFlagVec)
+        seedNodeId2 = find_seed_node_id(neuron, nodeNet, collectedFlagVec; 
+                                        terminalNodeIdList2=terminalNodeIdList2)
 
         mergingSegmentId1, mergingNodeIdInSegment1, weightedTerminalDistance = 
                                 find_merging_terminal_node_id(neuron, nodeNet[seedNodeId2])
@@ -188,21 +189,6 @@ function Neuron( seg::Array{ST,3}; obj_id::ST = convert(ST,1),
     Neuron( nodeNet )
 end
 
-function Neuron( swc::SWC )
-    nodeNet = NodeNet( swc )
-    # respect the point class 
-    Neuron( nodeNet )
-end 
-
-"""
-    Neuron( swcString::AbstractString )
-transform string from swc content to Neuron 
-"""
-function Neuron( swcString::AbstractString )
-    swc = SWC(swcString)
-    Neuron( swc )
-end
-
 ######################### IO ################
 function load(fileName::AbstractString)
     if endswith(fileName, ".swc")
@@ -234,17 +220,8 @@ function load_swc( fileName::AbstractString )
 end
 
 function save_swc(self::Neuron, fileName::AbstractString)
-    swc = SWC(self)
-    SWCs.save( swc, fileName )
-end 
-
-function load_swc_bin( fileName::AbstractString )
-    swc = SWCs.load_swc_bin( fileName )
-    Neuron( swc )
-end 
-
-function save_swc_bin( self::Neuron, fileName::AbstractString )
-    SWCs.save_swc_bin( SWCs.SWC(self), fileName )
+    nodeNet = NodeNet(self)
+    NodeNets.save_swc( nodeNet, fileName )
 end 
 
 function load_bin(fileName::AbstractString)
@@ -366,6 +343,25 @@ get total number of nodes
 """
 @inline function get_node_num( self::Neuron )
     sum(map(length, get_segment_list(self)))
+end 
+
+"""
+    get_node_array(self::Neuron)
+get the node array. the first axis is the x,y,z,r, 
+the second axis is the number of nodes.
+"""
+function get_node_array( self::Neuron{T} ) where T
+    N = get_node_num(self)
+    nodeArray = Matrix{T}(undef, 4, N)
+
+    i = 0
+    for segment in get_segment_list(self)
+        for node in Segments.get_node_list(segment)
+            i += 1
+            nodeArray[:, i] = [node...]
+        end
+    end 
+    nodeArray
 end 
 
 """
@@ -1561,7 +1557,8 @@ end
 transform to NodeNet, the first node is the root node.
 """
 function NodeNets.NodeNet(self::Neuron)
-    nodeList = get_node_list( self )
+    nodeArray = get_node_array( self )
+    N = size(nodeArray, 2)
     edges = get_edge_list( self )
     nodeClassList = get_node_class_list(self)
     
@@ -1569,42 +1566,8 @@ function NodeNets.NodeNet(self::Neuron)
     J = map(x->UInt32(x[2]), edges)
     
     # the connectivity matrix should be symmetric
-    connectivityMatrix = sparse([I..., J...,], [J..., I...,],true, 
-                                length(nodeList), length(nodeList))
-    NodeNet(nodeList, nodeClassList, connectivityMatrix)    
-end 
-
-function SWCs.SWC(self::Neuron)
-    # initialize swc, which is a list of point objects
-    swc = SWCs.SWC()
-    # the node index of each segment, will be used for connecting the child segment
-    segmentEndNodeIdList = get_segment_end_node_id_list(self)
-    # connectivity matrix of segments
-    segmentConnectivityMatrix = get_connectivity_matrix(self)
-
-    for (segmentId, segment) in enumerate( get_segment_list(self) )
-        for (nodeId, node) in enumerate( Segments.get_node_list( segment ))
-            # type, x, y, z, r, parent
-            # in default, this was assumed that the connection is inside a segment, 
-            # the parent is simply the previous node 
-            pointObj = SWCs.PointObj( Segments.get_class(segment), 
-                                     node[1], node[2], node[3], node[4], length(swc) )
-            
-            if nodeId == 1
-                # the first node should connect to other segment or be root node
-                if length(swc) == 0
-                    pointObj.parent = -1
-                else
-                    # find the connected parent segment index
-                    parentSegmentId = get_parent_segment_id(self, segmentId)
-                    # the node index of parent segment end
-                    pointObj.parent= segmentEndNodeIdList[ parentSegmentId ]
-                end 
-            end 
-            push!(swc, pointObj)
-        end 
-    end
-    swc
+    connectivityMatrix = sparse([I..., J...,], [J..., I...,],true, N, N)
+    NodeNet(nodeArray, nodeClassList, connectivityMatrix)    
 end 
 
 """
@@ -1710,7 +1673,7 @@ Note that this operation will lost all the semantic information of segments.
 """
 function reset_root(self::Neuron{T}, annotationRootNode::NTuple{3,T}) where T
     nodeNet = NodeNet(self)
-    rootId = NodeNets.find_closest_node_id(nodeNet, annotationRootNode)
+    rootId = find_closest_node_id(nodeNet, annotationRootNode)
     Neuron(nodeNet, rootId)
 end
 
@@ -2076,14 +2039,22 @@ function build_tree_with_position(self::Neuron{T}; leafSize::Integer=1) where T
     return kdTree, nodePosition 
 end
 
-function find_closest_node(self::Neuron{T}, seedNode::NTuple{3,T}) where T
+@inline function find_closest_node(self::Neuron{T}, seedNode::NTuple{3, T}) where T
+    find_closest_node(self, [seedNode...])
+end
+
+function find_closest_node(self::Neuron{T}, seedNode::Vector{T}) where T
     kdTree, nodePosition = build_tree_with_position(self)
     find_closest_node(kdTree, nodePosition, seedNode)
 end 
 
-function find_closest_node(kdTree::KDTree, nodePosition::Matrix{Int}, 
-                           seedNode::Union{Tuple, Vector})
-    idxs, dists = knn(kdTree, [seedNode[1:3]...], 1, false)
+@inline function find_closest_node(kdTree::KDTree, nodePosition::Matrix{Int}, 
+                                        seedNode::NTuple{3,T}) where T 
+    find_closest_node(kdTree, nodePosition, [seedNode...])
+end
+
+function find_closest_node(kdTree::KDTree, nodePosition::Matrix{Int}, seedNode::Vector)
+    idxs, dists = knn(kdTree, seedNode[1:3], 1, false)
     segmentId, nodeIdInSegment = nodePosition[:, idxs[1]]
     return segmentId, nodeIdInSegment, dists[1]
 end 
@@ -2135,7 +2106,7 @@ end
 #this function has a nice property that shrinking the distance within 45 degrees  
 #and enlarge it with angle greater than 45 degrees 
 """
-function find_merging_terminal_node_id(self::Neuron{T}, seedNode2::NTuple{4, T}) where T
+function find_merging_terminal_node_id(self::Neuron{T}, seedNode2::Vector{T}) where T
     # initialization 
     closestTerminalSegmentId1 = 0
     terminalNodeIdInSegment1 = 0
@@ -2147,7 +2118,7 @@ function find_merging_terminal_node_id(self::Neuron{T}, seedNode2::NTuple{4, T})
     for terminalSegmentId1 in terminalSegmentIdList1 
         terminalSegment1 = segmentList1[terminalSegmentId1]
         terminalNode1 = terminalSegment1[end]
-        b = [ [seedNode2[1:3]...] .- [terminalNode1[1:3]...] ]
+        b = [ seedNode2[1:3] .- [terminalNode1[1:3]...] ]
         physicalDistance::T = norm(b)
         
         if physicalDistance < weightedDistance 
@@ -2194,17 +2165,19 @@ end
 
 find the closest terminal node in uncollected node set as new growing seed.  
 """
-function find_seed_node_id(neuron::Neuron, nodeNet::NodeNet, collectedFlagVec::BitArray{1})
+function find_seed_node_id(neuron::Neuron, nodeNet::NodeNet, collectedFlagVec::BitArray{1};
+                            terminalNodeIdList2::Vector{Int} = NodeNets.get_terminal_node_id_list(nodeNet))
     # number 1 means the alread grown neuron 
     # number 2 means the id in the raw node net 
     segmentList1 = get_segment_list(neuron)
     # the new seed will be chosen this terminal node set 
-    terminalNodeIdList2 = NodeNets.get_terminal_node_id_list(nodeNet)
+    @assert all(terminalNodeIdList2 .> 0)
 
     # initialization
     seedNodeId2 = 0
     distance = typemax(Float32)
     
+    @assert !isempty(terminalNodeIdList2)
     @assert !isempty(segmentList1)
     @assert !all(collectedFlagVec)
     
@@ -2220,14 +2193,19 @@ function find_seed_node_id(neuron::Neuron, nodeNet::NodeNet, collectedFlagVec::B
                 bbox_distance = Segments.get_bounding_box_distance(segment1, node2)
                 if bbox_distance < distance 
                     d, _ = Segments.distance_from(segment1, node2)
-                    if d < distance 
+                    if d < distance
+                        # @show bbox_distance, distance, d, seedNodeId2, candidateSeedId2
                         distance = d
-                        seedNodeId2 = candidateSeedId2 
+                        seedNodeId2 = candidateSeedId2
+                        if seedNodeId2 == 0
+                            @show d, bbox_distance
+                        end
                     end 
                 end 
             end
         end 
     end
+    @assert seedNodeId2 > 0
     return seedNodeId2 
 end 
 

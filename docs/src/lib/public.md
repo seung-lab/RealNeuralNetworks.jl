@@ -20,10 +20,4 @@ Pages = ["public.md"]
 
 ```@docs 
 RealNeuralNetworks
-Neurons
-Segments
-Synapses
-SWCs
-NeuralNets
-SynapseTables
 ```

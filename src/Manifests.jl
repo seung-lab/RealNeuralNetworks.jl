@@ -1,14 +1,10 @@
 module Manifests
 include("DBFs.jl"); using .DBFs;
-include("PointArrays.jl"); using .PointArrays;
 
 # using JLD2
 using BigArrays
 using BigArrays.GSDicts
 
-using ..RealNeuralNetworks.NodeNets
-#import ..RealNeuralNetworks.NodeNets.DBFs
-#import ..RealNeuralNetworks.NodeNets.PointArrays
 using OffsetArrays
 using JSON
 #import Distributed: pmap 
@@ -50,7 +46,7 @@ end
 """
 example: ["770048087:0:2968-3480_1776-2288_16912-17424"]
 """
-function Manifest( ranges::Vector, ba::BigArray{D,T,N} ) where {D,T,N}
+function Manifest( ranges::Vector, ba::BigArray )
     obj_id = Meta.parse( split(ranges[1], ":")[1] )
     obj_id = convert(T, obj_id)
     ranges = map(x-> split(x,":")[end], ranges)
@@ -92,7 +88,7 @@ function trace(self::Manifest)
     # save temporal variables for debug
     # @save "/tmp/$(neuronId).jld" pointClouds, pointCloud, dbf
     println("skeletonization from global point cloud and dbf using RealNeuralNetworks algorithm...")
-    @time nodeNet = NodeNet(pointCloud; dbf=dbf) 
+    @time nodeNet = teasar(pointCloud; dbf=dbf) 
     return nodeNet
 end 
 
@@ -102,10 +98,10 @@ function _get_point_cloud_dbf(self::Manifest, ranges::Vector)
     seg = self.ba[ranges...] |> parent
     bin_im = DBFs.create_binary_image( seg; obj_id = self.obj_id )
     @assert any(bin_im)
-    point_cloud = PointArrays.from_binary_image( bin_im )
+    point_cloud = from_binary_image( bin_im )
     # distance from boundary field
     dbf = DBFs.compute_DBF(point_cloud, bin_im)
-    PointArrays.add_offset!(point_cloud, offset)
+    add_offset!(point_cloud, offset)
     # no need to use voxel_offset since the file name encoded the global coordinate
     # PointArrays.add_offset!(point_cloud, get_voxel_offset(self)) 
     return point_cloud, dbf

@@ -1,12 +1,14 @@
 name = "RealNeuralNetworks"
 uuid = "4491297b-8966-5840-8cb9-b189d60f3398"
-version = "1.0.0"
+authors = ["Jingpeng Wu <jingpeng.wu@gmail.com>"]
+version = "v1.3.1"
 
 [deps]
 BigArrays = "c2a8506f-1b35-5b08-8aa1-bb4a7b47a05e"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
+DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 ImageFiltering = "6a3955dd-da59-5b1f-98d4-e7296123deb5"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
@@ -23,7 +25,7 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
-julia = "≥ 1.0.0"
+julia = "≥ 1.3.0"
 
 [extras]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"

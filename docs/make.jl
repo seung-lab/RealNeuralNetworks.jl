@@ -1,11 +1,7 @@
 using Documenter, RealNeuralNetworks
-using RealNeuralNetworks.Neurons 
-using RealNeuralNetworks.Neurons.Segments 
-using RealNeuralNetworks.Neurons.Segments.Synapses
-using RealNeuralNetworks.SWCs
 
 makedocs(
-	modules=[RealNeuralNetworks, Neurons, Segments, Synapses, SWCs],
+	modules=[RealNeuralNetworks],
 	sitename="RealNeuralNetworks.jl",
 	authors="Jingpeng Wu",
 	format=:html,
@@ -20,8 +16,6 @@ makedocs(
             "Public" => "lib/public.md",
             hide("Internals" => "lib/internals.md", Any[
                 "lib/internals/Manifests.md",
-                "lib/internals/NodeNets.md",
-                "lib/internals/PointArrays.md",
             ])
         ],
         "man/contributing.md",
@@ -34,7 +28,7 @@ makedocs(
 deploydocs(
 	repo="github.com/seung-lab/RealNeuralNetworks.jl",
 	target="build",
-	julia="0.7",
+	julia="1.0.0",
 	deps=nothing,
 	make=nothing
 )

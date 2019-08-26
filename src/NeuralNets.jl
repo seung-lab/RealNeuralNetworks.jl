@@ -6,7 +6,6 @@ using MetaGraphs
 #using Query
 using ..Neurons 
 using ..Neurons.Segments.Synapses
-using ..SWCs
 
 using Query
 

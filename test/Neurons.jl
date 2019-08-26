@@ -262,8 +262,8 @@ end
     println("transform to SWC structure ...")
     @time swc = SWCs.SWC( neuron )
     tempFile = tempname() * ".swc"
+    # the radius is Inf32, can not be saved!
+    SWCs.set_radius!(swc, one(Float32))
     SWCs.save(swc, tempFile)
     rm(tempFile)
 end 
-
-
