@@ -1,5 +1,8 @@
 module Manifests
 include("DBFs.jl"); using .DBFs;
+include("PointArrays.jl"); using .PointArrays;
+
+using RealNeuralNetworks
 
 # using JLD2
 using BigArrays
@@ -28,31 +31,23 @@ Parameters:
 """
 function Manifest(manifestDirPath::AbstractString, manifestKey::AbstractString, 
                   bigArrayPath::AbstractString, mip::Integer )
-    println("big array path: ", bigArrayPath)
+    #println("big array path: ", bigArrayPath)
+    #println("manifestDirPath: ", manifestDirPath)
 
-    ba = BigArray( GSDict( bigArrayPath ); mip=mip, mode=:sequential )
+    ba = BigArray( GSDict( bigArrayPath ); mip=mip, mode=:multithreads )
     h = GSDict( manifestDirPath )
-    d = h[manifestKey]
-    Manifest( d, ba )
-end
+    ranges_str_list = h[manifestKey][:fragments]
+    # @show ranges_str_list
 
-"""
-example: {"fragments": ["770048087:0:2968-3480_1776-2288_16912-17424"]}
-"""
-function Manifest( h::Dict{Symbol, Any}, ba::AbstractBigArray )
-    Manifest( h[:fragments], ba )
-end 
-
-"""
-example: ["770048087:0:2968-3480_1776-2288_16912-17424"]
-"""
-function Manifest( ranges::Vector, ba::BigArray )
-    obj_id = Meta.parse( split(ranges[1], ":")[1] )
-    obj_id = convert(T, obj_id)
-    ranges = map(x-> split(x,":")[end], ranges)
-    rangeList = map( BigArrays.Indexes.string2unit_range, ranges )
-    @show rangeList 
-    Manifest( ba, obj_id, rangeList )
+    obj_id = Meta.parse( split(ranges_str_list[1], ":")[1] )
+    obj_id = convert(eltype(ba), obj_id)
+    ranges_str_list = map(x-> split(x,":")[end], ranges_str_list)
+    rangesList = map( BigArrays.Indexes.string2unit_range, ranges_str_list )
+    # convert from z,y,x to x,y,z
+    # this is due to a bug in chunkflow, we should not need this in the future
+    rangesList = map( reverse, rangesList)
+    # @show rangesList 
+    Manifest( ba, obj_id, rangesList )
 end
 
 function Base.length(self::Manifest) length(get_range_list(self)) end 
@@ -97,11 +92,12 @@ function _get_point_cloud_dbf(self::Manifest, ranges::Vector)
     offset = (map(x-> UInt32(x.start-1), ranges)...,)
     seg = self.ba[ranges...] |> parent
     bin_im = DBFs.create_binary_image( seg; obj_id = self.obj_id )
-    @assert any(bin_im)
-    point_cloud = from_binary_image( bin_im )
+    @assert !all(bin_im)
+    point_cloud = PointArrays.from_binary_image( bin_im )
+    @assert !isempty(point_cloud)
     # distance from boundary field
     dbf = DBFs.compute_DBF(point_cloud, bin_im)
-    add_offset!(point_cloud, offset)
+    PointArrays.add_offset!(point_cloud, offset)
     # no need to use voxel_offset since the file name encoded the global coordinate
     # PointArrays.add_offset!(point_cloud, get_voxel_offset(self)) 
     return point_cloud, dbf

@@ -9,6 +9,7 @@ include("Manifests.jl");
 #include("NeuralNets.jl")
 #include("NBLASTs.jl")
 
+#using .PointArrays
 using .Manifests
 #using .Neurons
 #using .NeuralNets

@@ -238,10 +238,9 @@ end
   Creates a boolean volume where the non-segment indices
   map to true, while the segment indices map to false.
 """
-function create_binary_image( pointCloud::Array{T,2} ) where T;
-
-  max_dims = maximum( pointCloud, dims=1 );
-    bin_im = falses(max_dims...)
+function create_binary_image( pointCloud::Array{T,2} ) where T
+  max_dims = maximum( pointCloud, dims=1 )
+  bin_im = trues(max_dims...)
 
   for p in 1:size( pointCloud, 1 )
     bin_im[ pointCloud[p,:]... ] = false;

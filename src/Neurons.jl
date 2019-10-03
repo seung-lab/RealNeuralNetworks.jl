@@ -5,10 +5,10 @@ export get_path_length, downsample!, find_closest_node_id, get_radii
 
 include("TEASAR.jl")
 
+import Base: String
 import LinearAlgebra: norm
 import DelimitedFiles: readdlm, writedlm
 using NearestNeighbors
-using Memoize
 
 const OFFSET = (zero(UInt32), zero(UInt32), zero(UInt32))
 # rescale the skeleton
@@ -58,7 +58,7 @@ function parents_to_connectivity_matrix(parents::Vector{UInt32})
     connectivityMatrix
 end
 
-@memoize function connectivity_matrix_to_parents(connectivityMatrix::SparseMatrixCSC{Bool, UInt32})
+function connectivity_matrix_to_parents(connectivityMatrix::SparseMatrixCSC{Bool, UInt32})
     nodeNum = size(connectivityMatrix, 1)
     parents = zeros(UInt32, nodeNum)
     
@@ -271,7 +271,7 @@ function get_path_length( self::Neuron{T} ) where T
     pathLength
 end
 
-@memoize function get_kdtree(self; leafsize::Integer=10)
+function get_kdtree(self; leafsize::Integer=10)
     nodeArray = get_node_array(self)
     KDTree(nodeArray[1:3, :]; leafsize=leafsize)
 end
@@ -423,6 +423,28 @@ end
     Neuron(classes, nodeArray, connectivityMatrix)
 end
 
+function String(self::Neuron; truncDigits::Int=3)
+    classes = get_classes(self)
+    nodeArray = get_node_array(self)
+    parents = get_parents(self)
+    # original root node id is 0
+    # set root node to -1 in swc
+    parents = Int.(parents)
+    parents[ findall(parents.==zero(Int)) ] .= -one(Int)
+
+    truncedNodeArray = trunc.(nodeArray; digits=truncDigits)
+    xs = view(truncedNodeArray, 1, :)
+    ys = view(truncedNodeArray, 2, :)
+    zs = view(truncedNodeArray, 3, :)
+    rs = view(truncedNodeArray, 4, :) 
+
+    nodeNum = length(classes)
+    data = zip(1:nodeNum, classes, xs, ys, zs, rs, parents)
+    io = IOBuffer();
+    writedlm(io, data, ' ', dims=(nodeNum, 7))
+    return String(take!(io))
+end
+
 """
 current implementation truncate the value to digits 3!
 The integration transformation will loos some precision!
@@ -437,20 +459,10 @@ open("delim_file.txt", "w") do io
 end
 ```
 """
-function save_swc(self::Neuron, file_name::AbstractString; truncDigits::Int=3)
-    classes = get_classes(self)
-    nodeArray = get_node_array(self)
-    parents = get_parents(self)
-
-    truncedNodeArray = trunc.(nodeArray; digits=truncDigits)
-    xs = view(truncedNodeArray, 1, :)
-    ys = view(truncedNodeArray, 2, :)
-    zs = view(truncedNodeArray, 3, :)
-    rs = view(truncedNodeArray, 4, :) 
-
-    nodeNum = length(classes)
-    data = zip(1:nodeNum, classes, xs, ys, zs, rs, parents)
-    writedlm(file_name, data, ' ', dims=(nodeNum, 7))
+function save_swc(self::Neuron, fileName::AbstractString; truncDigits::Int=3)
+    open(fileName, "w") do io
+        write(io, String(self))
+    end
 end
 
 ##################### manipulate ############################
@@ -468,7 +480,7 @@ get the mean coordinate and radius of neighboring nodes in a segment
 replace the nearby nodes.
 The default is 1 micron.
 """
-function downsample!(self::Neuron{T}; step::T = Float32(1000)) where T
+function downsample!(self::Neuron{T}, step::T = Float32(1000)) where T
     nodeNum = length(self)
     nodeArray = get_node_array(self)
     
@@ -477,7 +489,7 @@ function downsample!(self::Neuron{T}; step::T = Float32(1000)) where T
 
     # use the root nodes as seeds
     seedNodeIdxes = UInt32.(get_root_node_index_list(self))
-    seedNodeParentIdexes = zeros(UInt32, length(seedNodeIdxes))
+    seedNodeParentIdxes = zeros(UInt32, length(seedNodeIdxes))
 
     # we select some nodes out as new Neuron 
     # this selection should include all the seed node indexes
@@ -487,7 +499,7 @@ function downsample!(self::Neuron{T}; step::T = Float32(1000)) where T
 
     @fastmath @inbounds while !isempty(seedNodeIdxes)
         seedNodeIdx = pop!(seedNodeIdxes)
-        parentNodeIdx = pop!(seedNodeParentIdexes)
+        parentNodeIdx = pop!(seedNodeParentIdxes)
         push!(selectedNodeIdxes, seedNodeIdx)
         push!(newParents, parentNodeIdx)
 
@@ -537,7 +549,7 @@ function downsample!(self::Neuron{T}; step::T = Float32(1000)) where T
         # nothing will be added 
         append!(seedNodeIdxes, childrenNodeIdxes)
         for idx in childrenNodeIdxes
-            push!(seedNodeParentIdexes, parentNodeIdx)
+            push!(seedNodeParentIdxes, parentNodeIdx)
         end
     end
     

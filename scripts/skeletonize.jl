@@ -3,6 +3,8 @@ module ArgParses
 
 using ArgParse 
 using JSON 
+import Base: String
+
 
 export parse_commandline 
 export SEGMENT_ID, MIP, VOXEL_SIZE, SEGMENTATION_LAYER 
@@ -77,12 +79,10 @@ using Distributed
 
 @everywhere using AWSSDK.SQS 
 @everywhere using BigArrays.GSDicts
+@everywhere using BigArrays.Infos
 
 @everywhere using RealNeuralNetworks
-@everywhere using RealNeuralNetworks.NodeNets
 @everywhere using RealNeuralNetworks.Manifests
-@everywhere using RealNeuralNetworks.SWCs
-@everywhere using RealNeuralNetworks.Neurons
 
 
 @everywhere function trace(neuronId::Integer; swcDir      ::AbstractString = "/tmp/", 
@@ -93,52 +93,30 @@ using Distributed
     println("skeletonize neuron: $(neuronId)")
     println("fetching manifest...")
     manifest = Manifest(joinpath(segmentationLayer, meshName), "$(neuronId):0", 
-                        joinpath(segmentationLayer), mip)
+                        segmentationLayer, mip)
     
     println("skeletonizing the point cloud...")
-    nodeNet = Manifests.trace(manifest)
+    neuron = Manifests.trace(manifest)
     # transform to physical coordinate system
     # the mesh coordinate start from 0 rather then 1
-    NodeNets.add_offset!(nodeNet, (-one(Float32), -one(Float32), -one(Float32)))
-    NodeNets.stretch_coordinates!( nodeNet, mip )
-    NodeNets.stretch_coordinates!( nodeNet, voxelSize)
-    NodeNets.save(nodeNet, "/tmp/$(neuronId).swc")
+    add_offset!(neuron, (-one(Float32), -one(Float32), -one(Float32)))
+    stretch_coordinates!( neuron, mip )
+    stretch_coordinates!( neuron, voxelSize)
+    save_swc(neuron, "/tmp/$(neuronId).swc")
  
-    # reconnect the broken pieces and reset root to the soma center 
-    neuron = Neuron( nodeNet )
-    neuron = Neurons.remove_subtree_in_soma(neuron)
-    neuron = Neurons.remove_hair( neuron )
-
-    swc = SWCs.SWC( neuron )
-    SWCs.save(swc, joinpath(swcDir, "$(neuronId).swc"))
-    
     # save to neuroglancer
     d_bin  = GSDict(joinpath(segmentationLayer, "skeleton_mip_$(mip-1)"))
+    d_bin["$neuronId"] = get_neuroglancer_precomputed( neuron )
     d_str  = GSDict(joinpath(segmentationLayer, "swc"))
-    d_swc_bin  = GSDict(joinpath(segmentationLayer, "swc_bin"))
-    d_bin["$neuronId"] = SWCs.get_neuroglancer_precomputed( swc )
-    d_str["$(neuronId).swc"] = String(swc)
-    d_swc_bin["$(neuronId).swc.bin"] = SWCs.serialize(swc)
+    d_str["$(neuronId).swc"] = String(neuron)
     
-    println("postprocessing the neuron...")
-    neuron = Neurons.postprocessing(neuron)
-    # save to neuroglancer
-    d_bin  = GSDict(joinpath(segmentationLayer, "skeleton_mip_$(mip-1)_postprocessed"))
-    d_str  = GSDict(joinpath(segmentationLayer, "postprocessed_swc"))
-    d_swc_bin  = GSDict(joinpath(segmentationLayer, "postprocessed_swc_bin"))
-    d_bin["$neuronId"] = SWCs.get_neuroglancer_precomputed( swc )
-    d_str["$(neuronId).swc"] = String(swc)
-    d_swc_bin["$(neuronId).swc.bin"] = SWCs.serialize(swc)
-
     println("resample the neuron...")
-    neuron = Neurons.resample(neuron, Float32(500))
+    neuron = downsample!(neuron, Float32(1000))
     # save to neuroglancer
     d_bin  = GSDict(joinpath(segmentationLayer, "skeleton_mip_$(mip-1)_resampled"))
     d_str  = GSDict(joinpath(segmentationLayer, "resampled_swc"))
-    d_swc_bin  = GSDict(joinpath(segmentationLayer, "resampled_swc_bin"))
-    d_bin["$neuronId"] = SWCs.get_neuroglancer_precomputed( swc )
-    d_str["$(neuronId).swc"] = String(swc)
-    d_swc_bin["$(neuronId).swc.bin"] = SWCs.serialize(swc)
+    d_bin["$neuronId"] = get_neuroglancer_precomputed( neuron )
+    d_str["$(neuronId).swc"] = String(neuron)
 
     println("finish skeletonize.")
 end 
@@ -165,10 +143,11 @@ function read_cell_id_list( fileName::String )
     return idList
 end
 
-@everywhere function trace_queue(queueName::AbstractString)
+@everywhere function trace_queue(args::Dict{String, Any})
+    queueName = args["sqsqueue"]
     queueUrl = SQS.get_queue_url(QueueName=queueName)["QueueUrl"]
     while true
-        println("try to pull task from SQS queue: $(args["sqsqueue"])")
+        println("try to pull task from SQS queue: $(queueName)")
         local message 
         try 
             message = SQS.receive_message(QueueUrl=queueUrl)["messages"][1]
@@ -211,7 +190,7 @@ function main()
                          segmentationLayer=args["segmentationlayer"]), idList)
     elseif args["sqsqueue"] != nothing
         @sync for pid in 1:Distributed.nworkers()
-            remote_do(trace_queue(args["sqsqueue"]), pid)
+            remote_do(trace_queue(args), pid)
         end
     else 
         trace(args["neuronid"]; swcDir = args["swcdir"],  
