@@ -34,29 +34,26 @@ function Manifest(manifestDirPath::AbstractString, manifestKey::AbstractString,
                   bigArrayPath::AbstractString, mip::Integer )
     println("big array path: ", bigArrayPath)
 
-    ba = BigArray( GSDict( bigArrayPath ); mip=mip, mode=:sequential )
+    ba = BigArray( GSDict( bigArrayPath ); mip=mip )
     h = GSDict( manifestDirPath )
     d = h[manifestKey]
-    Manifest( d, ba )
+    ranges = d[:fragments]
+    Manifest( ranges, ba )
 end
-
-"""
-example: {"fragments": ["770048087:0:2968-3480_1776-2288_16912-17424"]}
-"""
-function Manifest( h::Dict{Symbol, Any}, ba::AbstractBigArray )
-    Manifest( h[:fragments], ba )
-end 
 
 """
 example: ["770048087:0:2968-3480_1776-2288_16912-17424"]
 """
-function Manifest( ranges::Vector, ba::BigArray{D,T,N} ) where {D,T,N}
+function Manifest( ranges::Vector, ba::BigArray{D,T} ) where {D,T}
     obj_id = Meta.parse( split(ranges[1], ":")[1] )
     obj_id = convert(T, obj_id)
     ranges = map(x-> split(x,":")[end], ranges)
-    rangeList = map( BigArrays.Indexes.string2unit_range, ranges )
-    @show rangeList 
-    Manifest( ba, obj_id, rangeList )
+    rangesList = map( BigArrays.Indexes.string2unit_range, ranges )
+    # convert from z,y,x to x,y,z
+    # this is due to a bug in chunkflow, we should not need this in the future
+    rangesList = map( reverse, rangesList)
+    @show rangesList 
+    Manifest( ba, obj_id, rangesList )
 end
 
 function Base.length(self::Manifest) length(get_range_list(self)) end 

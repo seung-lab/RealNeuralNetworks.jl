@@ -165,7 +165,8 @@ function read_cell_id_list( fileName::String )
     return idList
 end
 
-@everywhere function trace_queue(queueName::AbstractString)
+@everywhere function trace_queue(args::Dict{String, Any})
+    queueName = args["sqsqueue"]
     queueUrl = SQS.get_queue_url(QueueName=queueName)["QueueUrl"]
     while true
         println("try to pull task from SQS queue: $(args["sqsqueue"])")
@@ -211,7 +212,7 @@ function main()
                          segmentationLayer=args["segmentationlayer"]), idList)
     elseif args["sqsqueue"] != nothing
         @sync for pid in 1:Distributed.nworkers()
-            remote_do(trace_queue(args["sqsqueue"]), pid)
+            remote_do(trace_queue(args), pid)
         end
     else 
         trace(args["neuronid"]; swcDir = args["swcdir"],  
