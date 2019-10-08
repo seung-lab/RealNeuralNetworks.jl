@@ -23,8 +23,16 @@ RUN julia -e 'using Pkg; Pkg.develop(PackageSpec(name="BigArrays", url="https://
 RUN julia -e 'using Pkg; Pkg.develop(PackageSpec(name="RealNeuralNetworks", path=pwd())); \
         Pkg.develop("RealNeuralNetworks"); Pkg.instantiate();' 
     # install registered packages later
-    #Pkg.add("LightGraphs");  \
-    #Pkg.add("MetaGraphs"); \
+RUN julia -e 'using Pkg; Pkg.add("LightGraphs");  \
+    Pkg.add("MetaGraphs"); \
+    Pkg.add("ArgParse");\
+    Pkg.add("LsqFit");\
+    Pkg.add("DataFrames");\
+    Pkg.add("ImageFiltering");\
+    Pkg.add("OffsetArrays"); \
+    Pkg.add("Query"); \
+    Pkg.add("JSON");\ 
+    Pkg.add("AWSSDK"); '
 
 # https://discourse.julialang.org/t/pkg-add-ijulia-can-not-work/13341/2
 #RUN julia -e 'rm(joinpath(homedir(), ".julia", "registries"); recursive=true)'
