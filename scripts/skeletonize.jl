@@ -48,7 +48,11 @@ function parse_commandline()
         "--voxelsize", "-v"
             help = "voxel size of the raw image, mip level 0"
             arg_type = NTuple{3,Float32}
-            default = VOXEL_SIZE 
+            default = VOXEL_SIZE
+        "--visibility-timeout", "-t"
+            help= "visibility timeout in sqs queue"
+            arg_type = Int 
+            default = 3600
         "--mip", "-m"
             help = "mip level of the dataset. Note that our mip level start from 1." 
             arg_type = UInt32
@@ -172,7 +176,7 @@ end
         println("try to pull task from SQS queue: $(args["sqsqueue"])")
         local message 
         try 
-            message = SQS.receive_message(QueueUrl=queueUrl)["messages"][1]
+            message = SQS.receive_message(QueueUrl=queueUrl, VisibilityTimeout=args["visibility-timeout"])["messages"][1]
         catch err 
             @warn("no task fetched, could be all done!")
             println(err)
