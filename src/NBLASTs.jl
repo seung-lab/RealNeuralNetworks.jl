@@ -149,12 +149,13 @@ function nblast(target::Matrix{T}, query::Matrix{T};
         targetNodeIndex = nodeIndexList[1]
         # physical distance
         dist = dists[i][1]
-
+        
         queryVector = query[4:6, i]
         targetVector = target[4:6, targetNodeIndex]
         # absolute dot product
         adp = abs( dot( queryVector, targetVector ) )
-
+        
+        #@show i, targetNodeIndex, dist, adp, ria[dist, adp]
         totalScore += ria[dist, adp]
     end
     totalScore
