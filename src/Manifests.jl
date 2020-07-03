@@ -51,7 +51,7 @@ function Manifest( ranges::Vector, ba::BigArray{D,T} ) where {D,T}
     rangesList = map( BigArrays.Indexes.string2unit_range, ranges )
     # convert from z,y,x to x,y,z
     # this is due to a bug in chunkflow, we should not need this in the future
-    rangesList = map( reverse, rangesList)
+    # rangesList = map( reverse, rangesList)
     @show rangesList 
     Manifest( ba, obj_id, rangesList )
 end

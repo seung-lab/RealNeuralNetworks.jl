@@ -45,9 +45,9 @@ function range_string_list2septa_list(rangeStringList::Vector)
     septaList
 end 
 
-@inline function range_string_list2septa_list(rangeStringList::CSV.Column{String, String})
-    range_string_list2septa_list(map(string, rangeStringList))
-end 
+#@inline function range_string_list2septa_list(rangeStringList::CSV.Column{String, String})
+#    range_string_list2septa_list(map(string, rangeStringList))
+#end 
 
 
 """
