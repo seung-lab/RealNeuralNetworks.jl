@@ -17,9 +17,8 @@ install:
 
 script:
     - julia -e 'using Pkg; Pkg.develop(PackageSpec(name="BigArrays", url="https://github.com/seung-lab/BigArrays.jl.git"))'
-    - julia -e 'using Pkg; Pkg.develop(PackageSpec(name="RealNeuralNetworks", path=pwd())); Pkg.test("RealNeuralNetworks", coverage=true)'
-    - julia -e 'using Pkg; Pkg.add("Documenter")'
-    - julia -e 'using Pkg; cd(Pkg.dir("RealNeuralNetworks")); include(joinpath("docs", "make.jl"))'
+    - julia -e 'using Pkg; Pkg.test("RealNeuralNetworks", coverage=true)'
+    - julia -e 'using Pkg; Pkg.add("Documenter"); cd(Pkg.dir("RealNeuralNetworks")); include(joinpath("docs", "make.jl"))'
 
 
       #jobs:
