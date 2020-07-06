@@ -1,4 +1,4 @@
-FROM julia:1.3
+FROM julia:1.4
 LABEL   maintainer="Jingpeng Wu <jingpeng@princeton.edu>" \
         function="skeletonization"
 
@@ -20,9 +20,11 @@ RUN julia -e 'using Pkg; Pkg.update(); Pkg.instantiate();'
 RUN julia -e 'using Pkg; Pkg.develop(PackageSpec(name="BigArrays", url="https://github.com/seung-lab/BigArrays.jl.git"))'
     #Pkg.resolve(); \
     #Pkg.develop(PackageSpec(url="https://github.com/seung-lab/RealNeuralNetworks.jl.git")); \
-RUN julia -e 'using Pkg; Pkg.develop(PackageSpec(name="RealNeuralNetworks", path=pwd())); \
+
+RUN julia -e 'using Pkg; Pkg.develop(PackageSpec(name="RealNeuralNetworks", path=joinpath(pwd(), "RealNeuralNetworks"))); \
         Pkg.develop("RealNeuralNetworks"); Pkg.instantiate();' 
     # install registered packages later
+
 RUN julia -e 'using Pkg; Pkg.add("LightGraphs");  \
     Pkg.add("MetaGraphs"); \
     Pkg.add("ArgParse");\

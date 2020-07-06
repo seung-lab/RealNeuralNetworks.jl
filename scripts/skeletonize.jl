@@ -32,7 +32,7 @@ end
 
 function parse_commandline()
     s = ArgParseSettings()
-    @add_arg_table s begin 
+    @add_arg_table! s begin 
         "--neuronid", "-i"
             help = "the segment id to skeletonize"
             arg_type = Int
