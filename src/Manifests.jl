@@ -2,7 +2,7 @@ module Manifests
 include("DBFs.jl"); using .DBFs;
 include("PointArrays.jl"); using .PointArrays;
 
-# using JLD2
+using JLD2
 using BigArrays
 using BigArrays.GSDicts
 
@@ -35,9 +35,18 @@ function Manifest(manifestDirPath::AbstractString, manifestKey::AbstractString,
     println("big array path: ", bigArrayPath)
 
     ba = BigArray( GSDict( bigArrayPath ); mip=mip )
+    
     h = GSDict( manifestDirPath )
     d = h[manifestKey]
-    ranges = d[:fragments]
+    if d === nothing
+        @warn "no such neuron: $(manifestKey)"
+        return
+    end
+    if isa(d, Vector{UInt8})
+        d = JSON.parse(transcode(String, d))
+    end
+    @show d
+    ranges = d["fragments"]
     Manifest( ranges, ba )
 end
 
@@ -52,7 +61,7 @@ function Manifest( ranges::Vector, ba::BigArray{D,T} ) where {D,T}
     # convert from z,y,x to x,y,z
     # this is due to a bug in chunkflow, we should not need this in the future
     # rangesList = map( reverse, rangesList)
-    @show rangesList 
+    # @show rangesList 
     Manifest( ba, obj_id, rangesList )
 end
 
@@ -69,7 +78,7 @@ function get_voxel_offset(self::Manifest)
     # we are using mip level 4 with (80x80x45 nm) now 
     # voxel_offset = map((x,y)->UInt32(x*y), voxel_offset, (2^MIP_LEVEL, 2^MIP_LEVEL,1))
     voxel_offset = Vector{UInt32}(voxel_offset)
-    @show voxel_offset
+    # @show voxel_offset
     return (voxel_offset...,)
 end 
 
@@ -81,13 +90,16 @@ function trace(self::Manifest)
     println("extract point clouds and distance from boundary fields ...")
     
     pointCloudDBFList = map(x->_get_point_cloud_dbf(self, x), self.rangeList )
-
+    
     pointClouds = map( x->x[1], pointCloudDBFList )
     pointCloud = vcat(pointClouds ...)
+    println("get $(size(pointCloud, 1)) points.")
+
     dbfs = map(x->x[2], pointCloudDBFList)
     dbf = vcat(dbfs ...)
     # save temporal variables for debug
-    # @save "/tmp/$(neuronId).jld" pointClouds, pointCloud, dbf
+    @save "/tmp/$(self.obj_id).jld" pointClouds, pointCloud, dbf
+    
     println("skeletonization from global point cloud and dbf using RealNeuralNetworks algorithm...")
     @time nodeNet = NodeNet(pointCloud; dbf=dbf) 
     return nodeNet
@@ -97,6 +109,10 @@ function _get_point_cloud_dbf(self::Manifest, ranges::Vector)
     # example: [2456:2968, 1776:2288, 16400:16912]
     offset = (map(x-> UInt32(x.start-1), ranges)...,)
     seg = self.ba[ranges...] |> parent
+    println("number of non-zero voxels: ", count(seg.>0))
+    @assert count(seg.>0) > 0
+
+    println("create binary image...")
     bin_im = DBFs.create_binary_image( seg; obj_id = self.obj_id )
     @assert any(bin_im)
     point_cloud = PointArrays.from_binary_image( bin_im )

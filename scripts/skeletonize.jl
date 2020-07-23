@@ -99,6 +99,10 @@ using Distributed
     manifest = Manifest(joinpath(segmentationLayer, meshName), "$(neuronId):0", 
                         joinpath(segmentationLayer), mip)
     
+    if manifest === nothing
+        @warn "no such neuron, skip the manifest."
+        return 
+    end
     println("skeletonizing the point cloud...")
     nodeNet = Manifests.trace(manifest)
     # transform to physical coordinate system
