@@ -2,22 +2,27 @@ module Manifests
 include("DBFs.jl"); using .DBFs;
 include("PointArrays.jl"); using .PointArrays;
 
-using JLD2
-using BigArrays
-using BigArrays.GSDicts
+# using JLD2
+using Distributed
+@everywhere using BigArrays
+@everywhere using BigArrays.GSDicts
 
-using ..RealNeuralNetworks.NodeNets
+@everywhere using RealNeuralNetworks
+@everywhere using RealNeuralNetworks.NodeNets
+
+# @everywhere using ..NodeNets
+
+
 #import ..RealNeuralNetworks.NodeNets.DBFs
 #import ..RealNeuralNetworks.NodeNets.PointArrays
-using OffsetArrays
-using JSON
-#import Distributed: pmap 
+@everywhere using OffsetArrays
+@everywhere using JSON
 
 const MIP_LEVEL = 4
 
 export Manifest
 
-struct Manifest
+@everywhere struct Manifest
     # the bigarray for cutout of segmentation 
     ba          ::AbstractBigArray
     # the id of object
@@ -89,7 +94,7 @@ build point cloud and dbf when iterating the chunks
 function trace(self::Manifest)
     println("extract point clouds and distance from boundary fields ...")
     
-    pointCloudDBFList = map(x->_get_point_cloud_dbf(self, x), self.rangeList )
+    pointCloudDBFList = pmap(x->_get_point_cloud_dbf(self, x), self.rangeList )
     
     pointClouds = map( x->x[1], pointCloudDBFList )
     pointCloud = vcat(pointClouds ...)
@@ -98,14 +103,14 @@ function trace(self::Manifest)
     dbfs = map(x->x[2], pointCloudDBFList)
     dbf = vcat(dbfs ...)
     # save temporal variables for debug
-    @save "/tmp/$(self.obj_id).jld" pointClouds, pointCloud, dbf
+    # @save "/tmp/$(self.obj_id).jld" pointClouds, pointCloud, dbf
     
     println("skeletonization from global point cloud and dbf using RealNeuralNetworks algorithm...")
     @time nodeNet = NodeNet(pointCloud; dbf=dbf) 
     return nodeNet
 end 
 
-function _get_point_cloud_dbf(self::Manifest, ranges::Vector)
+@everywhere function _get_point_cloud_dbf(self::Manifest, ranges::Vector)
     # example: [2456:2968, 1776:2288, 16400:16912]
     offset = (map(x-> UInt32(x.start-1), ranges)...,)
     seg = self.ba[ranges...] |> parent

@@ -94,6 +94,14 @@ using Distributed
                                 meshName    ::String = "mesh_mip_$MIP",
                                 voxelSize   ::Union{Tuple,Vector} = VOXEL_SIZE,
                                 segmentationLayer::AbstractString = SEGMENTATION_LAYER)
+
+    
+    d_swc_bin  = GSDict(joinpath(segmentationLayer, "resampled_swc_bin"))
+    if haskey(d_swc_bin, "$neuronId")
+        println("neuron $(neuronId) has already been skeletonized.")
+        return
+    end
+
     println("skeletonize neuron: $(neuronId)")
     println("fetching manifest...")
     manifest = Manifest(joinpath(segmentationLayer, meshName), "$(neuronId):0", 

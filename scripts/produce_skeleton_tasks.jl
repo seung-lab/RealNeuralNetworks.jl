@@ -10,7 +10,7 @@ const AWS_CREDENTIAL = AWSCore.aws_config()
 
 function parse_commandline()
     s = ArgParseSettings()
-    @add_arg_table s begin 
+    @add_arg_table! s begin 
         "--jsonfile", "-j"
             help = "the id list was contained in the consensus json file"
             arg_type = String
@@ -39,14 +39,12 @@ function main()
     skipNeuronIdSet = map(Meta.parse, split(args["skip"], ",")) |> Set{Int}
     println("skipping some neuron ids: ", skipNeuronIdSet)
 
-    d = JSON.parsefile(args["jsonfile"] |> expanduser) 
+    neuronIdList = JSON.parsefile(args["jsonfile"] |> expanduser)
     neuronIdSet = Set{Int}()
-    for v in d |> values  
-        for neuronIdStr in keys(v) 
-            neuronId = Meta.parse(neuronIdStr)
-            if !(neuronId in skipNeuronIdSet)
-                push!(neuronIdSet, neuronId)
-            end 
+    for neuronId in neuronIdList  
+        # @show neuronId
+        if !(neuronId in skipNeuronIdSet)
+            push!(neuronIdSet, neuronId)
         end
     end
 
