@@ -5,7 +5,7 @@ using RealNeuralNetworks.Neurons.Segments.Synapses
 
 @testset "test Synapses module" begin 
     df = CSV.read(joinpath(Base.@__DIR__, 
-                           "../asset/77625.pre.synapses.csv"))
+                           "../asset/77625.pre.synapses.csv"), DataFrame)
     synapseList = Vector{Synapse{Float32}}()
     for row in DataFrames.eachrow(df)
         push!(synapseList, Synapse(row))
