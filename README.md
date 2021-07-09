@@ -1,4 +1,4 @@
-![](https://github.com/seung-lab/RealNeuralNetworks.jl/blob/master/asset/logo/RGB_for_web/RNN_Logo_RGB.png)
+![](https://github.com/seung-lab/RealNeuralNetworks.jl/blob/master/asset/logo/RGB_for_web/RNN_Logo_RGB.jpg)
 ========================
 [![Generic badge](https://img.shields.io/badge/Documentation-passing.svg)](https://seung-lab.github.io/RealNeuralNetworks.jl/latest/)
 [![Build Status](https://travis-ci.org/seung-lab/RealNeuralNetworks.jl.svg?branch=master)](https://travis-ci.org/seung-lab/RealNeuralNetworks.jl)
