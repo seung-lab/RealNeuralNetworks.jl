@@ -1,10 +1,9 @@
 ![](https://github.com/seung-lab/RealNeuralNetworks.jl/blob/master/asset/logo/RGB_for_web/RNN_Logo_RGB.jpg)
 ========================
 [![Generic badge](https://img.shields.io/badge/Documentation-passing.svg)](https://seung-lab.github.io/RealNeuralNetworks.jl/latest/)
-[![Build Status](https://travis-ci.org/seung-lab/RealNeuralNetworks.jl.svg?branch=master)](https://travis-ci.org/seung-lab/RealNeuralNetworks.jl)
 [![Coverage Status](https://coveralls.io/repos/github/seung-lab/RealNeuralNetworks.jl/badge.svg?branch=master)](https://coveralls.io/github/seung-lab/RealNeuralNetworks.jl?branch=master)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-
+<!-- [![Build Status](https://travis-ci.org/seung-lab/RealNeuralNetworks.jl.svg?branch=master)](https://travis-ci.org/seung-lab/RealNeuralNetworks.jl) -->
 
 
 3D neuron models extracted from EM image segmentation 
@@ -57,8 +56,8 @@ SWCs.save(swc, tempname()*".swc")
 - [x] number of segment points 
 - [x] Median segment length is the median dendritic segment length of all the segments starting and ending at irreducible nodes (in μm). Irreducible nodes are the points of the dendritic arbor corresponding to soma, branching points or terminal points.
 - [x] 3D sholl analysis. 
-- [ ] Hull area is the area of the tightest convex hull containing the z-projection of the dendritic arbor (in μm2). 
-- [ ] volume of the convex hull around all neurites
+- [x] Hull area is the area of the tightest convex hull containing the z-projection of the dendritic arbor (in μm2). 
+- [x] volume of the convex hull around all neurites
 - [x] Average angle is the mean of the positive angle between (parent node, node) and (node, child node) vectors, where node, parent node and child node are irreducible nodes (in radians).  
 - [x] Average tortuosity is the average value of the ratio of the actual dendritic length to the Euclidean distance between irreducible nodes. 
 - [x] Asymmetry is the distance of the soma node to the dendritic arbor (skeleton) centre of mass (in nm). 
