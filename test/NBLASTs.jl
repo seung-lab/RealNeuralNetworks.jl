@@ -30,7 +30,7 @@ const k = 20
     # read the precomputed score matrix, which is the joint distribution of the scores
     println("\nread the precomputed score table...")
     SMAT_FCWB_PATH = joinpath(ASSET_DIR, "smat_fcwb.csv")
-    df = CSV.read(SMAT_FCWB_PATH)    
+    df = CSV.read(SMAT_FCWB_PATH, DataFrame)    
     ria = RangeIndexingArray{Float32}(df)
 
     println("\ncompute nblast score...")

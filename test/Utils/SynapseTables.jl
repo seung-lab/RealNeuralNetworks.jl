@@ -4,7 +4,7 @@ using DataFrames
 using RealNeuralNetworks.Utils.SynapseTables 
 
 @testset "synapse tables" begin
-    syn = CSV.read(joinpath(@__DIR__, "../../asset/syn100.csv"); copycols=true)
+    syn = CSV.read(joinpath(@__DIR__, "../../asset/syn100.csv"), DataFrame)
     @test 100 == DataFrames.nrow(syn)
     
     println("\npreprocessing...")

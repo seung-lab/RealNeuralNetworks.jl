@@ -71,7 +71,7 @@ end
 read default zfish score table
 """
 function RangeIndexingArray{T}(; fileName::AbstractString=joinpath(@__DIR__, "../../asset/zfish_score_table.csv")) where {T}
-    df = CSV.read(fileName)
+    df = CSV.read(fileName, DataFrame)
     RangeIndexingArray{T}(df)
 end 
 

@@ -1,6 +1,9 @@
 ![](https://github.com/seung-lab/RealNeuralNetworks.jl/blob/master/asset/logo/RGB_for_web/RNN_Logo_RGB.jpg)
 ========================
 [![Generic badge](https://img.shields.io/badge/Documentation-passing.svg)](https://seung-lab.github.io/RealNeuralNetworks.jl/latest/)
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://seung-lab.github.io/RealNeuralNetworks.jl/stable)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://seung-lab.github.io/RealNeuralNetworks.jl/dev)
+[![CI](https://github.com/seung-lab/RealNeuralNetworks.jl/workflows/CI/badge.svg)](https://github.com/invenia/RealNeuralNetworks.jl/actions?query=workflow%3ACI)
 [![Coverage Status](https://coveralls.io/repos/github/seung-lab/RealNeuralNetworks.jl/badge.svg?branch=master)](https://coveralls.io/github/seung-lab/RealNeuralNetworks.jl?branch=master)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 <!-- [![Build Status](https://travis-ci.org/seung-lab/RealNeuralNetworks.jl.svg?branch=master)](https://travis-ci.org/seung-lab/RealNeuralNetworks.jl) -->

@@ -142,7 +142,8 @@ end
     println("\nattaching presynapses in DataFrame...")
     # the default reading of CSV is immutable and the dropmissing will fail!
     # https://github.com/JuliaData/DataFrames.jl/issues/1393#issuecomment-500019773
-    preSynapses = CSV.read( joinpath(ASSET_DIR, "$(NEURON_ID).pre.synapses.csv");  copycols=true)
+    fname = joinpath(ASSET_DIR, "$(NEURON_ID).pre.synapses.csv")
+    preSynapses = CSV.read( fname, DataFrame )
     @time preSynapses = SynapseTables.preprocess(preSynapses, (5,5,45))
     println("get ", DataFrames.nrow(preSynapses), " synapses.")
     @time Neurons.attach_pre_synapses!(neuron, preSynapses)
@@ -152,7 +153,8 @@ end
     @test numPreSynapses > 2 
     
     println("\nattaching postsynapses in DataFrame...")
-    postSynapses = CSV.read( joinpath(ASSET_DIR, "$(NEURON_ID).post.synapses.csv"); copycols=true) 
+    fname = joinpath(ASSET_DIR, "$(NEURON_ID).post.synapses.csv")
+    postSynapses = CSV.read( fname, DataFrame ) 
     @time postSynapses = SynapseTables.preprocess(postSynapses, (5,5,45))
     println("get ", DataFrames.nrow(postSynapses), " synapses.")
     @time Neurons.attach_post_synapses!(neuron, postSynapses)
