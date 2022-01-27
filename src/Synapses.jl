@@ -19,9 +19,10 @@ mutable struct Synapse{T}
 end 
 
 function Synapse( row::DataFrameRow )
+    # @show row
     psdBoundingBox = BoundingBox(   SynapseTables.get_coordinate(row, "BBOX_b"),
                                     SynapseTables.get_coordinate(row, "BBOX_e") )
-    psdCoordinate = SynapseTables.get_coordinate(row, "psd_")
+    psdCoordinate = SynapseTables.get_coordinate(row, "centroid_")
     preSynapticCoordinate = SynapseTables.get_coordinate(row, "presyn_") 
     postSynapticCoordinate = SynapseTables.get_coordinate(row, "postsyn_")
 

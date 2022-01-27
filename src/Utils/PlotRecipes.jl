@@ -121,7 +121,7 @@ function plot(neuron::Neuron; nodeStep::Integer=1, semantic::Bool=true,
     PlotlyJS.plot(traces, layout)
 end 
 
-function plot_v2(neuron::Neuron; nodeStep::Integer=10)
+function plot_v2(neuron::Neuron; nodeStep::Integer=1)
     #using PyPlot
     #PyPlot.pygui(true)
 

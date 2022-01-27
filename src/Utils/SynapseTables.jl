@@ -104,6 +104,8 @@ end
 
 function get_coordinate(self::DataFrameRow, prefix::String)
 	coordinateNames = get_coordinate_names(prefix)
+    # println(""coordinateNames)
+    # @show coordinateNames
     map(x->self[x], coordinateNames)
 end 
 
