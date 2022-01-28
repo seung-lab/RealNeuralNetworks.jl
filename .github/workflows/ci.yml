@@ -20,12 +20,12 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - "1.6.5"  # LTS
+          # - "1.6.5"  # LTS
           - "1"    # Latest Release
         os:
           - ubuntu-latest
           - macOS-latest
-          - windows-latest
+          # - windows-latest
         arch:
           - x64
           - x86
@@ -35,11 +35,11 @@ jobs:
             arch: x86
           - os: windows-latest
             arch: x86
-        include:
-          # Add 1.7.1 to run the reference tests
-          - os: ubuntu-latest
-            version: 1.7.1
-            arch: x64
+        # include:
+        #   # Add 1.7.1 to run the reference tests
+        #   - os: ubuntu-latest
+        #     version: 1.7.1
+        #     arch: x64
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
