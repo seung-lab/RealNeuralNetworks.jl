@@ -20,7 +20,7 @@ See the [Index](@ref main-index) for the complete list of functions and types.
 Pages = [
     "man/getting_started.md",
     "man/examples.md",
-    "man/contributing.md",
+    <!-- "man/contributing.md", -->
     "man/references.md"
 ]
 Depth=1

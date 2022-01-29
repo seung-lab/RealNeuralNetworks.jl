@@ -18,16 +18,21 @@
 - cell type classification based on NBLAST. use NBLAST to compute similarity scores between neurons. 
 
 # Installation
-run this inside julia package REPL (hit `]` to enter package mode):
-
+This package is registered in Julia package management system. Simply following these steps to install it.
+- type "julia" to enter command line interface.
+- inside julia package REPL, hit `]` to enter package mode, then type
     add RealNeuralNetworks 
 
 # Usage
 
-## commandline
+## skeletonization of proofread neurons
+The skeletonization could be done using a script. The following command will show the parameters to use it.
 `julia skeletonize.jl -h`
 
-## Docker (recommanded)
+## Analysis
+All the analysis functions are demonstrated in [Jupyter Notebooks](https://github.com/jingpengw/realneuralnetworks-notebook).
+
+## Docker
 ### build docker image
     sudo docker build . -t realneuralnetworks
 
