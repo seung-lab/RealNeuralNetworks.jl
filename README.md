@@ -19,9 +19,8 @@
 
 # Installation
 This package is registered in Julia package management system. Simply following these steps to install it.
-- type "julia" to enter command line interface.
-- inside julia package REPL, hit `]` to enter package mode, then type
-    add RealNeuralNetworks 
+- type `julia` to enter command line interface.
+- inside julia package REPL, hit `]` to enter package mode, then type `add RealNeuralNetworks`
 
 # Usage
 
