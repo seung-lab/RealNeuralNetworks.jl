@@ -89,3 +89,21 @@ SWCs.save(swc, tempname()*".swc")
 
 # Credit 
 The skeletonization was originally implemented in Matlab by Alexander Bae using TEASAR algorithm, which was translated to Julia by Nicholas Turner.
+
+# Reference
+We have a publication for this repo:
+```bibtex
+
+@article{wuRealNeuralNetworksJlIntegrated2022,
+	title = {{RealNeuralNetworks}.jl: {An} {Integrated} {Julia} {Package} for {Skeletonization}, {Morphological} {Analysis}, and {Synaptic} {Connectivity} {Analysis} of {Terabyte}-{Scale} {3D} {Neural} {Segmentations}},
+	volume = {16},
+	issn = {1662-5196},
+	shorttitle = {{RealNeuralNetworks}.jl},
+	url = {https://www.frontiersin.org/article/10.3389/fninf.2022.828169},
+	urldate = {2022-03-02},
+	journal = {Frontiers in Neuroinformatics},
+	author = {Wu, Jingpeng and Turner, Nicholas and Bae, J. Alexander and Vishwanathan, Ashwin and Seung, H. Sebastian},
+	year = {2022},
+}
+
+```
