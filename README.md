@@ -24,12 +24,12 @@ This package is registered in Julia package management system. Simply following 
 
 # Usage
 
+## Analysis
+All the analysis functions are demonstrated in [Jupyter Notebooks](https://github.com/jingpengw/realneuralnetworks-notebook).
+
 ## skeletonization of proofread neurons
 The skeletonization could be done using a script. The following command will show the parameters to use it.
 `julia skeletonize.jl -h`
-
-## Analysis
-All the analysis functions are demonstrated in [Jupyter Notebooks](https://github.com/jingpengw/realneuralnetworks-notebook).
 
 ## Docker
 ### build docker image
