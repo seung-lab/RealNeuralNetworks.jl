@@ -12,10 +12,10 @@
 3D neuron models extracted from EM image segmentation 
 
 # Features 
-- skeletonization. extract the neuron skeletons based on image segmentation (colored labels).
+- sparse skeletonization. extract the neuron skeletons based on image segmentation (colored labels).
 - morphological analysis with a lot of features. 
 - neural networks including synapses. Most current morphological analysis tools do not have synapses. 
-- cell type classification based on NBLAST. use NBLAST to compute similarity scores between neurons. 
+- neuron morphology similarity measurement using NBLAST algorithm.
 
 # Installation
 This package is registered in Julia package management system. Simply following these steps to install it.
