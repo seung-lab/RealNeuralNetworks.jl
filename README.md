@@ -90,6 +90,8 @@ SWCs.save(swc, tempname()*".swc")
 # Credit 
 The skeletonization was originally implemented in Matlab by Alexander Bae using TEASAR algorithm, which was translated to Julia by Nicholas Turner.
 
+This package is developed at Princeton University and Flatiron Institute.
+
 # Reference
 We have a [publication](https://www.frontiersin.org/articles/10.3389/fninf.2022.828169/full) for this repo:
 ```bibtex
