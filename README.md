@@ -18,9 +18,10 @@
 - neuron morphology similarity measurement using NBLAST algorithm.
 
 # Installation
-This package is registered in Julia package management system. Simply following these steps to install it.
+This package was not registerred in the new Pkg package management system yet.
 - type `julia` to enter command line interface.
-- inside julia package REPL, hit `]` to enter package mode, then type `add RealNeuralNetworks`
+- `import Pkg`
+- `Pkg.develop(url="https://github.com/seung-lab/RealNeuralNetworks.jl.git")`
 
 # Usage
 
